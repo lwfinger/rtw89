@@ -3,6 +3,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/version.h>
 
 #include "core.h"
 #include "txrx.h"
@@ -1099,9 +1100,17 @@ static void rtw89_core_txq_schedule(struct rtw89_dev *rtwdev, u8 ac)
 	ieee80211_txq_schedule_end(hw, ac);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 static void rtw89_core_txq_tasklet(struct tasklet_struct *t)
+#else
+static void rtw89_core_txq_tasklet(unsigned long arg)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 	struct rtw89_dev *rtwdev = from_tasklet(rtwdev, t, txq_tasklet);
+#else
+	struct rtw89_dev *rtwdev = (struct rtw89_dev *)arg;
+#endif
 	u8 ac;
 
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
@@ -1548,7 +1557,12 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 	INIT_LIST_HEAD(&rtwdev->ba_list);
 	INIT_WORK(&rtwdev->ba_work, rtw89_core_ba_work);
 	INIT_DELAYED_WORK(&rtwdev->track_work, rtw89_track_work);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 	tasklet_setup(&rtwdev->txq_tasklet, rtw89_core_txq_tasklet);
+#else
+	tasklet_init(&rtwdev->txq_tasklet, rtw89_core_txq_tasklet,
+		     (unsigned long)rtwdev);
+#endif
 	spin_lock_init(&rtwdev->ba_lock);
 	mutex_init(&rtwdev->mutex);
 	mutex_init(&rtwdev->rf_mutex);

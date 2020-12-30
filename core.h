@@ -1487,6 +1487,63 @@ struct rtw89_dev {
 	u8 priv[0] __aligned(sizeof(void *));
 };
 
+#ifndef fsleep
+static inline void fsleep(unsigned long usecs)
+{
+        if (usecs <= 10)
+                udelay(usecs);
+        else if (usecs <= 20000)
+                usleep_range(usecs, 2 * usecs);
+        else
+                msleep(DIV_ROUND_UP(usecs, 1000));
+}
+#endif
+
+#ifndef IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_SHIFT
+#define IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_SHIFT         3
+#endif
+
+#ifndef read_poll_timeout
+static int read_poll_timeout(void *addr, u32 mask)
+{
+       unsigned long timeout = jiffies + msecs_to_jiffies(TIMEOUT_MS);
+
+       do {
+               if (readl(addr) & mask)
+                       return 0;
+
+               usleep_range(DELAY_INTERVAL_US, DELAY_INTERVAL_US + 50);
+       } while (!time_after(jiffies, timeout));
+
+       return (readl(addr) & mask) ? 0 : -ETIMEDOUT;
+}
+#endif
+
+#ifndef read_poll_timeout_atomic
+#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
+                                        delay_before_read, args...) \
+({ \
+        u64 __timeout_us = (timeout_us); \
+        unsigned long __delay_us = (delay_us); \
+        ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
+        if (delay_before_read && __delay_us) \
+                udelay(__delay_us); \
+        for (;;) { \
+                (val) = op(args); \
+                if (cond) \
+                        break; \
+                if (__timeout_us && \
+                    ktime_compare(ktime_get(), __timeout) > 0) { \
+                        (val) = op(args); \
+                        break; \
+                } \
+                if (__delay_us) \
+                        udelay(__delay_us); \
+        } \
+        (cond) ? 0 : -ETIMEDOUT; \
+})
+#endif
+
 static inline int rtw89_hci_tx_write(struct rtw89_dev *rtwdev,
 				     struct rtw89_core_tx_request *tx_req)
 {

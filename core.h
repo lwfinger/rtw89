@@ -10,6 +10,7 @@
 #include <linux/firmware.h>
 #include <linux/average.h>
 #include <linux/iopoll.h>
+#include <linux/version.h>
 
 struct rtw89_dev;
 
@@ -1487,7 +1488,7 @@ struct rtw89_dev {
 	u8 priv[0] __aligned(sizeof(void *));
 };
 
-#ifndef fsleep
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 static inline void fsleep(unsigned long usecs)
 {
         if (usecs <= 10)

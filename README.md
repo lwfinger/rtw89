@@ -17,7 +17,7 @@ RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL
 these should be provided by your kernel. If not, then you should go to the Backports Project
 (https://backports.wiki.kernel.org/index.php/Main_Page) to obtain the necessary code.
 
-This repo has been brought up to date with the kernel code on Dec. 30, 2020.
+This repo has been brought up to date with the kernel code on Jan. 31, 2021.
 
 ### Installation instruction
 ##### Requirements

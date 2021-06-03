@@ -10,6 +10,7 @@
 #include <linux/firmware.h>
 #include <linux/average.h>
 #include <linux/iopoll.h>
+#include <linux/version.h>
 
 struct rtw89_dev;
 

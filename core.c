@@ -1096,9 +1096,17 @@ static void rtw89_core_txq_schedule(struct rtw89_dev *rtwdev, u8 ac)
 	ieee80211_txq_schedule_end(hw, ac);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 static void rtw89_core_txq_tasklet(struct tasklet_struct *t)
+#else
+static void rtw89_core_txq_tasklet(unsigned long data)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 	struct rtw89_dev *rtwdev = from_tasklet(rtwdev, t, txq_tasklet);
+#else
+struct rtw89_dev *rtwdev = (void *)data;
+#endif
 	u8 ac;
 
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
@@ -1433,11 +1441,19 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
 		mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
 				  IEEE80211_HE_MAC_CAP2_BSR;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
 		mac_cap_info[3] = 2 << IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_SHIFT;
+#else
+		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_MASK;
+#endif
 		if (i == NL80211_IFTYPE_AP)
 			mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 		mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
 				  IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU;
+#else
+				  IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
+#endif
 		if (i == NL80211_IFTYPE_STATION)
 			mac_cap_info[5] = IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
 		if (band == NL80211_BAND_2GHZ)
@@ -1455,9 +1471,17 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
 					   IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_2;
 		if (i == NL80211_IFTYPE_AP)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP;
+#endif
 		phy_cap_info[6] = IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
 		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_AR |
+#else
+		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
+#endif
 				  IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI;
 		phy_cap_info[8] = IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
 				  IEEE80211_HE_PHY_CAP8_HE_ER_SU_1XLTF_AND_08_US_GI |
@@ -1545,7 +1569,12 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 	INIT_LIST_HEAD(&rtwdev->ba_list);
 	INIT_WORK(&rtwdev->ba_work, rtw89_core_ba_work);
 	INIT_DELAYED_WORK(&rtwdev->track_work, rtw89_track_work);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 	tasklet_setup(&rtwdev->txq_tasklet, rtw89_core_txq_tasklet);
+#else
+	tasklet_init(&rtwdev->txq_tasklet,
+		     rtw89_core_txq_tasklet, (unsigned long)rtwdev);
+#endif
 	spin_lock_init(&rtwdev->ba_lock);
 	mutex_init(&rtwdev->mutex);
 	mutex_init(&rtwdev->rf_mutex);

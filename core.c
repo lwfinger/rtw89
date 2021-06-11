@@ -1441,11 +1441,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
 		mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
 				  IEEE80211_HE_MAC_CAP2_BSR;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
-		mac_cap_info[3] = 2 << IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_SHIFT;
-#else
-		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_MASK;
-#endif
+		mac_cap_info[3] = 0x10;  //2 << IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_SHIFT;
 		if (i == NL80211_IFTYPE_AP)
 			mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 		mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |

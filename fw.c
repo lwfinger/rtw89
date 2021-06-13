@@ -327,16 +327,13 @@ static void rtw89_fw_dl_fail_dump(struct rtw89_dev *rtwdev)
 
 int rtw89_fw_download(struct rtw89_dev *rtwdev, struct rtw89_fw_info *fw_info)
 {
-	struct rtw89_fw_bin_info *info;
+	struct rtw89_fw_bin_info info;
 	const u8 *fw = fw_info->firmware->data;
 	u32 len = fw_info->firmware->size;
 	u8 val;
 	int ret;
 
-	info = kzalloc(sizeof(*info), GFP_KERNEL);
-	if (!info)
-		return -ENOMEM;
-	ret = rtw89_fw_hdr_parser(rtwdev, fw, len, info);
+	ret = rtw89_fw_hdr_parser(rtwdev, fw, len, &info);
 	if (ret) {
 		rtw89_err(rtwdev, "parse fw header fail\n");
 		goto fwdl_err;
@@ -352,24 +349,22 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev, struct rtw89_fw_info *fw_info)
 		goto fwdl_err;
 	}
 
-	ret = rtw89_fw_download_hdr(rtwdev, fw, info->hdr_len);
+	ret = rtw89_fw_download_hdr(rtwdev, fw, info.hdr_len);
 	if (ret) {
 		ret = -EBUSY;
 		goto fwdl_err;
 	}
 
-	ret = rtw89_fw_download_main(rtwdev, fw, info);
+	ret = rtw89_fw_download_main(rtwdev, fw, &info);
 	if (ret) {
 		ret = -EBUSY;
 		goto fwdl_err;
 	}
 
-	kfree(info);
 	return ret;
 
 fwdl_err:
 	rtw89_fw_dl_fail_dump(rtwdev);
-	kfree(info);
 	return ret;
 }
 

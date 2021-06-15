@@ -95,16 +95,24 @@ static int rtw89_fw_hdr_parser(struct rtw89_dev *rtwdev, const u8 *fw, u32 len,
 	bin = fw + info->hdr_len;
 
 	/* jump to section header */
+	pr_info("fw before %p\n", fw);
 	fw += RTW89_FW_HDR_SIZE;
+	pr_info("fw after %p\n", fw);
 	section_info = info->section_info;
 	for (i = 0; i < info->section_num; i++) {
 		section_info->len = GET_FWSECTION_HDR_SEC_SIZE(fw);
+		pr_info("section_info->len %d\n", section_info->len);
+		pr_info("GET_FWSECTION_HDR_CHECKSUM(fw) %d\n", GET_FWSECTION_HDR_CHECKSUM(fw));
+		pr_info("section_info->len before %d\n", section_info->len);
 		if (GET_FWSECTION_HDR_CHECKSUM(fw))
 			section_info->len += FWDL_SECTION_CHKSUM_LEN;
+		pr_info("section_info->len after %d\n", section_info->len);
 		section_info->redl = GET_FWSECTION_HDR_REDL(fw);
+		pr_info("section_info->redl %d\n", section_info->redl);
 		section_info->dladdr =
 				GET_FWSECTION_HDR_DL_ADDR(fw) & 0x1fffffff;
 		section_info->addr = bin;
+		pr_info("section_info->addr %p\n", section_info->addr);
 		bin += section_info->len;
 		fw += RTW89_FW_SECTION_HDR_SIZE;
 		section_info++;

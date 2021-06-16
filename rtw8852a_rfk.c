@@ -86,6 +86,69 @@ static u8 _kpath(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx)
 		return RF_B;
 }
 
+static const u32 rtw8852a_backup_bb_regs[] = {0x2344, 0x58f0, 0x78f0};
+static const u32 rtw8852a_backup_rf_regs[] = {0xef, 0xde, 0x0, 0x1e, 0x2, 0x85, 0x90, 0x5};
+#define BACKUP_BB_REGS_NR ARRAY_SIZE(rtw8852a_backup_bb_regs)
+#define BACKUP_RF_REGS_NR ARRAY_SIZE(rtw8852a_backup_rf_regs)
+
+static void _rfk_backup_bb_reg(struct rtw89_dev *rtwdev, u32 backup_bb_reg_val[])
+{
+	u32 i;
+
+	for (i = 0; i < BACKUP_BB_REGS_NR; i++) {
+		backup_bb_reg_val[i] =
+			rtw89_phy_read32_mask(rtwdev, rtw8852a_backup_bb_regs[i],
+					      MASKDWORD);
+		rtw89_debug(rtwdev, RTW89_DBG_RFK,
+			    "[IQK]backup bb reg : %x, value =%x\n",
+			    rtw8852a_backup_bb_regs[i], backup_bb_reg_val[i]);
+	}
+}
+
+static void _rfk_backup_rf_reg(struct rtw89_dev *rtwdev, u32 backup_rf_reg_val[],
+			       u8 rf_path)
+{
+	u32 i;
+
+	for (i = 0; i < BACKUP_RF_REGS_NR; i++) {
+		backup_rf_reg_val[i] =
+			rtw89_read_rf(rtwdev, rf_path,
+				      rtw8852a_backup_rf_regs[i], RFREG_MASK);
+		rtw89_debug(rtwdev, RTW89_DBG_RFK,
+			    "[IQK]backup rf S%d reg : %x, value =%x\n", rf_path,
+			    rtw8852a_backup_rf_regs[i], backup_rf_reg_val[i]);
+	}
+}
+
+static void _rfk_restore_bb_reg(struct rtw89_dev *rtwdev,
+				u32 backup_bb_reg_val[])
+{
+	u32 i;
+
+	for (i = 0; i < BACKUP_BB_REGS_NR; i++) {
+		rtw89_phy_write32_mask(rtwdev, rtw8852a_backup_bb_regs[i],
+				       MASKDWORD, backup_bb_reg_val[i]);
+		rtw89_debug(rtwdev, RTW89_DBG_RFK,
+			    "[IQK]restore bb reg : %x, value =%x\n",
+			    rtw8852a_backup_bb_regs[i], backup_bb_reg_val[i]);
+	}
+}
+
+static void _rfk_restore_rf_reg(struct rtw89_dev *rtwdev,
+				u32 backup_rf_reg_val[], u8 rf_path)
+{
+	u32 i;
+
+	for (i = 0; i < BACKUP_RF_REGS_NR; i++) {
+		rtw89_write_rf(rtwdev, rf_path, rtw8852a_backup_rf_regs[i],
+			       RFREG_MASK, backup_rf_reg_val[i]);
+
+		rtw89_debug(rtwdev, RTW89_DBG_RFK,
+			    "[IQK]restore rf S%d reg: %x, value =%x\n", rf_path,
+			    rtw8852a_backup_rf_regs[i], backup_rf_reg_val[i]);
+	}
+}
+
 static void _wait_rx_mode(struct rtw89_dev *rtwdev, u8 kpath)
 {
 	u8 path;
@@ -743,12 +806,17 @@ static void _iqk_rxk_setting(struct rtw89_dev *rtwdev, u8 path)
 	u32 tmp = 0x0;
 
 	rtw89_phy_write32_set(rtwdev, R_P0_NRBW + (path << 13), B_P0_NRBW_DBG);
-	rtw89_phy_write32_mask(rtwdev, R_ANAPAR_PW15, B_ANAPAR_PW15, 0xf);
-	udelay(1);
 	rtw89_phy_write32_mask(rtwdev, R_ANAPAR_PW15, B_ANAPAR_PW15, 0x3);
-	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_15, 0xa001);
-	udelay(1);
 	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_15, 0xa041);
+	udelay(1);
+	rtw89_phy_write32_mask(rtwdev, R_ANAPAR_PW15, B_ANAPAR_PW15_H2, 0x3);
+	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_FLTRST, 0x0);
+	udelay(1);
+	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_FLTRST, 0x1);
+	rtw89_phy_write32_mask(rtwdev, R_ANAPAR_PW15, B_ANAPAR_PW15_H2, 0x0);
+	udelay(1);
+	rtw89_phy_write32_mask(rtwdev, R_ADC_FIFO, B_ADC_FIFO_RST, 0x0303);
+	rtw89_phy_write32_mask(rtwdev, R_ADC_FIFO, B_ADC_FIFO_RST, 0x0000);
 
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
@@ -768,31 +836,26 @@ static void _iqk_rxk_setting(struct rtw89_dev *rtwdev, u8 path)
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_OFF, 0x13);
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x1);
-	fsleep(70);
+	fsleep(128);
 }
 
 static bool _iqk_check_cal(struct rtw89_dev *rtwdev, u8 path, u8 ktype)
 {
-	bool fail = true;
 	u32 tmp;
 	u32 val;
 	int ret;
 
 	ret = read_poll_timeout_atomic(rtw89_phy_read32_mask, val, val == 0x55, 1, 8200,
 				       false, rtwdev, 0xbff8, MASKBYTE0);
-	if (ret) {
-		fail = true;
+	if (ret)
 		rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]IQK timeout!!!\n");
-	} else {
-		fail = !!rtw89_phy_read32_mask(rtwdev, R_NCTL_RPT, B_NCTL_RPT_FLG);
-	}
-
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, MASKBYTE0);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]S%x, ret=%d\n", path, ret);
 	tmp = rtw89_phy_read32_mask(rtwdev, R_NCTL_RPT, MASKDWORD);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK,
 		    "[IQK]S%x, type= %x, 0x8008 = 0x%x\n", path, ktype, tmp);
-	return fail;
+
+	return false;
 }
 
 static bool _iqk_one_shot(struct rtw89_dev *rtwdev,
@@ -895,17 +958,8 @@ static bool _rxk_group_sel(struct rtw89_dev *rtwdev,
 	static const u32 attc2_g[4] = {0x0, 0x15, 0x3, 0x1a};
 	static const u32 attc1_g[4] = {0x1, 0x0, 0x1, 0x0};
 	u8 gp = 0x0;
-	u32 tmp = 0x0;
 	bool fail = false;
-	bool kfail = false;
-
-	if (rtwdev->dbcc_en) {
-		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
-				       B_COEF_SEL_IQC, path & 0x1);
-	} else {
-		rtw89_phy_write32_clr(rtwdev, R_COEF_SEL + (path << 8),
-				      B_COEF_SEL_IQC);
-	}
+	u32 rf0 = 0x0;
 
 	for (gp = 0; gp < 0x4; gp++) {
 		switch (iqk_info->iqk_band[path]) {
@@ -923,38 +977,38 @@ static bool _rxk_group_sel(struct rtw89_dev *rtwdev,
 			break;
 		}
 		rtw89_phy_write32_set(rtwdev, R_IQK_CFG, B_IQK_CFG_SET);
-		tmp = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
-		rtw89_phy_write32_mask(rtwdev, R_IQK_DIF2, B_IQK_DIF2_RXPI, tmp);
+		rf0 = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
+		rtw89_phy_write32_mask(rtwdev, R_IQK_DIF2, B_IQK_DIF2_RXPI,
+				       rf0 | iqk_info->syn1to2);
 		rtw89_phy_write32_mask(rtwdev, R_IQK_COM, MASKDWORD, 0x40010100);
 		rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_RXCFIR);
 		rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_SEL);
 		rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G3);
-		rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G2);
-		rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8),
-				       B_CFIR_LUT_GP, gp);
+		rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_GP, gp);
 		rtw89_phy_write32_mask(rtwdev, R_IOQ_IQK_DPK, B_IOQ_IQK_DPK_EN, 0x1);
 		rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, B_NCTL_N1_CIP);
 		fail = _iqk_one_shot(rtwdev, phy_idx, path, ID_RXK);
 		rtw89_phy_write32_mask(rtwdev, R_IQKINF, BIT(16 + gp + path * 4), fail);
-		kfail = kfail | fail;
 	}
-	rtw89_write_rf(rtwdev, path, RR_RXK, RR_RXK_SEL5G, 0x0);
-	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
-	rtw89_write_rf(rtwdev, path, RR_WLSEL, RR_WLSEL_AG, 0x0);
-	if (kfail) {
-		iqk_info->nb_rxcfir[path] = 0x40000002;
-		rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_RXCFIR);
-		iqk_info->is_wb_rxiqk[path] = false;
-	} else {
-		iqk_info->nb_rxcfir[path] = 0x40000000;
-		rtw89_phy_write32_mask(rtwdev, R_IQK_RES + (path << 8),
-				       B_IQK_RES_RXCFIR, 0x5);
-		iqk_info->is_wb_rxiqk[path] = true;
+
+	switch (iqk_info->iqk_band[path]) {
+	case RTW89_BAND_2G:
+		rtw89_write_rf(rtwdev, path, RR_RXK, RR_RXK_SEL2G, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
+		break;
+	case RTW89_BAND_5G:
+		rtw89_write_rf(rtwdev, path, RR_RXK, RR_RXK_SEL5G, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_WLSEL, RR_WLSEL_AG, 0x0);
+		break;
+	default:
+		break;
 	}
-	tmp = rtw89_phy_read32_mask(rtwdev, R_RXIQC + (path << 8), MASKDWORD);
-	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]S%x, 0x8%lx3c = 0x%x\n", path,
-		    BIT(path), tmp);
-	return kfail;
+	iqk_info->nb_rxcfir[path] = 0x40000000;
+	rtw89_phy_write32_mask(rtwdev, R_IQK_RES + (path << 8),
+			       B_IQK_RES_RXCFIR, 0x5);
+	iqk_info->is_wb_rxiqk[path] = true;
+	return false;
 }
 
 static bool _iqk_nbrxk(struct rtw89_dev *rtwdev,
@@ -962,21 +1016,14 @@ static bool _iqk_nbrxk(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
 	u8 group = 0x0;
-	u32 tmp = 0x0;
-	u32 idxrxgain_a = 0x1aC;
+	u32 rf0 = 0x0, tmp = 0x0;
+	u32 idxrxgain_a = 0x1a0;
 	u32 idxattc2_a = 0x00;
 	u32 idxattc1_a = 0x5;
 	u32 idxrxgain_g = 0x1CC;
 	u32 idxattc2_g = 0x0;
 	u32 idxattc1_g = 0x1;
 	bool fail = false;
-
-	if (rtwdev->dbcc_en)
-		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
-				       B_COEF_SEL_IQC, path & 0x1);
-	else
-		rtw89_phy_write32_clr(rtwdev, R_COEF_SEL + (path << 8),
-				      B_COEF_SEL_IQC);
 
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
@@ -993,18 +1040,32 @@ static bool _iqk_nbrxk(struct rtw89_dev *rtwdev,
 		break;
 	}
 	rtw89_phy_write32_set(rtwdev, R_IQK_CFG, B_IQK_CFG_SET);
-	tmp = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
-	rtw89_phy_write32_mask(rtwdev, R_IQK_DIF2, B_IQK_DIF2_RXPI, tmp);
+	rf0 = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
+	rtw89_phy_write32_mask(rtwdev, R_IQK_DIF2, B_IQK_DIF2_RXPI,
+			       rf0 | iqk_info->syn1to2);
 	rtw89_phy_write32_mask(rtwdev, R_IQK_COM, MASKDWORD, 0x40010100);
 	rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_RXCFIR);
 	rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_SEL);
 	rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G3);
-	rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G2);
 	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8),
 			       B_CFIR_LUT_GP, group);
 	rtw89_phy_write32_set(rtwdev, R_IOQ_IQK_DPK, B_IOQ_IQK_DPK_EN);
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, B_NCTL_N1_CIP);
 	fail = _iqk_one_shot(rtwdev, phy_idx, path, ID_NBRXK);
+
+	switch (iqk_info->iqk_band[path]) {
+	case RTW89_BAND_2G:
+		rtw89_write_rf(rtwdev, path, RR_RXK, RR_RXK_SEL2G, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
+		break;
+	case RTW89_BAND_5G:
+		rtw89_write_rf(rtwdev, path, RR_RXK, RR_RXK_SEL5G, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
+		rtw89_write_rf(rtwdev, path, RR_WLSEL, RR_WLSEL_AG, 0x0);
+		break;
+	default:
+		break;
+	}
 	if (!fail) {
 		tmp = rtw89_phy_read32_mask(rtwdev, R_RXIQC + (path << 8), MASKDWORD);
 		iqk_info->nb_rxcfir[path] = tmp | 0x2;
@@ -1048,16 +1109,8 @@ static bool _txk_group_sel(struct rtw89_dev *rtwdev,
 	static const u32 g_attsmxr[4] = {0x0, 0x1, 0x1, 0x1};
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
 	bool fail = false;
-	bool kfail = false;
 	u8 gp = 0x0;
 	u32 tmp = 0x0;
-
-	if (rtwdev->dbcc_en)
-		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
-				       B_COEF_SEL_IQC, path & 0x1);
-	else
-		rtw89_phy_write32_clr(rtwdev, R_COEF_SEL + (path << 8),
-				      B_COEF_SEL_IQC);
 
 	for (gp = 0x0; gp < 0x4; gp++) {
 		switch (iqk_info->iqk_band[path]) {
@@ -1087,28 +1140,21 @@ static bool _txk_group_sel(struct rtw89_dev *rtwdev,
 		rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_TXCFIR);
 		rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_SEL);
 		rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G3);
-		rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G2);
 		rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8),
 				       B_CFIR_LUT_GP, gp);
 		rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, B_NCTL_N1_CIP);
 		fail = _iqk_one_shot(rtwdev, phy_idx, path, ID_TXK);
 		rtw89_phy_write32_mask(rtwdev, R_IQKINF, BIT(8 + gp + path * 4), fail);
-		kfail = kfail | fail;
 	}
-	if (kfail) {
-		iqk_info->nb_txcfir[path] = 0x40000002;
-		rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_TXCFIR);
-		iqk_info->is_wb_txiqk[path] = false;
-	} else {
-		iqk_info->nb_txcfir[path] = 0x40000000;
-		rtw89_phy_write32_mask(rtwdev, R_IQK_RES + (path << 8),
-				       B_IQK_RES_TXCFIR, 0x5);
-		iqk_info->is_wb_txiqk[path] = true;
-	}
+
+	iqk_info->nb_txcfir[path] = 0x40000000;
+	rtw89_phy_write32_mask(rtwdev, R_IQK_RES + (path << 8),
+			       B_IQK_RES_TXCFIR, 0x5);
+	iqk_info->is_wb_txiqk[path] = true;
 	tmp = rtw89_phy_read32_mask(rtwdev, R_TXIQC + (path << 8), MASKDWORD);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]S%x, 0x8%lx38 = 0x%x\n", path,
 		    BIT(path), tmp);
-	return kfail;
+	return false;
 }
 
 static bool _iqk_nbtxk(struct rtw89_dev *rtwdev,
@@ -1120,14 +1166,8 @@ static bool _iqk_nbtxk(struct rtw89_dev *rtwdev,
 	u32 g_mode_txgain = 0x61e8;
 	u32 attsmxr = 0x1;
 	u32 itqt = 0x12;
-	bool fail = false;
 	u32 tmp = 0x0;
-
-	if (rtwdev->dbcc_en)
-		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
-				       B_COEF_SEL_IQC, path & 0x1);
-	else
-		rtw89_phy_write32_clr(rtwdev, R_COEF_SEL + (path << 8), B_COEF_SEL_IQC);
+	bool fail = false;
 
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
@@ -1148,7 +1188,6 @@ static bool _iqk_nbtxk(struct rtw89_dev *rtwdev,
 	rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_TXCFIR);
 	rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_SEL);
 	rtw89_phy_write32_set(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G3);
-	rtw89_phy_write32_clr(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G2);
 	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_GP, group);
 	rtw89_phy_write32_mask(rtwdev, R_KIP_IQP + (path << 8), MASKDWORD, itqt);
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, B_NCTL_N1_CIP);
@@ -1162,7 +1201,6 @@ static bool _iqk_nbtxk(struct rtw89_dev *rtwdev,
 	tmp = rtw89_phy_read32_mask(rtwdev, R_TXIQC + (path << 8), MASKDWORD);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]S%x, 0x8%lx38 = 0x%x\n", path,
 		    BIT(path), tmp);
-
 	return fail;
 }
 
@@ -1211,7 +1249,7 @@ static bool _iqk_lok(struct rtw89_dev *rtwdev,
 
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
-		rtw89_write_rf(rtwdev, path, RR_GAINTX, RR_GAINTX_ALL, 0x61e2);
+		rtw89_write_rf(rtwdev, path, RR_GAINTX, RR_GAINTX_ALL, 0xe5e0);
 		itqt = 0x09;
 		break;
 	case RTW89_BAND_5G:
@@ -1223,14 +1261,19 @@ static bool _iqk_lok(struct rtw89_dev *rtwdev,
 	}
 	rtw89_phy_write32_set(rtwdev, R_IQK_CFG, B_IQK_CFG_SET);
 	rf0 = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
-	rtw89_phy_write32_mask(rtwdev, R_IQK_DIF1, B_IQK_DIF1_TXPI, rf0);
+	rtw89_phy_write32_mask(rtwdev, R_IQK_DIF1, B_IQK_DIF1_TXPI,
+			       rf0 | iqk_info->syn1to2);
 	rtw89_phy_write32_clr(rtwdev, R_IQK_RES + (path << 8), B_IQK_RES_TXCFIR);
-	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), MASKDWORD, 0x00000108);
+	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_SEL, 0x1);
+	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_G3, 0x1);
+	rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8), B_CFIR_LUT_GP, 0x0);
 	rtw89_phy_write32_set(rtwdev, R_IOQ_IQK_DPK, B_IOQ_IQK_DPK_EN);
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_N1, B_NCTL_N1_CIP);
 	rtw89_phy_write32_mask(rtwdev, R_KIP_IQP + (path << 8), MASKDWORD, itqt);
 	tmp = _iqk_one_shot(rtwdev, phy_idx, path, ID_FLOK_COARSE);
 	iqk_info->lok_cor_fail[0][path] = tmp;
+	fsleep(10);
+	rtw89_phy_write32_mask(rtwdev, R_KIP_IQP + (path << 8), MASKDWORD, itqt);
 	tmp = _iqk_one_shot(rtwdev, phy_idx, path, ID_FLOK_FINE);
 	iqk_info->lok_fin_fail[0][path] = tmp;
 	fail = _lok_finetune_check(rtwdev, path);
@@ -1240,9 +1283,6 @@ static bool _iqk_lok(struct rtw89_dev *rtwdev,
 static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 {
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
-	u32 tmp = 0x0;
-
-	/*0/1:G/A*/
 
 	rtw89_phy_write32_set(rtwdev, R_P0_NRBW + (path << 13), B_P0_NRBW_DBG);
 	rtw89_phy_write32_mask(rtwdev, R_ANAPAR_PW15, B_ANAPAR_PW15, 0x1f);
@@ -1251,8 +1291,12 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_15, 0x0001);
 	udelay(1);
 	rtw89_phy_write32_mask(rtwdev, R_ANAPAR, B_ANAPAR_15, 0x0041);
+	udelay(1);
+	rtw89_phy_write32_mask(rtwdev, R_ADC_FIFO, B_ADC_FIFO_RST, 0x0303);
+	rtw89_phy_write32_mask(rtwdev, R_ADC_FIFO, B_ADC_FIFO_RST, 0x0000);
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
+		rtw89_write_rf(rtwdev, path, RR_XALNA2, RR_XALNA2_SW, 0x00);
 		rtw89_write_rf(rtwdev, path, RR_RCKD, RR_RCKD_POW, 0x3f);
 		rtw89_write_rf(rtwdev, path, RR_TXG1, RR_TXG1_ATT2, 0x0);
 		rtw89_write_rf(rtwdev, path, RR_TXG1, RR_TXG1_ATT1, 0x1);
@@ -1263,10 +1307,12 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 		rtw89_write_rf(rtwdev, path, RR_LUTWA, RR_LUTWA_MASK, 0x000);
 		rtw89_write_rf(rtwdev, path, RR_RSV2, RFREG_MASK, 0x80200);
 		rtw89_write_rf(rtwdev, path, RR_DTXLOK, RFREG_MASK, 0x80200);
-		rtw89_write_rf(rtwdev, path, RR_MOD, RR_MOD_IQK, 0x403e);
+		rtw89_write_rf(rtwdev, path, RR_MOD, RFREG_MASK,
+			       0x403e0 | iqk_info->syn1to2);
 		udelay(1);
 		break;
 	case RTW89_BAND_5G:
+		rtw89_write_rf(rtwdev, path, RR_XGLNA2, RR_XGLNA2_SW, 0x00);
 		rtw89_write_rf(rtwdev, path, RR_RCKD, RR_RCKD_POW, 0x3f);
 		rtw89_write_rf(rtwdev, path, RR_BIASA, RR_BIASA_A, 0x7);
 		rtw89_write_rf(rtwdev, path, RR_TXGA, RR_TXGA_LOK_EN, 0x0);
@@ -1277,15 +1323,13 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 		rtw89_write_rf(rtwdev, path, RR_DTXLOK, RFREG_MASK, 0x80200);
 		rtw89_write_rf(rtwdev, path, RR_LUTWD0, RFREG_MASK, 0x1);
 		rtw89_write_rf(rtwdev, path, RR_LUTWD0, RFREG_MASK, 0x0);
-		rtw89_write_rf(rtwdev, path, RR_MOD, RR_MOD_IQK, 0x403e);
+		rtw89_write_rf(rtwdev, path, RR_MOD, RFREG_MASK,
+			       0x403e0 | iqk_info->syn1to2);
 		udelay(1);
 		break;
 	default:
 		break;
 	}
-	tmp = rtw89_read_rf(rtwdev, path, RR_MOD, RFREG_MASK);
-	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]S%x, rf%x = 0x%x\n", path,
-		    path, tmp);
 }
 
 static void _iqk_txclk_setting(struct rtw89_dev *rtwdev, u8 path)
@@ -1356,7 +1400,7 @@ void _iqk_by_path(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx, u8 path)
 		if (!lok_is_fail)
 			break;
 	}
-	if (iqk_info->is_nbiqk || rtwdev->dbcc_en)
+	if (iqk_info->is_nbiqk)
 		iqk_info->iqk_tx_fail[0][path] = _iqk_nbtxk(rtwdev, phy_idx, path);
 	else
 		iqk_info->iqk_tx_fail[0][path] = _txk_group_sel(rtwdev, phy_idx, path);
@@ -1376,11 +1420,25 @@ static void _iqk_get_ch_info(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
 	struct rtw89_hal *hal = &rtwdev->hal;
-	u32 reg_rf18 = 0x0;
+	u32 reg_rf18 = 0x0, reg_35c = 0x0;
+	u8 idx = 0;
+	u8 get_empty_table = false;
 
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]===>%s\n", __func__);
+	for  (idx = 0; idx < RTW89_IQK_CHS_NR; idx++) {
+		if (iqk_info->iqk_mcc_ch[idx][path] == 0) {
+			get_empty_table = true;
+			break;
+		}
+	}
+	if (!get_empty_table) {
+		idx = iqk_info->iqk_table_idx[path] + 1;
+		if (idx > RTW89_IQK_CHS_NR - 1)
+			idx = 0;
+	}
 	reg_rf18 = rtw89_read_rf(rtwdev, path, RR_CFGCH, RFREG_MASK);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]cfg ch = %d\n", reg_rf18);
+	reg_35c = rtw89_phy_read32_mask(rtwdev, 0x35c, 0x00000c00);
 
 	iqk_info->iqk_band[path] = hal->current_band_type;
 	iqk_info->iqk_bw[path] = hal->current_band_width;
@@ -1401,6 +1459,10 @@ static void _iqk_get_ch_info(struct rtw89_dev *rtwdev,
 		    iqk_info->iqk_ch[path],
 		    iqk_info->iqk_bw[path] == 0 ? "20M" :
 		    iqk_info->iqk_bw[path] == 1 ? "40M" : "80M");
+	if (reg_35c == 0x01)
+		iqk_info->syn1to2 = 0x1;
+	else
+		iqk_info->syn1to2 = 0x0;
 
 	rtw89_phy_write32_mask(rtwdev, R_IQKINF, B_IQKINF_VER, RTW8852A_IQK_VER);
 	rtw89_phy_write32_mask(rtwdev, R_IQKCH, 0x000f << (path * 16),
@@ -1452,8 +1514,6 @@ static void _iqk_afebb_restore(struct rtw89_dev *rtwdev,
 {
 	const struct rtw89_rfk_tbl *tbl;
 
-	rtw89_debug(rtwdev, RTW89_DBG_RFK, "===> %s\n", __func__);
-
 	switch (_kpath(rtwdev, phy_idx)) {
 	case RF_A:
 		tbl = &rtw8852a_rfk_iqk_restore_defs_dbcc_path0_tbl;
@@ -1471,6 +1531,20 @@ static void _iqk_afebb_restore(struct rtw89_dev *rtwdev,
 
 static void _iqk_preset(struct rtw89_dev *rtwdev, u8 path)
 {
+	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
+	u8 idx = iqk_info->iqk_table_idx[path];
+
+	if (rtwdev->dbcc_en) {
+		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
+				       B_COEF_SEL_IQC, path & 0x1);
+		rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8),
+				       B_CFIR_LUT_G2, path & 0x1);
+	} else {
+		rtw89_phy_write32_mask(rtwdev, R_COEF_SEL + (path << 8),
+				       B_COEF_SEL_IQC, idx);
+		rtw89_phy_write32_mask(rtwdev, R_CFIR_LUT + (path << 8),
+				       B_CFIR_LUT_G2, idx);
+	}
 	rtw89_write_rf(rtwdev, path, RR_RSV1, RR_RSV1_RST, 0x0);
 	rtw89_phy_write32_mask(rtwdev, R_NCTL_RPT, MASKDWORD, 0x00000080);
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_RW, MASKDWORD);
@@ -1590,69 +1664,6 @@ static void _rck(struct rtw89_dev *rtwdev, enum rtw89_rf_path path)
 		    rtw89_read_rf(rtwdev, path, RR_RCKO, RFREG_MASK));
 }
 
-static const u32 rtw8852a_backup_bb_regs[] = {0x8000};
-static const u32 rtw8852a_backup_rf_regs[] = {0xef, 0xde, 0x0, 0x1e, 0x2, 0x5};
-#define BACKUP_BB_REGS_NR ARRAY_SIZE(rtw8852a_backup_bb_regs)
-#define BACKUP_RF_REGS_NR ARRAY_SIZE(rtw8852a_backup_rf_regs)
-
-static void _iqk_backup_bb_reg(struct rtw89_dev *rtwdev, u32 backup_bb_reg_val[])
-{
-	u32 i;
-
-	for (i = 0; i < BACKUP_BB_REGS_NR; i++) {
-		backup_bb_reg_val[i] =
-			rtw89_phy_read32_mask(rtwdev, rtw8852a_backup_bb_regs[i],
-					      MASKDWORD);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[IQK]backup bb reg : %x, value =%x\n",
-			    rtw8852a_backup_bb_regs[i], backup_bb_reg_val[i]);
-	}
-}
-
-static void _iqk_backup_rf_reg(struct rtw89_dev *rtwdev, u32 backup_rf_reg_val[],
-			       u8 rf_path)
-{
-	u32 i;
-
-	for (i = 0; i < BACKUP_RF_REGS_NR; i++) {
-		backup_rf_reg_val[i] =
-			rtw89_read_rf(rtwdev, rf_path,
-				      rtw8852a_backup_rf_regs[i], RFREG_MASK);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[IQK]backup rf S%d reg : %x, value =%x\n", rf_path,
-			    rtw8852a_backup_rf_regs[i], backup_rf_reg_val[i]);
-	}
-}
-
-static void _iqk_restore_bb_reg(struct rtw89_dev *rtwdev,
-				u32 backup_bb_reg_val[])
-{
-	u32 i;
-
-	for (i = 0; i < BACKUP_BB_REGS_NR; i++) {
-		rtw89_phy_write32_mask(rtwdev, rtw8852a_backup_bb_regs[i],
-				       MASKDWORD, backup_bb_reg_val[i]);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[IQK]restore bb reg : %x, value =%x\n",
-			    rtw8852a_backup_bb_regs[i], backup_bb_reg_val[i]);
-	}
-}
-
-static void _iqk_restore_rf_reg(struct rtw89_dev *rtwdev,
-				u32 backup_rf_reg_val[], u8 rf_path)
-{
-	u32 i;
-
-	for (i = 0; i < BACKUP_RF_REGS_NR; i++) {
-		rtw89_write_rf(rtwdev, rf_path, rtw8852a_backup_rf_regs[i],
-			       RFREG_MASK, backup_rf_reg_val[i]);
-
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[IQK]restore rf S%d reg: %x, value =%x\n", rf_path,
-			    rtw8852a_backup_rf_regs[i], backup_rf_reg_val[i]);
-	}
-}
-
 static void _iqk_init(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
@@ -1670,6 +1681,7 @@ static void _iqk_init(struct rtw89_dev *rtwdev)
 	iqk_info->iqk_cfir_en = false;
 	iqk_info->iqk_xym_en = false;
 	iqk_info->thermal_rek_en = false;
+	iqk_info->iqk_times = 0x0;
 
 	for (ch = 0; ch < RTW89_IQK_CHS_NR; ch++) {
 		iqk_info->iqk_channel[ch] = 0x0;
@@ -1678,6 +1690,8 @@ static void _iqk_init(struct rtw89_dev *rtwdev)
 			iqk_info->lok_fin_fail[ch][path] = false;
 			iqk_info->iqk_tx_fail[ch][path] = false;
 			iqk_info->iqk_rx_fail[ch][path] = false;
+			iqk_info->iqk_mcc_ch[ch][path] = 0x0;
+			iqk_info->iqk_table_idx[path] = 0x0;
 		}
 	}
 }
@@ -1700,15 +1714,15 @@ static void _doiqk(struct rtw89_dev *rtwdev, bool force,
 
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK]Test Ver 0x%x\n", iqk_info->version);
 	_iqk_get_ch_info(rtwdev, phy_idx, path);
-	_iqk_backup_bb_reg(rtwdev, &backup_bb_val[0]);
-	_iqk_backup_rf_reg(rtwdev, &backup_rf_val[path][0], path);
+	_rfk_backup_bb_reg(rtwdev, &backup_bb_val[0]);
+	_rfk_backup_rf_reg(rtwdev, &backup_rf_val[path][0], path);
 	_iqk_macbb_setting(rtwdev, phy_idx, path);
 	_iqk_preset(rtwdev, path);
 	_iqk_start_iqk(rtwdev, phy_idx, path);
 	_iqk_restore(rtwdev, path);
 	_iqk_afebb_restore(rtwdev, phy_idx, path);
-	_iqk_restore_bb_reg(rtwdev, &backup_bb_val[0]);
-	_iqk_restore_rf_reg(rtwdev, &backup_rf_val[path][0], path);
+	_rfk_restore_bb_reg(rtwdev, &backup_bb_val[0]);
+	_rfk_restore_rf_reg(rtwdev, &backup_rf_val[path][0], path);
 	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_IQK, BTC_WRFK_ONESHOT_STOP);
 }
 
@@ -1789,7 +1803,7 @@ static void _rx_dck(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 
 	rtw89_debug(rtwdev, RTW89_DBG_RFK,
 		    "[RX_DCK] ****** RXDCK Start (Ver: 0x%x, Cv: %d) ******\n",
-		    RXDCK_VER_8852A, rtwdev->hal.cut_version);
+		    RXDCK_VER_8852A, rtwdev->hal.cv);
 
 	kpath = _kpath(rtwdev, phy);
 
@@ -1824,7 +1838,6 @@ static void _rx_dck(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 #define RTW8852A_RF_REL_VERSION 34
 #define RTW8852A_DPK_VER 0x10
 #define RTW8852A_DPK_TH_AVG_NUM 4
-#define RTW8852A_DPK_RF_REG_NUM 2
 #define RTW8852A_DPK_RF_PATH 2
 #define RTW8852A_DPK_KIP_REG_NUM 2
 
@@ -1864,20 +1877,6 @@ static void _dpk_bkup_kip(struct rtw89_dev *rtwdev, u32 *reg,
 	}
 }
 
-static void _dpk_bkup_rf(struct rtw89_dev *rtwdev, u32 *rf_reg,
-			 u32 rf_bkup[][RTW8852A_DPK_RF_REG_NUM], u8 path)
-{
-	u8 i;
-
-	for (i = 0; i < RTW8852A_DPK_RF_REG_NUM; i++) {
-		rf_bkup[path][i] = rtw89_read_rf(rtwdev, path, rf_reg[i],
-						 RFREG_MASK);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[DPK] Backup RF S%d 0x%x = %x\n",
-			    path, rf_reg[i], rf_bkup[path][i]);
-	}
-}
-
 static void _dpk_reload_kip(struct rtw89_dev *rtwdev, u32 *reg,
 			    u32 reg_bkup[][RTW8852A_DPK_KIP_REG_NUM], u8 path)
 {
@@ -1888,20 +1887,6 @@ static void _dpk_reload_kip(struct rtw89_dev *rtwdev, u32 *reg,
 				       MASKDWORD, reg_bkup[path][i]);
 		rtw89_debug(rtwdev, RTW89_DBG_RFK, "[DPK] Reload 0x%x = %x\n",
 			    reg[i] + (path << 8), reg_bkup[path][i]);
-	}
-}
-
-static void _dpk_reload_rf(struct rtw89_dev *rtwdev, u32 *rf_reg,
-			   u32 rf_bkup[][RTW8852A_DPK_RF_REG_NUM],
-			   u8 path)
-{
-	u8 i;
-
-	for (i = 0; i < RTW8852A_DPK_RF_REG_NUM; i++) {
-		rtw89_write_rf(rtwdev, path, rf_reg[i], RFREG_MASK, rf_bkup[path][i]);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[DPK] Reload RF S%d 0x%x = %x\n", path, rf_reg[i],
-			    rf_bkup[path][i]);
 	}
 }
 
@@ -1943,6 +1928,14 @@ static u8 _dpk_one_shot(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 	}
 
 	return 0;
+}
+
+static void _dpk_rx_dck(struct rtw89_dev *rtwdev,
+			enum rtw89_phy_idx phy,
+			enum rtw89_rf_path path)
+{
+	rtw89_write_rf(rtwdev, path, RR_RXBB2, RR_EN_TIA_IDA, 0x3);
+	_set_rx_dck(rtwdev, phy, path, false);
 }
 
 static void _dpk_information(struct rtw89_dev *rtwdev,
@@ -2056,6 +2049,10 @@ static void _dpk_kip_restore(struct rtw89_dev *rtwdev,
 	rtw89_phy_write32_clr(rtwdev, R_NCTL_RPT, MASKDWORD);
 	rtw89_phy_write32_mask(rtwdev, R_KIP_SYSCFG, MASKDWORD, 0x80000000);
 	rtw89_phy_write32_mask(rtwdev, R_CFIR_SYS + (path << 8), MASKDWORD, 0x10010000);
+	rtw89_phy_write32_clr(rtwdev, R_KIP_CLK, MASKDWORD);
+
+	if (rtwdev->hal.cv > CHIP_CBV)
+		rtw89_phy_write32_mask(rtwdev, R_DPD_COM + (path << 8), BIT(15), 0x1);
 
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[DPK] S%d restore KIP\n", path);
 }
@@ -2328,21 +2325,6 @@ static s8 _dpk_dgain_mapping(struct rtw89_dev *rtwdev, u16 dgain)
 	return offset;
 }
 
-static bool _dpk_pas_check(struct rtw89_dev *rtwdev)
-{
-	rtw89_phy_write32_mask(rtwdev, R_KIP_RPT1, MASKBYTE2, 0x06);
-	rtw89_phy_write32_clr(rtwdev, R_DPK_CFG2, B_DPK_CFG2_ST);
-	rtw89_phy_write32_mask(rtwdev, R_DPK_CFG3, MASKBYTE2, 0x08);
-
-	rtw89_phy_write32_clr(rtwdev, R_DPK_CFG3, MASKBYTE3);
-	if (rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKHWORD) == 0x0800) {
-		rtw89_debug(rtwdev, RTW89_DBG_RFK, "[DPK] PAS check Fail!!\n");
-		return true;
-	}
-
-	return false;
-}
-
 static u8 _dpk_gainloss_read(struct rtw89_dev *rtwdev)
 {
 	rtw89_phy_write32_mask(rtwdev, R_KIP_RPT1, B_KIP_RPT1_SEL, 0x6);
@@ -2354,14 +2336,8 @@ static void _dpk_gainloss(struct rtw89_dev *rtwdev,
 			  enum rtw89_phy_idx phy, enum rtw89_rf_path path,
 			  u8 kidx)
 {
-	u8 i;
-
 	_dpk_table_select(rtwdev, path, kidx, 1);
-	for (i = 0; i < 3; i++) {
-		_dpk_one_shot(rtwdev, phy, path, GAIN_LOSS);
-		if (!_dpk_pas_check(rtwdev))
-			break;
-	}
+	_dpk_one_shot(rtwdev, phy, path, GAIN_LOSS);
 }
 
 #define DPK_TXAGC_LOWER 0x2e
@@ -2377,6 +2353,8 @@ static u8 _dpk_set_offset(struct rtw89_dev *rtwdev,
 
 	if (txagc - gain_offset < DPK_TXAGC_LOWER)
 		txagc = DPK_TXAGC_LOWER;
+	else if (txagc - gain_offset > DPK_TXAGC_UPPER)
+		txagc = DPK_TXAGC_UPPER;
 	else
 		txagc = txagc - gain_offset;
 
@@ -2395,6 +2373,44 @@ enum dpk_agc_step {
 	DPK_AGC_STEP_GL_LT_CRITERION,
 	DPK_AGC_STEP_SET_TX_GAIN,
 };
+
+static u8 _dpk_pas_read(struct rtw89_dev *rtwdev, bool is_check)
+{
+	u32 val1_i = 0, val1_q = 0, val2_i = 0, val2_q = 0;
+	u8 i;
+
+	rtw89_rfk_parser(rtwdev, &rtw8852a_rfk_dpk_pas_read_defs_tbl);
+
+	if (is_check) {
+		rtw89_phy_write32_mask(rtwdev, R_DPK_CFG3, MASKBYTE3, 0x00);
+		val1_i = rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKHWORD);
+		val1_i = abs(sign_extend32(val1_i, 11));
+		val1_q = rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKLWORD);
+		val1_q = abs(sign_extend32(val1_q, 11));
+		rtw89_phy_write32_mask(rtwdev, R_DPK_CFG3, MASKBYTE3, 0x1f);
+		val2_i = rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKHWORD);
+		val2_i = abs(sign_extend32(val2_i, 11));
+		val2_q = rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKLWORD);
+		val2_q = abs(sign_extend32(val2_q, 11));
+
+		rtw89_debug(rtwdev, RTW89_DBG_RFK, "[DPK] PAS_delta = 0x%x\n",
+			    (val1_i * val1_i + val1_q * val1_q) /
+			    (val2_i * val2_i + val2_q * val2_q));
+
+	} else {
+		for (i = 0; i < 32; i++) {
+			rtw89_phy_write32_mask(rtwdev, R_DPK_CFG3, MASKBYTE3, i);
+			rtw89_debug(rtwdev, RTW89_DBG_RFK,
+				    "[DPK] PAS_Read[%02d]= 0x%08x\n", i,
+				    rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKDWORD));
+		}
+	}
+	if ((val1_i * val1_i + val1_q * val1_q) >=
+	    ((val2_i * val2_i + val2_q * val2_q) * 8 / 5))
+		return 1;
+	else
+		return 0;
+}
 
 static u8 _dpk_agc(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 		   enum rtw89_rf_path path, u8 kidx, u8 init_txagc,
@@ -2469,7 +2485,8 @@ static u8 _dpk_agc(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 			_dpk_gainloss(rtwdev, phy, path, kidx);
 			tmp_gl_idx = _dpk_gainloss_read(rtwdev);
 
-			if (tmp_gl_idx > DPK_GL_CRIT)
+			if ((tmp_gl_idx == 0 && _dpk_pas_read(rtwdev, true)) ||
+			    tmp_gl_idx > DPK_GL_CRIT)
 				step = DPK_AGC_STEP_GL_GT_CRITERION;
 			else if (tmp_gl_idx == 0)
 				step = DPK_AGC_STEP_GL_LT_CRITERION;
@@ -2483,7 +2500,7 @@ static u8 _dpk_agc(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 				rtw89_debug(rtwdev, RTW89_DBG_RFK,
 					    "[DPK] Txagc@lower bound!!\n");
 			} else {
-				tmp_txagc = _dpk_set_offset(rtwdev, path, 2);
+				tmp_txagc = _dpk_set_offset(rtwdev, path, 3);
 			}
 			step = DPK_AGC_STEP_GAIN_LOSS_IDX;
 			agc_cnt++;
@@ -2591,20 +2608,6 @@ static void _dpk_fill_result(struct rtw89_dev *rtwdev,
 	rtw89_phy_write32_clr(rtwdev, R_MDPK_SYNC, B_MDPK_SYNC_SEL);
 }
 
-static void _dpk_pas_read(struct rtw89_dev *rtwdev)
-{
-	u8 i;
-
-	rtw89_rfk_parser(rtwdev, &rtw8852a_rfk_dpk_pas_read_defs_tbl);
-
-	for (i = 0; i < 32; i++) {
-		rtw89_phy_write32_mask(rtwdev, R_DPK_CFG3, MASKBYTE3, i);
-		rtw89_debug(rtwdev, RTW89_DBG_RFK,
-			    "[DPK] PAS_Read[%02d]= 0x%08x\n", i,
-			    rtw89_phy_read32_mask(rtwdev, R_RPT_COM, MASKDWORD));
-	}
-}
-
 static bool _dpk_reload_check(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 			      enum rtw89_rf_path path)
 {
@@ -2645,22 +2648,18 @@ static bool _dpk_main(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 	_rf_direct_cntrl(rtwdev, path, false);
 	txagc = _dpk_set_tx_pwr(rtwdev, gain, path);
 	_dpk_rf_setting(rtwdev, gain, path, kidx);
-	_set_rx_dck(rtwdev, phy, path, false);
+	_dpk_rx_dck(rtwdev, phy, path);
 
 	_dpk_kip_setting(rtwdev, path, kidx);
 	_dpk_manual_txcfir(rtwdev, path, true);
 	txagc = _dpk_agc(rtwdev, phy, path, kidx, txagc, false);
-	if (txagc == DPK_TXAGC_INVAL) {
+	if (txagc == DPK_TXAGC_INVAL)
 		is_fail = true;
-		goto _error;
-	}
 	_dpk_get_thermal(rtwdev, kidx, path);
-	_dpk_pas_read(rtwdev);
 
 	_dpk_idl_mpa(rtwdev, phy, path, kidx, gain);
 	rtw89_write_rf(rtwdev, path, RR_MOD, RR_MOD_MASK, RR_MOD_V_RX);
 	_dpk_fill_result(rtwdev, path, kidx, gain, txagc);
-_error:
 	_dpk_manual_txcfir(rtwdev, path, false);
 
 	if (!is_fail)
@@ -2678,22 +2677,27 @@ static void _dpk_cal_select(struct rtw89_dev *rtwdev, bool force,
 			    enum rtw89_phy_idx phy, u8 kpath)
 {
 	struct rtw89_dpk_info *dpk = &rtwdev->dpk;
+	u32 backup_bb_val[BACKUP_BB_REGS_NR];
+	u32 backup_rf_val[RTW8852A_DPK_RF_PATH][BACKUP_RF_REGS_NR];
 	u32 kip_bkup[RTW8852A_DPK_RF_PATH][RTW8852A_DPK_KIP_REG_NUM] = {{0}};
-	u32 rf_bkup[RTW8852A_DPK_RF_PATH][RTW8852A_DPK_RF_REG_NUM] = {{0}};
-	u32 kip_reg[] = {0x813c, 0x8124};
-	u32 rf_reg[RTW8852A_DPK_RF_REG_NUM] = {0x5, 0xde};
+	u32 kip_reg[] = {R_RXIQC, R_IQK_RES};
 	u8 path;
 	bool is_fail = true, reloaded[RTW8852A_DPK_RF_PATH] = {false};
 
-	for (path = 0; path < RTW8852A_DPK_RF_PATH; path++) {
-		if (!(kpath & BIT(path)))
-			continue;
+	if (dpk->is_dpk_reload_en) {
+		for (path = 0; path < RTW8852A_DPK_RF_PATH; path++) {
+			if (!(kpath & BIT(path)))
+				continue;
 
-		reloaded[path] = _dpk_reload_check(rtwdev, phy, path);
-		if (!reloaded[path] && dpk->bp[path][0].ch != 0)
-			dpk->cur_idx[path] = !dpk->cur_idx[path];
-		else
-			_dpk_onoff(rtwdev, path, false);
+			reloaded[path] = _dpk_reload_check(rtwdev, phy, path);
+			if (!reloaded[path] && dpk->bp[path][0].ch != 0)
+				dpk->cur_idx[path] = !dpk->cur_idx[path];
+			else
+				_dpk_onoff(rtwdev, path, false);
+		}
+	} else {
+		for (path = 0; path < RTW8852A_DPK_RF_PATH; path++)
+			dpk->cur_idx[path] = 0;
 	}
 
 	if ((kpath == RF_A && reloaded[RF_PATH_A]) ||
@@ -2701,15 +2705,16 @@ static void _dpk_cal_select(struct rtw89_dev *rtwdev, bool force,
 	    (kpath == RF_AB && reloaded[RF_PATH_A] && reloaded[RF_PATH_B]))
 		return;
 
+	_rfk_backup_bb_reg(rtwdev, &backup_bb_val[0]);
+
 	for (path = 0; path < RTW8852A_DPK_RF_PATH; path++) {
 		if (!(kpath & BIT(path)) || reloaded[path])
 			continue;
-
-		_dpk_bkup_kip(rtwdev, kip_reg, kip_bkup, path);
-		_dpk_bkup_rf(rtwdev, rf_reg, rf_bkup, path);
-		_dpk_information(rtwdev, phy, path);
 		if (rtwdev->is_tssi_mode[path])
 			_dpk_tssi_pause(rtwdev, path, true);
+		_dpk_bkup_kip(rtwdev, kip_reg, kip_bkup, path);
+		_rfk_backup_rf_reg(rtwdev, &backup_rf_val[path][0], path);
+		_dpk_information(rtwdev, phy, path);
 	}
 
 	_dpk_bb_afe_setting(rtwdev, phy, path, kpath);
@@ -2722,18 +2727,19 @@ static void _dpk_cal_select(struct rtw89_dev *rtwdev, bool force,
 		_dpk_onoff(rtwdev, path, is_fail);
 	}
 
+	_dpk_bb_afe_restore(rtwdev, phy, path, kpath);
+	_rfk_restore_bb_reg(rtwdev, &backup_bb_val[0]);
+
 	for (path = 0; path < RTW8852A_DPK_RF_PATH; path++) {
 		if (!(kpath & BIT(path)) || reloaded[path])
 			continue;
 
 		_dpk_kip_restore(rtwdev, path);
 		_dpk_reload_kip(rtwdev, kip_reg, kip_bkup, path);
-		_dpk_reload_rf(rtwdev, rf_reg, rf_bkup, path);
+		_rfk_restore_rf_reg(rtwdev, &backup_rf_val[path][0], path);
 		if (rtwdev->is_tssi_mode[path])
 			_dpk_tssi_pause(rtwdev, path, false);
 	}
-
-	_dpk_bb_afe_restore(rtwdev, phy, path, kpath);
 }
 
 static bool _dpk_bypass_check(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
@@ -2769,7 +2775,7 @@ static void _dpk(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy, bool force)
 {
 	rtw89_debug(rtwdev, RTW89_DBG_RFK,
 		    "[DPK] ****** DPK Start (Ver: 0x%x, Cv: %d, RF_para: %d) ******\n",
-		    RTW8852A_DPK_VER, rtwdev->hal.cut_version,
+		    RTW8852A_DPK_VER, rtwdev->hal.cv,
 		    RTW8852A_RF_REL_VERSION);
 
 	if (_dpk_bypass_check(rtwdev, phy))
@@ -2796,9 +2802,10 @@ static void _dpk_onoff(struct rtw89_dev *rtwdev,
 static void _dpk_track(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_dpk_info *dpk = &rtwdev->dpk;
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
 	u8 path, kidx;
 	u8 trk_idx = 0, txagc_rf = 0;
-	s8 txagc_bb = 0, txagc_bb_tp = 0, ini_diff = 0, txagc_ofst;
+	s8 txagc_bb = 0, txagc_bb_tp = 0, ini_diff = 0, txagc_ofst = 0;
 	u16 pwsf[2];
 	u8 cur_ther;
 	s8 delta_ther[2] = {0};
@@ -2823,9 +2830,10 @@ static void _dpk_track(struct rtw89_dev *rtwdev)
 		else
 			delta_ther[path] = delta_ther[path] * 5 / 2;
 
-		if (rtwdev->is_tssi_mode[path]) {
-			txagc_rf = (u8)rtw89_read_rf(rtwdev, path, RR_MODOPT,
+		txagc_rf = (u8)rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB  + (path << 13),
 						     RR_MODOPT_M_TXPWR);
+
+		if (rtwdev->is_tssi_mode[path]) {
 			trk_idx = (u8)rtw89_read_rf(rtwdev, path, RR_TXA, RR_TXA_TRK);
 
 			rtw89_debug(rtwdev, RTW89_DBG_RFK_TRACK,
@@ -2833,7 +2841,7 @@ static void _dpk_track(struct rtw89_dev *rtwdev)
 				    txagc_rf, trk_idx);
 
 			txagc_bb =
-				(u8)rtw89_phy_read32_mask(rtwdev,
+				(s8)rtw89_phy_read32_mask(rtwdev,
 							  R_TXAGC_BB + (path << 13),
 							  MASKBYTE2);
 			txagc_bb_tp =
@@ -2850,21 +2858,30 @@ static void _dpk_track(struct rtw89_dev *rtwdev)
 							  R_TXAGC_BB + (path << 13),
 							  MASKBYTE3);
 
-			if (txagc_rf != 0 && cur_ther != 0)
-				ini_diff = txagc_ofst + delta_ther[path];
 			rtw89_debug(rtwdev, RTW89_DBG_RFK_TRACK,
 				    "[DPK_TRK] txagc_offset / delta_ther = %d / %d\n",
 				    txagc_ofst, delta_ther[path]);
 
+			if (rtw89_phy_read32_mask(rtwdev, R_DPD_COM + (path << 8),
+						  BIT(15)) == 0x1)
+				txagc_ofst = 0;
+
+			if (txagc_rf != 0 && cur_ther != 0)
+				ini_diff = txagc_ofst + delta_ther[path];
+
 			if (rtw89_phy_read32_mask(rtwdev, R_P0_TXDPD + (path << 13),
 						  B_P0_TXDPD) == 0x0) {
 				pwsf[0] = dpk->bp[path][kidx].pwsf + txagc_bb_tp -
-					  txagc_bb + ini_diff;
+					  txagc_bb + ini_diff +
+					  tssi_info->extra_ofst[path];
 				pwsf[1] = dpk->bp[path][kidx].pwsf + txagc_bb_tp -
-					  txagc_bb + ini_diff;
+					  txagc_bb + ini_diff +
+					  tssi_info->extra_ofst[path];
 			} else {
-				pwsf[0] = dpk->bp[path][kidx].pwsf + ini_diff;
-				pwsf[1] = dpk->bp[path][kidx].pwsf + ini_diff;
+				pwsf[0] = dpk->bp[path][kidx].pwsf + ini_diff +
+					  tssi_info->extra_ofst[path];
+				pwsf[1] = dpk->bp[path][kidx].pwsf + ini_diff +
+					  tssi_info->extra_ofst[path];
 			}
 
 		} else {
@@ -2872,17 +2889,17 @@ static void _dpk_track(struct rtw89_dev *rtwdev)
 			pwsf[1] = (dpk->bp[path][kidx].pwsf + delta_ther[path]) & 0x1ff;
 		}
 
-		if (rtw89_phy_read32_mask(rtwdev, R_DPK_TRK, B_DPK_TRK_DIS) == 0x1)
-			return;
+		if (rtw89_phy_read32_mask(rtwdev, R_DPK_TRK, B_DPK_TRK_DIS) == 0x0 &&
+		    txagc_rf != 0) {
+			rtw89_debug(rtwdev, RTW89_DBG_RFK_TRACK,
+				    "[DPK_TRK] New pwsf[0] / pwsf[1] = 0x%x / 0x%x\n",
+				    pwsf[0], pwsf[1]);
 
-		rtw89_debug(rtwdev, RTW89_DBG_RFK_TRACK,
-			    "[DPK_TRK] New pwsf[0] / pwsf[1] = 0x%x / 0x%x\n",
-			    pwsf[0], pwsf[1]);
-
-		rtw89_phy_write32_mask(rtwdev, R_DPD_BND + (path << 8) + (kidx << 2),
-				       0x000001FF, pwsf[0]);
-		rtw89_phy_write32_mask(rtwdev, R_DPD_BND + (path << 8) + (kidx << 2),
-				       0x01FF0000, pwsf[1]);
+			rtw89_phy_write32_mask(rtwdev, R_DPD_BND + (path << 8) + (kidx << 2),
+					       0x000001FF, pwsf[0]);
+			rtw89_phy_write32_mask(rtwdev, R_DPD_BND + (path << 8) + (kidx << 2),
+					       0x01FF0000, pwsf[1]);
+		}
 	}
 }
 
@@ -2910,9 +2927,14 @@ static void _tssi_set_sys(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
 static void _tssi_ini_txpwr_ctrl_bb(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 				    enum rtw89_rf_path path)
 {
+	enum rtw89_band band = rtwdev->hal.current_band_type;
+
 	rtw89_rfk_parser_by_cond(rtwdev, path == RF_PATH_A,
 				 &rtw8852a_tssi_txpwr_ctrl_bb_defs_a_tbl,
 				 &rtw8852a_tssi_txpwr_ctrl_bb_defs_b_tbl);
+	rtw89_rfk_parser_by_cond(rtwdev, band == RTW89_BAND_2G,
+				 &rtw8852a_tssi_txpwr_ctrl_bb_defs_2g_tbl,
+				 &rtw8852a_tssi_txpwr_ctrl_bb_defs_5g_tbl);
 }
 
 static void _tssi_ini_txpwr_ctrl_bb_he_tb(struct rtw89_dev *rtwdev,
@@ -3168,6 +3190,7 @@ static void _tssi_pak(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 
 static void _tssi_enable(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
 {
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
 	u8 i;
 
 	for (i = 0; i < RF_PATH_NUM_8852A; i++) {
@@ -3178,6 +3201,8 @@ static void _tssi_enable(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
 					 &rtw8852a_tssi_enable_defs_a_tbl,
 					 &rtw8852a_tssi_enable_defs_b_tbl);
 
+		tssi_info->base_thermal[i] =
+			ewma_thermal_read(&rtwdev->phystat.avg_thermal[i]);
 		rtwdev->is_tssi_mode[i] = true;
 	}
 }
@@ -3293,21 +3318,15 @@ static u32 _tssi_get_trim_group(struct rtw89_dev *rtwdev, u8 ch)
 		return 1;
 	case 36 ... 48:
 		return 2;
-	case 49 ... 51:
-		return TSSI_EXTRA_GROUP(2);
 	case 52 ... 64:
 		return 3;
-	case 100 ... 120:
+	case 100 ... 112:
 		return 4;
-	case 121 ... 123:
-		return TSSI_EXTRA_GROUP(4);
-	case 124 ... 144:
+	case 116 ... 128:
 		return 5;
-	case 149 ... 161:
+	case 132 ... 144:
 		return 6;
-	case 162 ... 164:
-		return TSSI_EXTRA_GROUP(6);
-	case 165 ... 177:
+	case 149 ... 177:
 		return 7;
 	}
 
@@ -3452,6 +3471,201 @@ static void _tssi_set_efuse_to_de(struct rtw89_dev *rtwdev,
 #undef __DE_MASK
 }
 
+static void _tssi_track(struct rtw89_dev *rtwdev)
+{
+	static const u32 tx_gain_scale_table[] = {
+		0x400, 0x40e, 0x41d, 0x427, 0x43c, 0x44c, 0x45c, 0x46c,
+		0x400, 0x39d, 0x3ab, 0x3b8, 0x3c6, 0x3d4, 0x3e2, 0x3f1
+	};
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
+	u8 path;
+	u8 cur_ther;
+	s32 delta_ther = 0, gain_offset_int, gain_offset_float;
+	s8 gain_offset;
+
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI, "[TSSI][TRK] %s:\n",
+		    __func__);
+
+	if (!rtwdev->is_tssi_mode[RF_PATH_A])
+		return;
+	if (!rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	for (path = RF_PATH_A; path < RF_PATH_NUM_8852A; path++) {
+		if (!tssi_info->tssi_tracking_check[path]) {
+			rtw89_debug(rtwdev, RTW89_DBG_TSSI, "[TSSI][TRK] return!!!\n");
+			continue;
+		}
+
+		cur_ther = (u8)rtw89_phy_read32_mask(rtwdev,
+						  R_TSSI_THER + (path << 13),
+						  B_TSSI_THER);
+
+		if (cur_ther == 0 || tssi_info->base_thermal[path] == 0)
+			continue;
+
+		delta_ther = cur_ther - tssi_info->base_thermal[path];
+
+		gain_offset = (s8)delta_ther * 15 / 10;
+
+		tssi_info->extra_ofst[path] = gain_offset;
+
+		rtw89_debug(rtwdev, RTW89_DBG_TSSI,
+			    "[TSSI][TRK] base_thermal=%d gain_offset=0x%x path=%d\n",
+			    tssi_info->base_thermal[path], gain_offset, path);
+
+		gain_offset_int = gain_offset >> 3;
+		gain_offset_float = gain_offset & 7;
+
+		if (gain_offset_int > 15)
+			gain_offset_int = 15;
+		else if (gain_offset_int < -16)
+			gain_offset_int = -16;
+
+		rtw89_phy_write32_mask(rtwdev, R_DPD_OFT_EN + (path << 13),
+				       B_DPD_OFT_EN, 0x1);
+
+		rtw89_phy_write32_mask(rtwdev, R_TXGAIN_SCALE + (path << 13),
+				       B_TXGAIN_SCALE_EN, 0x1);
+
+		rtw89_phy_write32_mask(rtwdev, R_DPD_OFT_ADDR + (path << 13),
+				       B_DPD_OFT_ADDR, gain_offset_int);
+
+		rtw89_phy_write32_mask(rtwdev, R_TXGAIN_SCALE + (path << 13),
+				       B_TXGAIN_SCALE_OFT,
+				       tx_gain_scale_table[gain_offset_float]);
+	}
+}
+
+static void _tssi_high_power(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
+{
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
+	u8 ch = rtwdev->hal.current_channel, ch_tmp;
+	u8 bw = rtwdev->hal.current_band_width;
+	u8 subband = rtwdev->hal.current_subband;
+	s8 power;
+	s32 xdbm;
+
+	if (bw == RTW89_CHANNEL_WIDTH_40)
+		ch_tmp = ch - 2;
+	else if (bw == RTW89_CHANNEL_WIDTH_80)
+		ch_tmp = ch - 6;
+	else
+		ch_tmp = ch;
+
+	power = rtw89_phy_read_txpwr_limit(rtwdev, bw, RTW89_1TX,
+					   RTW89_RS_MCS, RTW89_NONBF, ch_tmp);
+
+	xdbm = power * 100 / 4;
+
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI, "[TSSI] %s: phy=%d xdbm=%d\n",
+		    __func__, phy, xdbm);
+
+	if (xdbm > 1800 && subband == RTW89_CH_2G) {
+		tssi_info->tssi_tracking_check[RF_PATH_A] = true;
+		tssi_info->tssi_tracking_check[RF_PATH_B] = true;
+	} else {
+		rtw89_rfk_parser(rtwdev, &rtw8852a_tssi_tracking_defs_tbl);
+		tssi_info->extra_ofst[RF_PATH_A] = 0;
+		tssi_info->extra_ofst[RF_PATH_B] = 0;
+		tssi_info->tssi_tracking_check[RF_PATH_A] = false;
+		tssi_info->tssi_tracking_check[RF_PATH_B] = false;
+	}
+}
+
+static void _tssi_hw_tx(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
+			u8 path, s16 pwr_dbm, u8 enable)
+{
+	rtw8852a_bb_set_plcp_tx(rtwdev);
+	rtw8852a_bb_cfg_tx_path(rtwdev, path);
+	rtw8852a_bb_set_power(rtwdev, pwr_dbm, phy);
+	rtw8852a_bb_set_pmac_pkt_tx(rtwdev, enable, 20, 5000, 0, phy);
+}
+
+static void _tssi_pre_tx(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
+{
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
+	const struct rtw89_chip_info *mac_reg = rtwdev->chip;
+	u8 ch = rtwdev->hal.current_channel, ch_tmp;
+	u8 bw = rtwdev->hal.current_band_width;
+	u16 tx_en;
+	u8 phy_map = rtw89_btc_phymap(rtwdev, phy, 0);
+	s8 power;
+	s16 xdbm;
+	u32 i, tx_counter = 0;
+
+	if (bw == RTW89_CHANNEL_WIDTH_40)
+		ch_tmp = ch - 2;
+	else if (bw == RTW89_CHANNEL_WIDTH_80)
+		ch_tmp = ch - 6;
+	else
+		ch_tmp = ch;
+
+	power = rtw89_phy_read_txpwr_limit(rtwdev, RTW89_CHANNEL_WIDTH_20, RTW89_1TX,
+					   RTW89_RS_OFDM, RTW89_NONBF, ch_tmp);
+
+	xdbm = (power * 100) >> mac_reg->txpwr_factor_mac;
+
+	if (xdbm > 1800)
+		xdbm = 68;
+	else
+		xdbm = power * 2;
+
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI,
+		    "[TSSI] %s: phy=%d org_power=%d xdbm=%d\n",
+		    __func__, phy, power, xdbm);
+
+	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_DPK, BTC_WRFK_START);
+	rtw89_mac_stop_sch_tx(rtwdev, phy, &tx_en, RTW89_SCH_TX_SEL_ALL);
+	_wait_rx_mode(rtwdev, _kpath(rtwdev, phy));
+	tx_counter = rtw89_phy_read32_mask(rtwdev, R_TX_COUNTER, MASKLWORD);
+
+	_tssi_hw_tx(rtwdev, phy, RF_PATH_AB, xdbm, true);
+	mdelay(15);
+	_tssi_hw_tx(rtwdev, phy, RF_PATH_AB, xdbm, false);
+
+	tx_counter = rtw89_phy_read32_mask(rtwdev, R_TX_COUNTER, MASKLWORD) -
+		    tx_counter;
+
+	if (rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB, MASKHWORD) != 0xc000 &&
+	    rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB, MASKHWORD) != 0x0) {
+		for (i = 0; i < 6; i++) {
+			tssi_info->default_txagc_offset[RF_PATH_A] =
+				rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB,
+						      MASKBYTE3);
+
+			if (tssi_info->default_txagc_offset[RF_PATH_A] != 0x0)
+				break;
+		}
+	}
+
+	if (rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1, MASKHWORD) != 0xc000 &&
+	    rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1, MASKHWORD) != 0x0) {
+		for (i = 0; i < 6; i++) {
+			tssi_info->default_txagc_offset[RF_PATH_B] =
+				rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1,
+						      MASKBYTE3);
+
+			if (tssi_info->default_txagc_offset[RF_PATH_B] != 0x0)
+				break;
+		}
+	}
+
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI,
+		    "[TSSI] %s: tx counter=%d\n",
+		    __func__, tx_counter);
+
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI,
+		    "[TSSI] Backup R_TXAGC_BB=0x%x R_TXAGC_BB_S1=0x%x\n",
+		    tssi_info->default_txagc_offset[RF_PATH_A],
+		    tssi_info->default_txagc_offset[RF_PATH_B]);
+
+	rtw8852a_bb_tx_mode_switch(rtwdev, phy, 0);
+
+	rtw89_mac_resume_sch_tx(rtwdev, phy, tx_en);
+	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_DPK, BTC_WRFK_STOP);
+}
+
 void rtw8852a_rck(struct rtw89_dev *rtwdev)
 {
 	u8 path;
@@ -3519,6 +3733,7 @@ void rtw8852a_dpk(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx)
 	_wait_rx_mode(rtwdev, _kpath(rtwdev, phy_idx));
 
 	rtwdev->dpk.is_dpk_enable = true;
+	rtwdev->dpk.is_dpk_reload_en = false;
 	_dpk(rtwdev, phy_idx, false);
 
 	rtw89_mac_resume_sch_tx(rtwdev, phy_idx, tx_en);
@@ -3555,4 +3770,37 @@ void rtw8852a_tssi(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
 
 	_tssi_enable(rtwdev, phy);
 	_tssi_set_efuse_to_de(rtwdev, phy);
+	_tssi_high_power(rtwdev, phy);
+	_tssi_pre_tx(rtwdev, phy);
+}
+
+void rtw8852a_tssi_scan(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
+{
+	u8 i;
+
+	return;
+	rtw89_debug(rtwdev, RTW89_DBG_TSSI, "[TSSI] %s: phy=%d\n",
+		    __func__, phy);
+
+	if (!rtwdev->is_tssi_mode[RF_PATH_A])
+		return;
+	if (!rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	_tssi_disable(rtwdev, phy);
+
+	for (i = RF_PATH_A; i < RF_PATH_NUM_8852A; i++) {
+		_tssi_rf_setting(rtwdev, phy, i);
+		_tssi_set_sys(rtwdev, phy);
+		_tssi_set_tmeter_tbl(rtwdev, phy, i);
+		_tssi_pak(rtwdev, phy, i);
+	}
+
+	_tssi_enable(rtwdev, phy);
+	_tssi_set_efuse_to_de(rtwdev, phy);
+}
+
+void rtw8852a_tssi_track(struct rtw89_dev *rtwdev)
+{
+	_tssi_track(rtwdev);
 }

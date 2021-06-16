@@ -84,21 +84,29 @@ static void ser_state_goto(struct rtw89_ser *ser, u8 new_state)
 	ser_state_run(ser, SER_EV_STATE_IN);
 }
 
+static struct ser_msg *__rtw89_ser_dequeue_msg(struct rtw89_ser *ser)
+{
+	struct ser_msg *msg;
+
+	spin_lock_irq(&ser->msg_q_lock);
+	msg = list_first_entry_or_null(&ser->msg_q, struct ser_msg, list);
+	if (msg)
+		list_del(&msg->list);
+	spin_unlock_irq(&ser->msg_q_lock);
+
+	return msg;
+}
+
 static void rtw89_ser_hdl_work(struct work_struct *work)
 {
-	struct list_head *m, *t;
 	struct ser_msg *msg;
 	struct rtw89_ser *ser = container_of(work, struct rtw89_ser,
 					     ser_hdl_work);
 
-	spin_lock_irq(&ser->msg_q_lock);
-	list_for_each_safe(m, t, &ser->msg_q) {
-		list_del(m);
-		msg = list_entry(m, struct ser_msg, list);
+	while ((msg = __rtw89_ser_dequeue_msg(ser))) {
 		ser_state_run(ser, msg->event);
 		kfree(msg);
 	}
-	spin_unlock_irq(&ser->msg_q_lock);
 }
 
 static int ser_send_msg(struct rtw89_ser *ser, u8 event)

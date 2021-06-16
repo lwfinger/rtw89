@@ -260,7 +260,7 @@ enum rtw89_rpwm_req_pwr_state {
 
 struct rtw89_pwr_cfg {
 	u16 addr;
-	u8 cut_msk;
+	u8 cv_msk;
 	u8 intf_msk;
 	u8 base:4;
 	u8 cmd:4;
@@ -273,6 +273,7 @@ enum rtw89_mac_c2h_ofld_func {
 	RTW89_MAC_C2H_FUNC_READ_RSP,
 	RTW89_MAC_C2H_FUNC_PKT_OFLD_RSP,
 	RTW89_MAC_C2H_FUNC_BCN_RESEND,
+	RTW89_MAC_C2H_FUNC_MACID_PAUSE,
 	RTW89_MAC_C2H_FUNC_OFLD_MAX,
 };
 
@@ -286,6 +287,10 @@ enum rtw89_mac_c2h_info_func {
 enum rtw89_mac_c2h_class {
 	RTW89_MAC_C2H_CLASS_INFO,
 	RTW89_MAC_C2H_CLASS_OFLD,
+	RTW89_MAC_C2H_CLASS_TWT,
+	RTW89_MAC_C2H_CLASS_WOW,
+	RTW89_MAC_C2H_CLASS_MCC,
+	RTW89_MAC_C2H_CLASS_FWDBG,
 	RTW89_MAC_C2H_CLASS_MAX,
 };
 
@@ -309,8 +314,48 @@ struct rtw89_mac_ax_plt {
 	u8 rx;
 };
 
+enum rtw89_mac_bf_rrsc_rate {
+	RTW89_MAC_BF_RRSC_6M = 0,
+	RTW89_MAC_BF_RRSC_9M = 1,
+	RTW89_MAC_BF_RRSC_12M,
+	RTW89_MAC_BF_RRSC_18M,
+	RTW89_MAC_BF_RRSC_24M,
+	RTW89_MAC_BF_RRSC_36M,
+	RTW89_MAC_BF_RRSC_48M,
+	RTW89_MAC_BF_RRSC_54M,
+	RTW89_MAC_BF_RRSC_HT_MSC0,
+	RTW89_MAC_BF_RRSC_HT_MSC1,
+	RTW89_MAC_BF_RRSC_HT_MSC2,
+	RTW89_MAC_BF_RRSC_HT_MSC3,
+	RTW89_MAC_BF_RRSC_HT_MSC4,
+	RTW89_MAC_BF_RRSC_HT_MSC5,
+	RTW89_MAC_BF_RRSC_HT_MSC6,
+	RTW89_MAC_BF_RRSC_HT_MSC7,
+	RTW89_MAC_BF_RRSC_VHT_MSC0,
+	RTW89_MAC_BF_RRSC_VHT_MSC1,
+	RTW89_MAC_BF_RRSC_VHT_MSC2,
+	RTW89_MAC_BF_RRSC_VHT_MSC3,
+	RTW89_MAC_BF_RRSC_VHT_MSC4,
+	RTW89_MAC_BF_RRSC_VHT_MSC5,
+	RTW89_MAC_BF_RRSC_VHT_MSC6,
+	RTW89_MAC_BF_RRSC_VHT_MSC7,
+	RTW89_MAC_BF_RRSC_HE_MSC0,
+	RTW89_MAC_BF_RRSC_HE_MSC1,
+	RTW89_MAC_BF_RRSC_HE_MSC2,
+	RTW89_MAC_BF_RRSC_HE_MSC3,
+	RTW89_MAC_BF_RRSC_HE_MSC4,
+	RTW89_MAC_BF_RRSC_HE_MSC5,
+	RTW89_MAC_BF_RRSC_HE_MSC6,
+	RTW89_MAC_BF_RRSC_HE_MSC7 = 31,
+	RTW89_MAC_BF_RRSC_MAX = 32
+};
+
 #define RTW89_R32_EA		0xEAEAEAEA
 #define RTW89_R32_DEAD		0xDEADBEEF
+#define MAC_REG_POOL_COUNT	10
+#define ACCESS_CMAC(_addr) \
+	({typeof(_addr) __addr = (_addr); \
+	  __addr >= R_AX_CMAC_REG_START && __addr <= R_AX_CMAC_REG_END; })
 
 #define PTCL_IDLE_POLL_CNT	10000
 #define SW_CVR_DUR_US	8
@@ -353,15 +398,15 @@ struct rtw89_mac_ax_plt {
 #define PWR_BASE_PCIE		2
 #define PWR_BASE_SDIO		3
 
-#define	PWR_CUT_MSK_A		BIT(0)
-#define	PWR_CUT_MSK_B		BIT(1)
-#define	PWR_CUT_MSK_C		BIT(2)
-#define	PWR_CUT_MSK_D		BIT(3)
-#define	PWR_CUT_MSK_E		BIT(4)
-#define	PWR_CUT_MSK_F		BIT(5)
-#define	PWR_CUT_MSK_G		BIT(6)
-#define	PWR_CUT_MSK_TEST	BIT(7)
-#define	PWR_CUT_MSK_ALL		0xFF
+#define	PWR_CV_MSK_A		BIT(0)
+#define	PWR_CV_MSK_B		BIT(1)
+#define	PWR_CV_MSK_C		BIT(2)
+#define	PWR_CV_MSK_D		BIT(3)
+#define	PWR_CV_MSK_E		BIT(4)
+#define	PWR_CV_MSK_F		BIT(5)
+#define	PWR_CV_MSK_G		BIT(6)
+#define	PWR_CV_MSK_TEST		BIT(7)
+#define	PWR_CV_MSK_ALL		0xFF
 
 #define	PWR_DELAY_US		0
 #define	PWR_DELAY_MS		1
@@ -722,16 +767,53 @@ int rtw89_mac_stop_sch_tx(struct rtw89_dev *rtwdev, u8 mac_idx,
 			  u16 *tx_en, enum rtw89_sch_tx_sel sel);
 int rtw89_mac_resume_sch_tx(struct rtw89_dev *rtwdev, u8 mac_idx, u16 tx_en);
 int rtw89_mac_cfg_ppdu_status(struct rtw89_dev *rtwdev, u8 mac_ids, bool enable);
+void rtw89_mac_update_rts_threshold(struct rtw89_dev *rtwdev, u8 mac_idx);
 void rtw89_mac_flush_txq(struct rtw89_dev *rtwdev, u32 queues, bool drop);
 int rtw89_mac_coex_init(struct rtw89_dev *rtwdev, const struct rtw89_mac_ax_coex *coex);
 int rtw89_mac_cfg_gnt(struct rtw89_dev *rtwdev,
 		      const struct rtw89_mac_ax_coex_gnt *gnt_cfg);
 int rtw89_mac_cfg_plt(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
+u16 rtw89_mac_get_plt(struct rtw89_dev *rtwdev, u8 band);
 void rtw89_mac_cfg_sb(struct rtw89_dev *rtwdev, u32 val);
+u32 rtw89_mac_get_sb(struct rtw89_dev *rtwdev);
+bool rtw89_mac_get_ctrl_path(struct rtw89_dev *rtwdev);
 int rtw89_mac_cfg_ctrl_path(struct rtw89_dev *rtwdev, bool wl);
 bool rtw89_mac_get_txpwr_cr(struct rtw89_dev *rtwdev,
 			    enum rtw89_phy_idx phy_idx,
-			    u32 reg_base, u32 *cr, u32 mask, u32 val);
+			    u32 reg_base, u32 *cr);
+void rtw89_mac_power_mode_change(struct rtw89_dev *rtwdev, bool enter);
+void rtw89_mac_bf_assoc(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
+			struct ieee80211_sta *sta);
+void rtw89_mac_bf_disassoc(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
+			   struct ieee80211_sta *sta);
+void rtw89_mac_bf_set_gid_table(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
+				struct ieee80211_bss_conf *conf);
+void rtw89_mac_bf_monitor_calc(struct rtw89_dev *rtwdev,
+			       struct ieee80211_sta *sta, bool disconnect);
+void _rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev);
+void rtw_restore_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+void rtw_remove_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+
+static inline void rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev)
+{
+	if (!test_bit(RTW89_FLAG_BFEE_MON, rtwdev->flags))
+		return;
+
+	_rtw89_mac_bf_monitor_track(rtwdev);
+}
+
+static inline int rtw89_mac_txpwr_read32(struct rtw89_dev *rtwdev,
+					 enum rtw89_phy_idx phy_idx,
+					 u32 reg_base, u32 *val)
+{
+	u32 cr;
+
+	if (!rtw89_mac_get_txpwr_cr(rtwdev, phy_idx, reg_base, &cr))
+		return -EINVAL;
+
+	*val = rtw89_read32(rtwdev, cr);
+	return 0;
+}
 
 static inline int rtw89_mac_txpwr_write32(struct rtw89_dev *rtwdev,
 					  enum rtw89_phy_idx phy_idx,
@@ -739,8 +821,7 @@ static inline int rtw89_mac_txpwr_write32(struct rtw89_dev *rtwdev,
 {
 	u32 cr;
 
-	if (!rtw89_mac_get_txpwr_cr(rtwdev, phy_idx, reg_base, &cr,
-				    MASKDWORD, val))
+	if (!rtw89_mac_get_txpwr_cr(rtwdev, phy_idx, reg_base, &cr))
 		return -EINVAL;
 
 	rtw89_write32(rtwdev, cr, val);
@@ -753,11 +834,21 @@ static inline int rtw89_mac_txpwr_write32_mask(struct rtw89_dev *rtwdev,
 {
 	u32 cr;
 
-	if (!rtw89_mac_get_txpwr_cr(rtwdev, phy_idx, reg_base, &cr, mask, val))
+	if (!rtw89_mac_get_txpwr_cr(rtwdev, phy_idx, reg_base, &cr))
 		return -EINVAL;
 
 	rtw89_write32_mask(rtwdev, cr, mask, val);
 	return 0;
 }
+
+int rtw89_mac_set_tx_time(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta,
+			  bool resume, u32 tx_time);
+int rtw89_mac_get_tx_time(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta,
+			  u32 *tx_time);
+int rtw89_mac_set_tx_retry_limit(struct rtw89_dev *rtwdev,
+				 struct rtw89_sta *rtwsta,
+				 bool resume, u8 tx_retry);
+int rtw89_mac_get_tx_retry_limit(struct rtw89_dev *rtwdev,
+				 struct rtw89_sta *rtwsta, u8 *tx_retry);
 
 #endif

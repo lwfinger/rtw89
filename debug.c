@@ -2,7 +2,9 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include "coex.h"
 #include "debug.h"
+#include "fw.h"
 #include "mac.h"
 #include "reg.h"
 
@@ -326,6 +328,255 @@ static int rtw89_debug_priv_rf_reg_dump_get(struct seq_file *m, void *v)
 	return 0;
 }
 
+struct txpwr_ent {
+	const char *txt;
+	u8 len;
+};
+
+struct txpwr_map {
+	const struct txpwr_ent *ent;
+	u8 size;
+	u32 addr_from;
+	u32 addr_to;
+};
+
+#define __GEN_TXPWR_ENT2(_t, _e0, _e1) \
+	{ .len = 2, .txt = _t "\t-  " _e0 "  " _e1 }
+
+#define __GEN_TXPWR_ENT4(_t, _e0, _e1, _e2, _e3) \
+	{ .len = 4, .txt = _t "\t-  " _e0 "  " _e1 "  " _e2 "  " _e3 }
+
+#define __GEN_TXPWR_ENT8(_t, _e0, _e1, _e2, _e3, _e4, _e5, _e6, _e7) \
+	{ .len = 8, .txt = _t "\t-  " \
+	  _e0 "  " _e1 "  " _e2 "  " _e3 "  " \
+	  _e4 "  " _e5 "  " _e6 "  " _e7 }
+
+static const struct txpwr_ent __txpwr_ent_byr[] = {
+	__GEN_TXPWR_ENT4("CCK       ", "1M   ", "2M   ", "5.5M ", "11M  "),
+	__GEN_TXPWR_ENT4("LEGACY    ", "6M   ", "9M   ", "12M  ", "18M  "),
+	__GEN_TXPWR_ENT4("LEGACY    ", "24M  ", "36M  ", "48M  ", "54M  "),
+	/* 1NSS */
+	__GEN_TXPWR_ENT4("MCS_1NSS  ", "MCS0 ", "MCS1 ", "MCS2 ", "MCS3 "),
+	__GEN_TXPWR_ENT4("MCS_1NSS  ", "MCS4 ", "MCS5 ", "MCS6 ", "MCS7 "),
+	__GEN_TXPWR_ENT4("MCS_1NSS  ", "MCS8 ", "MCS9 ", "MCS10", "MCS11"),
+	__GEN_TXPWR_ENT4("HEDCM_1NSS", "MCS0 ", "MCS1 ", "MCS3 ", "MCS4 "),
+	/* 2NSS */
+	__GEN_TXPWR_ENT4("MCS_2NSS  ", "MCS0 ", "MCS1 ", "MCS2 ", "MCS3 "),
+	__GEN_TXPWR_ENT4("MCS_2NSS  ", "MCS4 ", "MCS5 ", "MCS6 ", "MCS7 "),
+	__GEN_TXPWR_ENT4("MCS_2NSS  ", "MCS8 ", "MCS9 ", "MCS10", "MCS11"),
+	__GEN_TXPWR_ENT4("HEDCM_2NSS", "MCS0 ", "MCS1 ", "MCS3 ", "MCS4 "),
+};
+
+static_assert((ARRAY_SIZE(__txpwr_ent_byr) * 4) ==
+	(R_AX_PWR_BY_RATE_MAX - R_AX_PWR_BY_RATE + 4));
+
+static const struct txpwr_map __txpwr_map_byr = {
+	.ent = __txpwr_ent_byr,
+	.size = ARRAY_SIZE(__txpwr_ent_byr),
+	.addr_from = R_AX_PWR_BY_RATE,
+	.addr_to = R_AX_PWR_BY_RATE_MAX,
+};
+
+static const struct txpwr_ent __txpwr_ent_lmt[] = {
+	/* 1TX */
+	__GEN_TXPWR_ENT2("CCK_1TX_20M    ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("CCK_1TX_40M    ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("OFDM_1TX       ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_2  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_3  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_4  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_5  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_6  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_20M_7  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_2  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_3  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_80M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_80M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_160M   ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_0p5", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_1TX_40M_2p5", "NON_BF", "BF"),
+	/* 2TX */
+	__GEN_TXPWR_ENT2("CCK_2TX_20M    ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("CCK_2TX_40M    ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("OFDM_2TX       ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_2  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_3  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_4  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_5  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_6  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_20M_7  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_2  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_3  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_80M_0  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_80M_1  ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_160M   ", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_0p5", "NON_BF", "BF"),
+	__GEN_TXPWR_ENT2("MCS_2TX_40M_2p5", "NON_BF", "BF"),
+};
+
+static_assert((ARRAY_SIZE(__txpwr_ent_lmt) * 2) ==
+	(R_AX_PWR_LMT_MAX - R_AX_PWR_LMT + 4));
+
+static const struct txpwr_map __txpwr_map_lmt = {
+	.ent = __txpwr_ent_lmt,
+	.size = ARRAY_SIZE(__txpwr_ent_lmt),
+	.addr_from = R_AX_PWR_LMT,
+	.addr_to = R_AX_PWR_LMT_MAX,
+};
+
+static const struct txpwr_ent __txpwr_ent_lmt_ru[] = {
+	/* 1TX */
+	__GEN_TXPWR_ENT8("1TX", "RU26__0", "RU26__1", "RU26__2", "RU26__3",
+			 "RU26__4", "RU26__5", "RU26__6", "RU26__7"),
+	__GEN_TXPWR_ENT8("1TX", "RU52__0", "RU52__1", "RU52__2", "RU52__3",
+			 "RU52__4", "RU52__5", "RU52__6", "RU52__7"),
+	__GEN_TXPWR_ENT8("1TX", "RU106_0", "RU106_1", "RU106_2", "RU106_3",
+			 "RU106_4", "RU106_5", "RU106_6", "RU106_7"),
+	/* 2TX */
+	__GEN_TXPWR_ENT8("2TX", "RU26__0", "RU26__1", "RU26__2", "RU26__3",
+			 "RU26__4", "RU26__5", "RU26__6", "RU26__7"),
+	__GEN_TXPWR_ENT8("2TX", "RU52__0", "RU52__1", "RU52__2", "RU52__3",
+			 "RU52__4", "RU52__5", "RU52__6", "RU52__7"),
+	__GEN_TXPWR_ENT8("2TX", "RU106_0", "RU106_1", "RU106_2", "RU106_3",
+			 "RU106_4", "RU106_5", "RU106_6", "RU106_7"),
+};
+
+static_assert((ARRAY_SIZE(__txpwr_ent_lmt_ru) * 8) ==
+	(R_AX_PWR_RU_LMT_MAX - R_AX_PWR_RU_LMT + 4));
+
+static const struct txpwr_map __txpwr_map_lmt_ru = {
+	.ent = __txpwr_ent_lmt_ru,
+	.size = ARRAY_SIZE(__txpwr_ent_lmt_ru),
+	.addr_from = R_AX_PWR_RU_LMT,
+	.addr_to = R_AX_PWR_RU_LMT_MAX,
+};
+
+static u8 __print_txpwr_ent(struct seq_file *m, const struct txpwr_ent *ent,
+			    const u8 *buf, const u8 cur)
+{
+	char *fmt;
+
+	switch (ent->len) {
+	case 2:
+		fmt = "%s\t| %3d, %3d,\tdBm\n";
+		seq_printf(m, fmt, ent->txt, buf[cur], buf[cur + 1]);
+		return 2;
+	case 4:
+		fmt = "%s\t| %3d, %3d, %3d, %3d,\tdBm\n";
+		seq_printf(m, fmt, ent->txt, buf[cur], buf[cur + 1],
+			   buf[cur + 2], buf[cur + 3]);
+		return 4;
+	case 8:
+		fmt = "%s\t| %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d,\tdBm\n";
+		seq_printf(m, fmt, ent->txt, buf[cur], buf[cur + 1],
+			   buf[cur + 2], buf[cur + 3], buf[cur + 4],
+			   buf[cur + 5], buf[cur + 6], buf[cur + 7]);
+		return 8;
+	default:
+		return 0;
+	}
+}
+
+static int __print_txpwr_map(struct seq_file *m, struct rtw89_dev *rtwdev,
+			     const struct txpwr_map *map)
+{
+	u8 fct = rtwdev->chip->txpwr_factor_mac;
+	u8 *buf, cur, i;
+	u32 val, addr;
+	int ret;
+
+	buf = vzalloc(map->addr_to - map->addr_from + 4);
+	if (!buf)
+		return -ENOMEM;
+
+	for (addr = map->addr_from; addr <= map->addr_to; addr += 4) {
+		ret = rtw89_mac_txpwr_read32(rtwdev, RTW89_PHY_0, addr, &val);
+		if (ret)
+			val = MASKDWORD;
+
+		cur = addr - map->addr_from;
+		for (i = 0; i < 4; i++, val >>= 8)
+			buf[cur + i] = FIELD_GET(MASKBYTE0, val) >> fct;
+	}
+
+	for (cur = 0, i = 0; i < map->size; i++)
+		cur += __print_txpwr_ent(m, &map->ent[i], buf, cur);
+
+	vfree(buf);
+	return 0;
+}
+
+#define case_REGD(_regd) \
+	case RTW89_ ## _regd: \
+		seq_puts(m, #_regd "\n"); \
+		break
+
+static void __print_regd(struct seq_file *m, struct rtw89_dev *rtwdev)
+{
+	u8 band = rtwdev->hal.current_band_type;
+	u8 regd = rtw89_regd_get(rtwdev, band);
+
+	switch (regd) {
+	default:
+		seq_printf(m, "UNKNOWN: %d\n", regd);
+		break;
+	case_REGD(WW);
+	case_REGD(ETSI);
+	case_REGD(FCC);
+	case_REGD(MKK);
+	case_REGD(NA);
+	case_REGD(IC);
+	case_REGD(KCC);
+	case_REGD(NCC);
+	case_REGD(CHILE);
+	case_REGD(ACMA);
+	case_REGD(MEXICO);
+	case_REGD(UKRAINE);
+	case_REGD(CN);
+	}
+}
+
+#undef case_REGD
+
+static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = m->private;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	int ret = 0;
+
+	mutex_lock(&rtwdev->mutex);
+
+	seq_puts(m, "[Regulatory] ");
+	__print_regd(m, rtwdev);
+
+	seq_puts(m, "\n[TX power byrate]\n");
+	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);
+	if (ret)
+		goto err;
+
+	seq_puts(m, "\n[TX power limit]\n");
+	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_lmt);
+	if (ret)
+		goto err;
+
+	seq_puts(m, "\n[TX power limit_ru]\n");
+	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_lmt_ru);
+	if (ret)
+		goto err;
+
+err:
+	mutex_unlock(&rtwdev->mutex);
+	return ret;
+}
+
 static ssize_t
 rtw89_debug_priv_mac_reg_dump_select(struct file *filp,
 				     const char __user *user_buf,
@@ -374,7 +625,7 @@ static int rtw89_debug_priv_mac_reg_dump_get(struct seq_file *m, void *v)
 	case RTW89_DBG_SEL_MAC_00:
 		seq_puts(m, "Debug selected MAC page 0x00\n");
 		start = 0x000;
-		end = 0x03f;
+		end = 0x014;
 		break;
 	case RTW89_DBG_SEL_MAC_40:
 		seq_puts(m, "Debug selected MAC page 0x40\n");
@@ -384,7 +635,7 @@ static int rtw89_debug_priv_mac_reg_dump_get(struct seq_file *m, void *v)
 	case RTW89_DBG_SEL_MAC_80:
 		seq_puts(m, "Debug selected MAC page 0x80\n");
 		start = 0x080;
-		end = 0x0bf;
+		end = 0x09f;
 		break;
 	case RTW89_DBG_SEL_MAC_C0:
 		seq_puts(m, "Debug selected MAC page 0xc0\n");
@@ -1833,6 +2084,170 @@ rtw89_debug_priv_mac_dbg_port_dump_get(struct seq_file *m, void *v)
 	return 0;
 };
 
+static ssize_t rtw89_debug_priv_send_h2c_set(struct file *filp,
+					     const char __user *user_buf,
+					     size_t count, loff_t *loff)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	char buf[256];
+	size_t buf_size;
+	u8 h2c[128];
+	int num;
+
+	buf_size = min(count, sizeof(buf) - 1);
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+
+	num = buf_size / 2;
+	if (hex2bin(h2c, buf, num)) {
+		rtw89_info(rtwdev, "invalid format: H1H2H3...\n");
+		return -EINVAL;
+	}
+
+	rtw89_fw_h2c_raw(rtwdev, h2c, num);
+
+	return count;
+}
+
+static int rtw89_debug_priv_btc_info_get(struct seq_file *m, void *v)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = m->private;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+
+	rtw89_btc_dump_info(rtwdev, m);
+
+	return 0;
+}
+
+static ssize_t rtw89_debug_priv_btc_manual_set(struct file *filp,
+					       const char __user *user_buf,
+					       size_t count, loff_t *loff)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	struct rtw89_btc *btc = &rtwdev->btc;
+	int btc_manual;
+
+	if (kstrtoint_from_user(user_buf, count, 10, &btc_manual) != 0)
+		goto out;
+
+	btc->ctrl.manual = !!btc_manual;
+out:
+	return count;
+}
+
+static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
+{
+	static const char * const he_gi_str[] = {
+		[NL80211_RATE_INFO_HE_GI_0_8] = "0.8",
+		[NL80211_RATE_INFO_HE_GI_1_6] = "1.6",
+		[NL80211_RATE_INFO_HE_GI_3_2] = "3.2",
+	};
+	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
+	struct rate_info *rate = &rtwsta->ra_report.txrate;
+	struct ieee80211_rx_status *status = &rtwsta->rx_status;
+	struct seq_file *m = (struct seq_file *)data;
+	u8 rssi;
+
+	seq_printf(m, "TX rate [%d]: ", rtwsta->mac_id);
+
+	if (rate->flags & RATE_INFO_FLAGS_MCS)
+		seq_printf(m, "HT MCS-%d%s", rate->mcs,
+			   rate->flags & RATE_INFO_FLAGS_SHORT_GI ? " SGI" : "");
+	else if (rate->flags & RATE_INFO_FLAGS_VHT_MCS)
+		seq_printf(m, "VHT %dSS MCS-%d%s", rate->nss, rate->mcs,
+			   rate->flags & RATE_INFO_FLAGS_SHORT_GI ? " SGI" : "");
+	else if (rate->flags & RATE_INFO_FLAGS_HE_MCS)
+		seq_printf(m, "HE %dSS MCS-%d GI:%s", rate->nss, rate->mcs,
+			   rate->he_gi <= NL80211_RATE_INFO_HE_GI_3_2 ?
+			   he_gi_str[rate->he_gi] : "N/A");
+	else
+		seq_printf(m, "Legacy %d", rate->legacy);
+	seq_printf(m, "\t(hw_rate=0x%x)\n", rtwsta->ra_report.hw_rate);
+
+	seq_printf(m, "RX rate [%d]: ", rtwsta->mac_id);
+
+	switch (status->encoding) {
+	case RX_ENC_LEGACY:
+		seq_printf(m, "Legacy %d", status->rate_idx +
+			   (status->band == NL80211_BAND_5GHZ ? 4 : 0));
+		break;
+	case RX_ENC_HT:
+		seq_printf(m, "HT MCS-%d%s", status->rate_idx,
+			   status->enc_flags & RX_ENC_FLAG_SHORT_GI ? " SGI" : "");
+		break;
+	case RX_ENC_VHT:
+		seq_printf(m, "VHT %dSS MCS-%d%s", status->nss, status->rate_idx,
+			   status->enc_flags & RX_ENC_FLAG_SHORT_GI ? " SGI" : "");
+		break;
+	case RX_ENC_HE:
+		seq_printf(m, "HE %dSS MCS-%d GI:%s", status->nss, status->rate_idx,
+			   status->he_gi <= NL80211_RATE_INFO_HE_GI_3_2 ?
+			   he_gi_str[rate->he_gi] : "N/A");
+		break;
+	}
+	seq_printf(m, "\t(hw_rate=0x%x)\n", rtwsta->rx_hw_rate);
+
+	rssi = ewma_rssi_read(&rtwsta->avg_rssi);
+	seq_printf(m, "RSSI: %d dBm (raw=%d, prev=%d)\n",
+		   RTW89_RSSI_RAW_TO_DBM(rssi), rssi, rtwsta->prev_rssi);
+}
+
+static void
+rtw89_debug_append_rx_rate(struct seq_file *m, struct rtw89_pkt_stat *pkt_stat,
+			   enum rtw89_hw_rate first_rate, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		seq_printf(m, "%s%u", i == 0 ? "" : ", ",
+			   pkt_stat->rx_rate_cnt[first_rate + i]);
+}
+
+static const struct rtw89_rx_rate_cnt_info {
+	enum rtw89_hw_rate first_rate;
+	int len;
+	const char *rate_mode;
+} rtw89_rx_rate_cnt_infos[] = {
+	{RTW89_HW_RATE_CCK1, 4, "Legacy:"},
+	{RTW89_HW_RATE_OFDM6, 8, "OFDM:"},
+	{RTW89_HW_RATE_MCS0, 8, "HT 0:"},
+	{RTW89_HW_RATE_MCS8, 8, "HT 1:"},
+	{RTW89_HW_RATE_VHT_NSS1_MCS0, 10, "VHT 1SS:"},
+	{RTW89_HW_RATE_VHT_NSS2_MCS0, 10, "VHT 2SS:"},
+	{RTW89_HW_RATE_HE_NSS1_MCS0, 12, "HE 1SS:"},
+	{RTW89_HW_RATE_HE_NSS2_MCS0, 12, "HE 2ss:"},
+};
+
+static int rtw89_debug_priv_phy_info_get(struct seq_file *m, void *v)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = m->private;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	struct rtw89_traffic_stats *stats = &rtwdev->stats;
+	struct rtw89_pkt_stat *pkt_stat = &rtwdev->phystat.last_pkt_stat;
+	const struct rtw89_rx_rate_cnt_info *info;
+	int i;
+
+	seq_printf(m, "TP TX: %u Mbps (lv: %d), RX: %u Mbps (lv: %d)\n",
+		   stats->tx_throughput, stats->tx_tfc_lv,
+		   stats->rx_throughput, stats->rx_tfc_lv);
+	seq_printf(m, "Beacon: %u\n", pkt_stat->beacon_nr);
+
+	seq_puts(m, "RX count:\n");
+	for (i = 0; i < ARRAY_SIZE(rtw89_rx_rate_cnt_infos); i++) {
+		info = &rtw89_rx_rate_cnt_infos[i];
+		seq_printf(m, "%10s [", info->rate_mode);
+		rtw89_debug_append_rx_rate(m, pkt_stat,
+					   info->first_rate, info->len);
+		seq_puts(m, "]\n");
+	}
+
+	ieee80211_iterate_stations_atomic(rtwdev->hw, rtw89_sta_info_get_iter, m);
+
+	return 0;
+}
+
 static struct rtw89_debugfs_priv rtw89_debug_priv_read_reg = {
 	.cb_read = rtw89_debug_priv_read_reg_get,
 	.cb_write = rtw89_debug_priv_read_reg_select,
@@ -1855,6 +2270,10 @@ static struct rtw89_debugfs_priv rtw89_debug_priv_rf_reg_dump = {
 	.cb_read = rtw89_debug_priv_rf_reg_dump_get,
 };
 
+static struct rtw89_debugfs_priv rtw89_debug_priv_txpwr_table = {
+	.cb_read = rtw89_debug_priv_txpwr_table_get,
+};
+
 static struct rtw89_debugfs_priv rtw89_debug_priv_mac_reg_dump = {
 	.cb_read = rtw89_debug_priv_mac_reg_dump_get,
 	.cb_write = rtw89_debug_priv_mac_reg_dump_select,
@@ -1868,6 +2287,22 @@ static struct rtw89_debugfs_priv rtw89_debug_priv_mac_mem_dump = {
 static struct rtw89_debugfs_priv rtw89_debug_priv_mac_dbg_port_dump = {
 	.cb_read = rtw89_debug_priv_mac_dbg_port_dump_get,
 	.cb_write = rtw89_debug_priv_mac_dbg_port_dump_select,
+};
+
+static struct rtw89_debugfs_priv rtw89_debug_priv_send_h2c = {
+	.cb_write = rtw89_debug_priv_send_h2c_set,
+};
+
+static struct rtw89_debugfs_priv rtw89_debug_priv_btc_info = {
+	.cb_read = rtw89_debug_priv_btc_info_get,
+};
+
+static struct rtw89_debugfs_priv rtw89_debug_priv_btc_manual = {
+	.cb_write = rtw89_debug_priv_btc_manual_set,
+};
+
+static struct rtw89_debugfs_priv rtw89_debug_priv_phy_info = {
+	.cb_read = rtw89_debug_priv_phy_info_get,
 };
 
 #define rtw89_debugfs_add(name, mode, fopname, parent)				\
@@ -1898,9 +2333,14 @@ void rtw89_debugfs_init(struct rtw89_dev *rtwdev)
 	rtw89_debugfs_add_rw(read_rf);
 	rtw89_debugfs_add_w(write_rf);
 	rtw89_debugfs_add_r(rf_reg_dump);
+	rtw89_debugfs_add_r(txpwr_table);
 	rtw89_debugfs_add_rw(mac_reg_dump);
 	rtw89_debugfs_add_rw(mac_mem_dump);
 	rtw89_debugfs_add_rw(mac_dbg_port_dump);
+	rtw89_debugfs_add_w(send_h2c);
+	rtw89_debugfs_add_r(btc_info);
+	rtw89_debugfs_add_w(btc_manual);
+	rtw89_debugfs_add_r(phy_info);
 }
 #endif
 

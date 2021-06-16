@@ -15,6 +15,7 @@
 #define RAC_ANA19			0x19
 #define RAC_ANA1F			0x1F
 #define RAC_ANA24			0x24
+#define RAC_ANA26			0x26
 #define RAC_CTRL_PPR_V1			0x30
 #define RAC_SET_PPR_V1			0x31
 
@@ -94,6 +95,7 @@
 #define B_AX_RPQDMA_INT			BIT(2)
 #define B_AX_RXP1DMA_INT		BIT(1)
 #define B_AX_RXDMA_INT			BIT(0)
+#define B_AX_RXDMA_INTS_MASK (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT | B_AX_RDU_INT)
 
 #define R_AX_PCIE_HIMR10	0x13B0
 #define B_AX_HC10ISR_IND_INT_EN		BIT(28)
@@ -285,6 +287,8 @@
 #define RTW89_PCI_POLL_BDRAM_RST_CNT 100
 
 /* PCIE CFG register */
+#define RTW89_PCIE_TIMER_CTRL		0x0718
+#define RTW89_PCIE_BIT_L1SUB		BIT(5)
 #define RTW89_PCIE_L1_CTRL		0x0719
 #define RTW89_PCIE_BIT_CLK		BIT(4)
 #define RTW89_PCIE_BIT_L1		BIT(3)
@@ -458,8 +462,9 @@ struct rtw89_pci {
 
 	/* protect HW irq related registers */
 	spinlock_t irq_lock;
-	/* protect TRX resources */
+	/* protect TRX resources (exclude RXQ) */
 	spinlock_t trx_lock;
+	bool running;
 	struct rtw89_pci_tx_ring tx_rings[RTW89_TXCH_NUM];
 	struct rtw89_pci_rx_ring rx_rings[RTW89_RXCH_NUM];
 	struct sk_buff_head h2c_queue;

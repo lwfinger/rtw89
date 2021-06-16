@@ -28,6 +28,7 @@ enum btc_wl_rfk_type {
 #define NM_EXEC false
 #define FC_EXEC true
 
+#define RTW89_COEX_ACT1_WORK_PERIOD	round_jiffies_relative(HZ * 4)
 #define BTC_RFK_PATH_MAP GENMASK(3, 0)
 #define BTC_RFK_PHY_MAP GENMASK(5, 4)
 #define BTC_RFK_BAND_MAP GENMASK(7, 6)
@@ -44,14 +45,15 @@ enum btc_pri {
 	BTC_PRI_MASK_TX_RESP,
 	BTC_PRI_MASK_BEACON,
 	BTC_PRI_MASK_RX_CCK,
-	BTC_PRI_MASK_MAX
+	BTC_PRI_MASK_TX_MNGQ,
+	BTC_PRI_MASK_MAX,
 };
 
-enum btc_wtrs {
-	BTC_WTRX_SS_GROUP = 0x0,
-	BTC_WTRX_TX_GROUP = 0x2,
-	BTC_WTRX_RX_GROUP = 0x3,
-	BTC_WTRX_MAX,
+enum btc_bt_trs {
+	BTC_BT_SS_GROUP = 0x0,
+	BTC_BT_TX_GROUP = 0x2,
+	BTC_BT_RX_GROUP = 0x3,
+	BTC_BT_MAX_GROUP,
 };
 
 enum btc_ant {
@@ -70,13 +72,61 @@ enum btc_switch {
 	BTC_SWITCH_EXTERNAL
 };
 
+enum btc_pkt_type {
+	PACKET_DHCP,
+	PACKET_ARP,
+	PACKET_EAPOL,
+	PACKET_EAPOL_END,
+	PACKET_MAX
+};
+
+enum btc_bt_mailbox_id {
+	BTC_BTINFO_REPLY = 0x23,
+	BTC_BTINFO_AUTO = 0x27
+};
+
+enum btc_role_state {
+	BTC_ROLE_START,
+	BTC_ROLE_STOP,
+	BTC_ROLE_CHG_TYPE,
+	BTC_ROLE_MSTS_STA_CONN_START,
+	BTC_ROLE_MSTS_STA_CONN_END,
+	BTC_ROLE_MSTS_STA_DIS_CONN,
+	BTC_ROLE_MSTS_AP_START,
+	BTC_ROLE_MSTS_AP_STOP,
+	BTC_ROLE_STATE_UNKNOWN
+};
+
+enum btc_rfctrl {
+	BTC_RFCTRL_WL_OFF,
+	BTC_RFCTRL_WL_ON,
+	BTC_RFCTRL_FW_CTRL,
+	BTC_RFCTRL_MAX
+};
+
+void rtw89_btc_ntfy_poweron(struct rtw89_dev *rtwdev);
+void rtw89_btc_ntfy_poweroff(struct rtw89_dev *rtwdev);
 void rtw89_btc_ntfy_init(struct rtw89_dev *rtwdev, u8 mode);
 void rtw89_btc_ntfy_scan_start(struct rtw89_dev *rtwdev, u8 phy_idx, u8 band);
 void rtw89_btc_ntfy_scan_finish(struct rtw89_dev *rtwdev, u8 phy_idx);
 void rtw89_btc_ntfy_switch_band(struct rtw89_dev *rtwdev, u8 phy_idx, u8 band);
+void rtw89_btc_ntfy_specific_packet(struct rtw89_dev *rtwdev,
+				    enum btc_pkt_type pkt_type);
+void rtw89_btc_ntfy_eapol_packet_work(struct work_struct *work);
+void rtw89_btc_ntfy_arp_packet_work(struct work_struct *work);
+void rtw89_btc_ntfy_dhcp_packet_work(struct work_struct *work);
+void rtw89_btc_ntfy_role_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
+			      struct rtw89_sta *rtwsta, enum btc_role_state state);
+void rtw89_btc_ntfy_radio_state(struct rtw89_dev *rtwdev, enum btc_rfctrl rf_state);
 void rtw89_btc_ntfy_wl_rfk(struct rtw89_dev *rtwdev, u8 phy_map,
 			   enum btc_wl_rfk_type type,
 			   enum btc_wl_rfk_state state);
+void rtw89_btc_ntfy_wl_sta_work(struct work_struct *work);
+void rtw89_btc_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
+			  u32 len, u8 class, u8 func);
+void rtw89_btc_dump_info(struct rtw89_dev *rtwdev, struct seq_file *m);
+void rtw89_coex_act1_work(struct work_struct *work);
+void rtw89_coex_power_on(struct rtw89_dev *rtwdev);
 
 static inline u8 rtw89_btc_phymap(struct rtw89_dev *rtwdev,
 				  enum rtw89_phy_idx phy_idx,

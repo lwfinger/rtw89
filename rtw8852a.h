@@ -10,6 +10,13 @@
 #define RF_PATH_NUM_8852A 2
 #define NTX_NUM_8852A 2
 
+enum rtw8852a_pmac_mode {
+	NONE_TEST,
+	PKTS_TX,
+	PKTS_RX,
+	CONT_TX
+};
+
 struct rtw8852au_efuse {
 	u8 rsvd[0x38];
 	u8 mac_addr[ETH_ALEN];
@@ -74,5 +81,29 @@ struct rtw8852a_efuse {
 		struct rtw8852ae_efuse e;
 	};
 } __packed;
+
+struct rtw8852a_bb_pmac_info {
+	u8 en_pmac_tx:1;
+	u8 is_cck:1;
+	u8 mode:3;
+	u8 rsvd:3;
+	u16 tx_cnt;
+	u16 period;
+	u16 tx_time;
+	u8 duty_cycle;
+};
+
+void rtw8852a_bb_set_plcp_tx(struct rtw89_dev *rtwdev);
+void rtw8852a_bb_set_pmac_tx(struct rtw89_dev *rtwdev,
+			     struct rtw8852a_bb_pmac_info *tx_info,
+			     enum rtw89_phy_idx idx);
+void rtw8852a_bb_set_pmac_pkt_tx(struct rtw89_dev *rtwdev, u8 enable,
+				 u16 tx_cnt, u16 period, u16 tx_time,
+				 enum rtw89_phy_idx idx);
+void rtw8852a_bb_set_power(struct rtw89_dev *rtwdev, s16 pwr_dbm,
+			   enum rtw89_phy_idx idx);
+void rtw8852a_bb_cfg_tx_path(struct rtw89_dev *rtwdev, u8 tx_path);
+void rtw8852a_bb_tx_mode_switch(struct rtw89_dev *rtwdev,
+				enum rtw89_phy_idx idx, u8 mode);
 
 #endif

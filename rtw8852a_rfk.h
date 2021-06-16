@@ -16,5 +16,7 @@ void rtw8852a_rx_dck(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx,
 void rtw8852a_dpk(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy);
 void rtw8852a_dpk_track(struct rtw89_dev *rtwdev);
 void rtw8852a_tssi(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy);
+void rtw8852a_tssi_scan(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy);
+void rtw8852a_tssi_track(struct rtw89_dev *rtwdev);
 
 #endif

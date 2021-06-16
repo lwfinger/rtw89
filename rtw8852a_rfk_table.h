@@ -59,6 +59,8 @@ extern const struct rtw89_rfk_tbl rtw8852a_tssi_sys_defs_2g_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_sys_defs_5g_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_defs_a_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_defs_b_tbl;
+extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_defs_2g_tbl;
+extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_defs_5g_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_he_tb_defs_a_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_txpwr_ctrl_bb_he_tb_defs_b_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_dck_defs_a_tbl;
@@ -86,6 +88,7 @@ extern const struct rtw89_rfk_tbl rtw8852a_tssi_pak_defs_b_5g_4_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_enable_defs_a_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_enable_defs_b_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_disable_defs_tbl;
+extern const struct rtw89_rfk_tbl rtw8852a_tssi_tracking_defs_tbl;
 
 extern const struct rtw89_rfk_tbl rtw8852a_rfk_afe_init_defs_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_rfk_dack_reload_defs_a_tbl;

@@ -12,13 +12,13 @@
 #define get_phy_headline(addr)		FIELD_GET(GENMASK(31, 28), addr)
 #define PHY_HEADLINE_VALID	0xf
 #define get_phy_target(addr)		FIELD_GET(GENMASK(27, 0), addr)
-#define get_phy_compare(rfe, cut)	(FIELD_PREP(GENMASK(23, 16), rfe) | \
-					 FIELD_PREP(GENMASK(7, 0), cut))
+#define get_phy_compare(rfe, cv)	(FIELD_PREP(GENMASK(23, 16), rfe) | \
+					 FIELD_PREP(GENMASK(7, 0), cv))
 
 #define get_phy_cond(addr)		FIELD_GET(GENMASK(31, 28), addr)
 #define get_phy_cond_rfe(addr)		FIELD_GET(GENMASK(23, 16), addr)
 #define get_phy_cond_pkg(addr)		FIELD_GET(GENMASK(15, 8), addr)
-#define get_phy_cond_cut(addr)		FIELD_GET(GENMASK(7, 0), addr)
+#define get_phy_cond_cv(addr)		FIELD_GET(GENMASK(7, 0), addr)
 #define PHY_COND_BRANCH_IF	0x8
 #define PHY_COND_BRANCH_ELIF	0x9
 #define PHY_COND_BRANCH_ELSE	0xa
@@ -85,10 +85,10 @@
 #define PD_TH_CMP_VAL 3
 #define PD_TH_SB_FLTR_CMP_VAL 7
 
-#define PHYSTS_MGNT BIT(0)
-#define PHYSTS_CTRL BIT(1)
-#define PHYSTS_DATA BIT(2)
-#define PHYSTS_RSVD BIT(3)
+#define PHYSTS_MGNT BIT(RTW89_RX_TYPE_MGNT)
+#define PHYSTS_CTRL BIT(RTW89_RX_TYPE_CTRL)
+#define PHYSTS_DATA BIT(RTW89_RX_TYPE_DATA)
+#define PHYSTS_RSVD BIT(RTW89_RX_TYPE_RSVD)
 #define PPDU_FILTER_BITMAP (PHYSTS_MGNT | PHYSTS_DATA)
 
 enum rtw89_phy_c2h_ra_func {
@@ -102,6 +102,8 @@ enum rtw89_phy_c2h_class {
 	RTW89_PHY_C2H_CLASS_RUA,
 	RTW89_PHY_C2H_CLASS_RA,
 	RTW89_PHY_C2H_CLASS_DM,
+	RTW89_PHY_C2H_CLASS_BTC_MIN = 0x10,
+	RTW89_PHY_C2H_CLASS_BTC_MAX = 0x17,
 	RTW89_PHY_C2H_CLASS_MAX,
 };
 
@@ -182,6 +184,17 @@ struct rtw89_phy_dig_gain_table {
 	const struct rtw89_phy_dig_gain_cfg *cfg_tia_a;
 };
 
+struct rtw89_phy_reg3_tbl {
+	const struct rtw89_reg3_def *reg3;
+	int size;
+};
+
+#define DECLARE_PHY_REG3_TBL(_name)			\
+const struct rtw89_phy_reg3_tbl _name ## _tbl = {	\
+	.reg3 = _name,					\
+	.size = ARRAY_SIZE(_name),			\
+}
+
 static inline void rtw89_phy_write8(struct rtw89_dev *rtwdev,
 				    u32 addr, u8 data)
 {
@@ -239,6 +252,8 @@ static inline u32 rtw89_phy_read32_mask(struct rtw89_dev *rtwdev,
 	return rtw89_read32_mask(rtwdev, addr | RTW89_PHY_ADDR_OFFSET, mask);
 }
 
+void rtw89_phy_write_reg3_tbl(struct rtw89_dev *rtwdev,
+			      const struct rtw89_phy_reg3_tbl *tbl);
 u8 rtw89_phy_get_txsc(struct rtw89_dev *rtwdev,
 		      struct rtw89_channel_params *param,
 		      enum rtw89_bandwidth dbw);
@@ -261,6 +276,8 @@ void rtw89_phy_fill_txpwr_limit(struct rtw89_dev *rtwdev,
 void rtw89_phy_fill_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 				   struct rtw89_txpwr_limit_ru *lmt_ru,
 				   u8 ntx);
+s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
+			      u8 bw, u8 ntx, u8 rs, u8 bf, u8 ch);
 void rtw89_phy_ra_assoc(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta);
 void rtw89_phy_ra_update(struct rtw89_dev *rtwdev);
 void rtw89_phy_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,

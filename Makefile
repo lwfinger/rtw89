@@ -38,6 +38,7 @@ rtw89core-y +=  core.o \
 		efuse.o \
 		regd.o \
 		coex.o \
+		ps.o \
 		ser.o
 
 obj-m += rtw89pci.o

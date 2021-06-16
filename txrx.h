@@ -93,6 +93,10 @@
 /* TX WD INFO DWORD 3 */
 
 /* TX WD INFO DWORD 4 */
+#define RTW89_SET_TXWD_INFO_RTS_EN(txdesc, val) \
+	RTW89_SET_TXWD(txdesc, val, 0xA, BIT(27))
+#define RTW89_SET_TXWD_INFO_HW_RTS_EN(txdesc, val) \
+	RTW89_SET_TXWD(txdesc, val, 0xA, BIT(31))
 
 /* TX WD INFO DWORD 5 */
 

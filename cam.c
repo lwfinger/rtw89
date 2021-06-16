@@ -34,7 +34,7 @@ rtw89_cam_get_sec_key_cmd(struct rtw89_dev *rtwdev,
 	}
 
 	cmd = skb->data;
-	RTW89_SET_FWCMD_SEC_IDX(cmd, sec_cam->sec_cam_idx);
+	RTW89_SET_FWCMD_SEC_IDX(cmd, sec_cam->sec_cam_idx + (ext_key ? 1 : 0));
 	RTW89_SET_FWCMD_SEC_OFFSET(cmd, sec_cam->offset);
 	RTW89_SET_FWCMD_SEC_LEN(cmd, sec_cam->len);
 	RTW89_SET_FWCMD_SEC_TYPE(cmd, sec_cam->type);
@@ -339,8 +339,19 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
 		break;
 	case WLAN_CIPHER_SUITE_CCMP_256:
+		hw_key_type = RTW89_SEC_KEY_TYPE_CCMP256;
+		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
+		ext_key = true;
+		break;
 	case WLAN_CIPHER_SUITE_GCMP:
+		hw_key_type = RTW89_SEC_KEY_TYPE_GCMP128;
+		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
+		break;
 	case WLAN_CIPHER_SUITE_GCMP_256:
+		hw_key_type = RTW89_SEC_KEY_TYPE_GCMP256;
+		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
+		ext_key = true;
+		break;
 	case WLAN_CIPHER_SUITE_AES_CMAC:
 	case WLAN_CIPHER_SUITE_BIP_CMAC_256:
 	case WLAN_CIPHER_SUITE_BIP_GMAC_128:

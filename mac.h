@@ -149,6 +149,23 @@ enum rtw89_mac_dle_ple_quota_id {
 	PLE_QTAID_CPUIO = 10,
 };
 
+enum rtw89_mac_dle_ctrl_type {
+	DLE_CTRL_TYPE_WDE = 0,
+	DLE_CTRL_TYPE_PLE = 1,
+	DLE_CTRL_TYPE_NUM = 2,
+};
+
+enum rtw89_mac_ax_l0_to_l1_event {
+	MAC_AX_L0_TO_L1_CHIF_IDLE = 0,
+	MAC_AX_L0_TO_L1_CMAC_DMA_IDLE = 1,
+	MAC_AX_L0_TO_L1_RLS_PKID = 2,
+	MAC_AX_L0_TO_L1_PTCL_IDLE = 3,
+	MAC_AX_L0_TO_L1_RX_QTA_LOST = 4,
+	MAC_AX_L0_TO_L1_DLE_STAT_HANG = 5,
+	MAC_AX_L0_TO_L1_PCIE_STUCK = 6,
+	MAC_AX_L0_TO_L1_EVENT_MAX = 15,
+};
+
 enum rtw89_mac_dbg_port_sel {
 	/* CMAC 0 related */
 	RTW89_DBG_PORT_SEL_PTCL_C0 = 0,
@@ -425,6 +442,7 @@ enum rtw89_mac_bf_rrsc_rate {
 #define TMAC_DBG_SEL_C1 0xB5
 #define RMAC_DBG_SEL_C1 0xB6
 #define TRXPTCL_DBG_SEL_C1 0xB7
+#define FW_PROG_CNTR_DBG_SEL 0xF2
 #define PCIE_TXDMA_DBG_SEL 0x30
 #define PCIE_RXDMA_DBG_SEL 0x31
 #define PCIE_CVT_DBG_SEL 0x32
@@ -463,6 +481,32 @@ struct rtw89_mac_dbg_port_info {
 	u32 rd_msk;
 };
 
+#define QLNKTBL_ADDR_INFO_SEL BIT(0)
+#define QLNKTBL_ADDR_INFO_SEL_0 0
+#define QLNKTBL_ADDR_INFO_SEL_1 1
+#define QLNKTBL_ADDR_TBL_IDX_MASK GENMASK(10, 1)
+#define QLNKTBL_DATA_SEL1_PKT_CNT_MASK GENMASK(11, 0)
+
+struct rtw89_mac_dle_dfi_ctrl {
+	enum rtw89_mac_dle_ctrl_type type;
+	u32 target;
+	u32 addr;
+	u32 out_data;
+};
+
+struct rtw89_mac_dle_dfi_quota {
+	enum rtw89_mac_dle_ctrl_type dle_type;
+	u32 qtaid;
+	u16 rsv_pgnum;
+	u16 use_pgnum;
+};
+
+struct rtw89_mac_dle_dfi_qempty {
+	enum rtw89_mac_dle_ctrl_type dle_type;
+	u32 grpsel;
+	u32 qempty;
+};
+
 /* Define DBG and recovery enum */
 enum mac_ax_err_info {
 	/* Get error info */
@@ -478,6 +522,7 @@ enum mac_ax_err_info {
 	MAC_AX_ERR_L1_RESET_DISABLE_DMAC_DONE = 0x1001,
 	MAC_AX_ERR_L1_RESET_RECOVERY_DONE = 0x1002,
 	MAC_AX_ERR_L1_PROMOTE_TO_L2 = 0x1010,
+	MAC_AX_ERR_L1_RCVY_STOP_DONE = 0x1011,
 
 	/* L2 */
 	/* address hole (master) */
@@ -599,11 +644,15 @@ enum mac_ax_err_info {
 	MAC_AX_ERR_L2_ERR_APB_BBRF_TO_RX4281 = 0x2360,
 	MAC_AX_ERR_L2_ERR_APB_BBRF_TO_OTHERS = 0x2370,
 	MAC_AX_ERR_L2_RESET_DONE = 0x2400,
+	MAC_AX_ERR_CPU_EXCEPTION = 0x3000,
 	MAC_AX_GET_ERR_MAX,
+	MAC_AX_DUMP_SHAREBUFF_INDICATOR = 0x80000000,
 
 	/* set error info */
 	MAC_AX_ERR_L1_DISABLE_EN = 0x0001,
 	MAC_AX_ERR_L1_RCVY_EN = 0x0002,
+	MAC_AX_ERR_L1_RCVY_STOP_REQ = 0x0003,
+	MAC_AX_ERR_L1_RCVY_START_REQ = 0x0004,
 	MAC_AX_ERR_L0_CFG_NOTIFY = 0x0010,
 	MAC_AX_ERR_L0_CFG_DIS_NOTIFY = 0x0011,
 	MAC_AX_ERR_L0_CFG_HANDSHAKE = 0x0012,
@@ -791,8 +840,10 @@ void rtw89_mac_bf_set_gid_table(struct rtw89_dev *rtwdev, struct ieee80211_vif *
 void rtw89_mac_bf_monitor_calc(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sta *sta, bool disconnect);
 void _rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev);
-void rtw_restore_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
-void rtw_remove_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+void rtw89_restore_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+void rtw89_remove_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+int rtw89_mac_set_hw_muedca_ctrl(struct rtw89_dev *rtwdev,
+				 struct rtw89_vif *rtwvif, bool en);
 
 static inline void rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev)
 {

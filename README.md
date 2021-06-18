@@ -1,6 +1,8 @@
-rtw88
+rtw89 v5
 ===========
 ### A repo for the newest Realtek rtlwifi codes.
+
+This branch has v5 of the code, which is latest from Realtek.
 
 This code will build on any kernel 5.7 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
@@ -8,7 +10,7 @@ NO, I WILL NOT MODIFY THE SOURCE FOR YOU. YOU ARE ON YOUR OWN!!!!!
 
 I am working on fixing builds on older kernels.
 
-This repository includes drivers for the following cards:
+This repository includes drivers for the following card:
 
 Realtek 8852BE
 
@@ -27,12 +29,12 @@ You can install them with the following command, on **Ubuntu**:
 sudo apt-get update
 sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
 ```
-If any of the packets above are not found check if your distro installs them like that. 
+If any of the packages above are not found check if your distro installs them like that. 
 
 ##### Installation
 For all distros:
 ```bash
-git clone https://github.com/lwfinger/rtw89.git
+git clone https://github.com/lwfinger/rtw89.git -b v5
 cd rtw89
 make
 sudo make install
@@ -67,7 +69,7 @@ sudo make install
 
 Remember, this MUST be done whenever you get a new kernel - no exceptions.
 
-These drivers will not build for kernels older than 4.14. If you must use an older kernel,
+These drivers will not build for kernels older than 5.7. If you must use an older kernel,
 submit a GitHub issue with a listing of the build errors. Without the errors, the issue
 will be ignored. I am not a mind reader.
 

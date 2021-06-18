@@ -55,6 +55,8 @@
 	RTW89_SET_TXWD(txdesc, val, 0x02, GENMASK(13, 0))
 
 /* TX WD BODY DWORD 3 */
+#define RTW89_SET_TXWD_BODY_BK(txdesc, val) \
+	RTW89_SET_TXWD(txdesc, val, 0x03, BIT(13))
 #define RTW89_SET_TXWD_BODY_AGG_EN(txdesc, val) \
 	RTW89_SET_TXWD(txdesc, val, 0x03, BIT(12))
 #define RTW89_SET_TXWD_BODY_SW_SEQ(txdesc, val) \
@@ -77,6 +79,8 @@
 	RTW89_SET_TXWD(txdesc, val, 0x6, BIT(10))
 
 /* TX WD INFO DWORD 1 */
+#define RTW89_SET_TXWD_INFO_A_CTRL_BSR(txdesc, val) \
+	RTW89_SET_TXWD(txdesc, val, 0x7, BIT(14))
 #define RTW89_SET_TXWD_INFO_MAX_AGGNUM(txdesc, val) \
 	RTW89_SET_TXWD(txdesc, val, 0x7, GENMASK(7, 0))
 

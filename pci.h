@@ -15,8 +15,13 @@
 #define RAC_ANA19			0x19
 #define RAC_ANA1F			0x1F
 #define RAC_ANA24			0x24
+#define B_AX_DEGLITCH			GENMASK(11, 8)
 #define RAC_ANA26			0x26
+#define B_AX_RXEN			GENMASK(15, 14)
 #define RAC_CTRL_PPR_V1			0x30
+#define B_AX_CLK_CALIB_EN		BIT(12)
+#define B_AX_CALIB_EN			BIT(13)
+#define B_AX_DIV			GENMASK(15, 14)
 #define RAC_SET_PPR_V1			0x31
 
 #define R_AX_DBI_FLAG			0x1090
@@ -26,6 +31,9 @@
 #define B_AX_DBI_ADDR_MSK		GENMASK(11, 2)
 #define R_AX_DBI_WDATA			0x1094
 #define R_AX_DBI_RDATA			0x1098
+
+#define R_AX_MDIO_WDATA			0x10A4
+#define R_AX_MDIO_RDATA			0x10A6
 
 #define RTW89_PCI_WR_RETRY_CNT		20
 
@@ -274,7 +282,35 @@
 #define B_AX_PCIE_TXRST_KEEP_REG	BIT(22)
 #define B_AX_DIS_RXDMA_PRE		BIT(2)
 
-#define R_AX_PCIE_RX_PREF_ADV	0x13F4
+#define R_AX_PCIE_INIT_CFG2		0x1004
+#define B_AX_WD_ITVL_IDLE		GENMASK(27, 24)
+#define B_AX_WD_ITVL_ACT		GENMASK(19, 16)
+
+#define R_AX_PCIE_PS_CTRL		0x1008
+#define B_AX_L1OFF_PWR_OFF_EN		BIT(5)
+
+#define R_AX_DBG_ERR_FLAG		0x11C4
+#define B_AX_PCIE_RPQ_FULL		BIT(29)
+#define B_AX_PCIE_RXQ_FULL		BIT(28)
+#define B_AX_CPL_STATUS_MASK		GENMASK(27, 25)
+#define B_AX_RX_STUCK			BIT(22)
+#define B_AX_TX_STUCK			BIT(21)
+#define B_AX_PCIEDBG_TXERR0		BIT(16)
+#define B_AX_PCIE_RXP1_ERR0		BIT(4)
+#define B_AX_PCIE_TXBD_LEN0		BIT(1)
+#define B_AX_PCIE_TXBD_4KBOUD_LENERR	BIT(0)
+
+#define R_AX_LBC_WATCHDOG		0x11D8
+#define B_AX_LBC_TIMER			GENMASK(7, 4)
+#define B_AX_LBC_FLAG			BIT(1)
+#define B_AX_LBC_EN			BIT(0)
+
+#define R_AX_PCIE_EXP_CTRL		0x13F0
+#define B_AX_EN_CHKDSC_NO_RX_STUCK	BIT(20)
+#define B_AX_MAX_TAG_NUM		GENMASK(18, 16)
+#define B_AX_SIC_EN_FORCE_CLKREQ	BIT(4)
+
+#define R_AX_PCIE_RX_PREF_ADV		0x13F4
 #define B_AX_RXDMA_PREF_ADV_EN		BIT(0)
 
 #define RTW89_PCI_TXBD_NUM_MAX		256
@@ -293,7 +329,10 @@
 #define RTW89_PCIE_BIT_CLK		BIT(4)
 #define RTW89_PCIE_BIT_L1		BIT(3)
 #define RTW89_PCIE_CLK_CTRL		0x0725
+#define RTW89_PCIE_RST_MSTATE		0x0B48
+#define RTW89_PCIE_BIT_CFG_RST_MSTATE	BIT(0)
 #define RTW89_PCIE_PHY_RATE		0x82
+#define RTW89_PCIE_PHY_RATE_MASK	GENMASK(1, 0)
 #define INTF_INTGRA_MINREF_V1	90
 #define INTF_INTGRA_HOSTREF_V1	100
 
@@ -306,11 +345,6 @@ enum rtw89_pcie_phy {
 enum mac_ax_func_sw {
 	MAC_AX_FUNC_DIS,
 	MAC_AX_FUNC_EN,
-};
-
-enum mac_ax_lv1_rcvy_step {
-	MAC_AX_LV1_RCVY_STEP_1 = 0,
-	MAC_AX_LV1_RCVY_STEP_2
 };
 
 enum rtw89_pcie_clkdly_hw {
@@ -561,5 +595,7 @@ static inline bool rtw89_pci_ltr_is_err_reg_val(u32 val)
 {
 	return val == 0xffffffff || val == 0xeaeaeaea;
 }
+
+extern const struct dev_pm_ops rtw89_pm_ops;
 
 #endif

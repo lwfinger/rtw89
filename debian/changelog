@@ -1,0 +1,6 @@
+rtw89 (1.0.0-1) unstable; urgency=medium
+
+  * Add driver package to build DEB package support in Debian DKMS format.
+
+ -- lichenggang <lichenggang@uniontech.com>  Thu, 17 Jun 2021 17:14:07 +0800
+

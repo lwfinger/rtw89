@@ -1,0 +1,15 @@
+#!/bin/bash
+
+DRV_NAME=rtw89
+DRV_VERSION=1.0.0
+
+dkms remove -m ${DRV_NAME} -v ${DRV_VERSION} --all > /dev/null || true
+
+RESULT=$?
+if [[ "$RESULT" != "0" ]]; then
+  echo "Error occurred while running dkms remove." 2>&1
+else
+  echo "Finished running dkms removal steps."
+fi
+
+exit $RESULT

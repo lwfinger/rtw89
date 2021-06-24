@@ -17,8 +17,6 @@ RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL
 these should be provided by your kernel. If not, then you should go to the Backports Project
 (https://backports.wiki.kernel.org/index.php/Main_Page) to obtain the necessary code.
 
-This repo has been brought up to date with the kernel code on Jan. 31, 2021.
-
 ### Installation instruction
 ##### Requirements
 You will need to install "make", "gcc", "kernel headers", "kernel build essentials", and "git".
@@ -39,8 +37,8 @@ sudo make install
 ```
 ##### How to disable/enable a Kernel module
  ```bash
-sudo modprobe -r rtw_8723de         #This unloads the module
-sudo modprobe rtw_8723de            #This loads the module
+sudo modprobe -r rtw89pci         #This unloads the module
+sudo modprobe rtw89pci            #This loads the module
 ```
 
 ##### Option configuration
@@ -52,8 +50,8 @@ There, enter the line below:
 ```bash
 options <device_name> <<driver_option_name>>=<value>
 ```
-The available options for rtw_pci are disable_msi and disable_aspm.
-The available options for rtw_core are lps_deep_mode, support_bf,  and debug_mask.
+The available options for rtw89pci are disable_clkreq, disable_aspm, and disable_aspm
+The available options for rtw89core are debug_mask, and disable_ps_mode
 
 ***********************************************************************************************
 

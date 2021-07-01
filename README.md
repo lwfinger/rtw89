@@ -1,4 +1,4 @@
-rtw88
+rtw89
 ===========
 ### A repo for the newest Realtek rtlwifi codes.
 
@@ -65,7 +65,7 @@ sudo make install
 
 Remember, this MUST be done whenever you get a new kernel - no exceptions.
 
-These drivers will not build for kernels older than 4.14. If you must use an older kernel,
+These drivers will not build for kernels older than 5.7. If you must use an older kernel,
 submit a GitHub issue with a listing of the build errors. Without the errors, the issue
 will be ignored. I am not a mind reader.
 

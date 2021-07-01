@@ -592,42 +592,30 @@ static void rtw89_pci_isr_rxd_unavail(struct rtw89_dev *rtwdev,
 	}
 }
 
-static void rtw89_pci_clear_intrs(struct rtw89_dev *rtwdev,
-				  struct rtw89_pci *rtwpci)
-{
-	rtw89_write32(rtwdev, R_AX_HISR0, rtwpci->halt_c2h_isrs);
-	rtw89_write32(rtwdev, R_AX_PCIE_HISR00, rtwpci->isrs[0]);
-	rtw89_write32(rtwdev, R_AX_PCIE_HISR10, rtwpci->isrs[1]);
-}
-
 static void rtw89_pci_recognize_intrs(struct rtw89_dev *rtwdev,
-				      struct rtw89_pci *rtwpci)
+				      struct rtw89_pci *rtwpci,
+				      struct rtw89_pci_isrs *isrs)
 {
-	rtwpci->halt_c2h_isrs = rtw89_read32(rtwdev, R_AX_HISR0) & rtwpci->halt_c2h_intrs;
-	rtwpci->isrs[0] = rtw89_read32(rtwdev, R_AX_PCIE_HISR00) & rtwpci->intrs[0];
-	rtwpci->isrs[1] = rtw89_read32(rtwdev, R_AX_PCIE_HISR10) & rtwpci->intrs[1];
+	isrs->halt_c2h_isrs = rtw89_read32(rtwdev, R_AX_HISR0) & rtwpci->halt_c2h_intrs;
+	isrs->isrs[0] = rtw89_read32(rtwdev, R_AX_PCIE_HISR00) & rtwpci->intrs[0];
+	isrs->isrs[1] = rtw89_read32(rtwdev, R_AX_PCIE_HISR10) & rtwpci->intrs[1];
+
+	rtw89_write32(rtwdev, R_AX_HISR0, isrs->halt_c2h_isrs);
+	rtw89_write32(rtwdev, R_AX_PCIE_HISR00, isrs->isrs[0]);
+	rtw89_write32(rtwdev, R_AX_PCIE_HISR10, isrs->isrs[1]);
 }
 
 static void rtw89_pci_enable_intr(struct rtw89_dev *rtwdev,
-				  struct rtw89_pci *rtwpci)
+				  struct rtw89_pci *rtwpci, bool exclude_rx)
 {
+	if (exclude_rx || test_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags))
+		rtwpci->intrs[0] &= ~B_AX_RXDMA_INTS_MASK;
+	else
+		rtwpci->intrs[0] |= B_AX_RXDMA_INTS_MASK;
+
 	rtw89_write32(rtwdev, R_AX_HIMR0, rtwpci->halt_c2h_intrs);
 	rtw89_write32(rtwdev, R_AX_PCIE_HIMR00, rtwpci->intrs[0]);
 	rtw89_write32(rtwdev, R_AX_PCIE_HIMR10, rtwpci->intrs[1]);
-}
-
-static void rtw89_pci_enable_intr_unmask0(struct rtw89_dev *rtwdev,
-					  struct rtw89_pci *rtwpci, u32 unmask0)
-{
-	rtwpci->intrs[0] &= ~unmask0;
-	rtw89_pci_enable_intr(rtwdev, rtwpci);
-}
-
-static void rtw89_pci_enable_intr_mask0(struct rtw89_dev *rtwdev,
-					struct rtw89_pci *rtwpci, u32 mask0)
-{
-	rtwpci->intrs[0] |= mask0;
-	rtw89_pci_enable_intr(rtwdev, rtwpci);
 }
 
 static void rtw89_pci_disable_intr(struct rtw89_dev *rtwdev,
@@ -638,54 +626,45 @@ static void rtw89_pci_disable_intr(struct rtw89_dev *rtwdev,
 	rtw89_write32(rtwdev, R_AX_PCIE_HIMR10, 0);
 }
 
-static void rtw89_pci_try_napi_schedule(struct rtw89_dev *rtwdev, u32 *unmask0_rx)
-{
-	if (*unmask0_rx && !napi_reschedule(&rtwdev->napi)) {
-		/* if can't invoke napi, RX_IMR must be off already */
-		*unmask0_rx = 0;
-	}
-}
-
 static irqreturn_t rtw89_pci_interrupt_threadfn(int irq, void *dev)
 {
 	struct rtw89_dev *rtwdev = dev;
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
-	u32 isrs[2];
+	struct rtw89_pci_isrs isrs;
 	unsigned long flags;
-	u32 unmask0_rx = 0;
+	bool rx = false;
 
-	isrs[0] = rtwpci->isrs[0];
-	isrs[1] = rtwpci->isrs[1];
+	spin_lock_irqsave(&rtwpci->irq_lock, flags);
+	rtw89_pci_recognize_intrs(rtwdev, rtwpci, &isrs);
+	spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
 
 	/* TX ISR */
-	if (isrs[0] & B_AX_TXDMA_CH12_INT)
+	if (isrs.isrs[0] & B_AX_TXDMA_CH12_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_TXCH_CH12);
 
 	/* RX ISR */
-	if (isrs[0] & (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT))
-		unmask0_rx = B_AX_RXDMA_INTS_MASK;
-	if (isrs[0] & B_AX_RPQDMA_INT)
+	if (isrs.isrs[0] & (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT))
+		rx = true;
+	if (isrs.isrs[0] & B_AX_RPQDMA_INT)
 		rtw89_pci_isr_rpq_dma(rtwdev, rtwpci);
-	if (isrs[0] & B_AX_RDU_INT) {
+	if (isrs.isrs[0] & B_AX_RDU_INT) {
 		rtw89_pci_isr_rxd_unavail(rtwdev, rtwpci);
-		unmask0_rx = B_AX_RXDMA_INTS_MASK;
+		rx = true;
 	}
 
-	if (rtwpci->halt_c2h_isrs & B_AX_HALT_C2H_INT_EN)
+	if (isrs.halt_c2h_isrs & B_AX_HALT_C2H_INT_EN)
 		rtw89_ser_notify(rtwdev, rtw89_mac_get_err_status(rtwdev));
 
-	/* invoke napi and disable rx_imr within bh_disable, because we must
-	 * ensure napi_poll re-enable rx_imr after this.
-	 */
-	local_bh_disable();
 	spin_lock_irqsave(&rtwpci->irq_lock, flags);
-	rtw89_pci_try_napi_schedule(rtwdev, &unmask0_rx);
-	if (rtwpci->running) {
-		rtw89_pci_clear_intrs(rtwdev, rtwpci);
-		rtw89_pci_enable_intr_unmask0(rtwdev, rtwpci, unmask0_rx);
-	}
+	if (likely(rtwpci->running))
+		rtw89_pci_enable_intr(rtwdev, rtwpci, rx);
 	spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
-	local_bh_enable();
+
+	if (likely(rtwpci->running) && rx) {
+		local_bh_disable();
+		napi_schedule(&rtwdev->napi);
+		local_bh_enable();
+	}
 
 	return IRQ_HANDLED;
 }
@@ -695,16 +674,23 @@ static irqreturn_t rtw89_pci_interrupt_handler(int irq, void *dev)
 	struct rtw89_dev *rtwdev = dev;
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
 	unsigned long flags;
+	irqreturn_t irqret = IRQ_WAKE_THREAD;
 
-	/* Disable interrupt here to avoid more interrupts being issued before
-	 * the threadfn ends.
-	 */
 	spin_lock_irqsave(&rtwpci->irq_lock, flags);
+
+	/* If interrupt event is on the road, it is still trigger interrupt
+	 * even we have done pci_stop() to turn off IMR.
+	 */
+	if (unlikely(!rtwpci->running)) {
+		irqret = IRQ_HANDLED;
+		goto exit;
+	}
+
 	rtw89_pci_disable_intr(rtwdev, rtwpci);
-	rtw89_pci_recognize_intrs(rtwdev, rtwpci);
+exit:
 	spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
 
-	return IRQ_WAKE_THREAD;
+	return irqret;
 }
 
 #define case_TXCHADDRS(txch) \
@@ -1190,7 +1176,8 @@ static int rtw89_pci_ops_start(struct rtw89_dev *rtwdev)
 
 	spin_lock_irqsave(&rtwpci->irq_lock, flags);
 	rtwpci->running = true;
-	rtw89_pci_enable_intr_mask0(rtwdev, rtwpci, B_AX_RXDMA_INTS_MASK);
+	clear_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags);
+	rtw89_pci_enable_intr(rtwdev, rtwpci, false);
 	spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
 
 	return 0;
@@ -2745,6 +2732,8 @@ static int rtw89_pci_napi_poll(struct napi_struct *napi, int budget)
 	u32 cnt;
 	int ret;
 
+	set_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags);
+
 	ret = rtw89_pci_poll_rxq_dma(rtwdev, rtwpci, budget);
 	if (ret < budget) {
 		napi_complete_done(napi, ret);
@@ -2754,10 +2743,9 @@ static int rtw89_pci_napi_poll(struct napi_struct *napi, int budget)
 			return ret;
 
 		spin_lock_irqsave(&rtwpci->irq_lock, flags);
-		if (rtwpci->running) {
-			rtw89_pci_clear_intrs(rtwdev, rtwpci);
-			rtw89_pci_enable_intr_mask0(rtwdev, rtwpci, B_AX_RXDMA_INTS_MASK);
-		}
+		clear_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags);
+		if (likely(rtwpci->running))
+			rtw89_pci_enable_intr(rtwdev, rtwpci, false);
 		spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
 	}
 

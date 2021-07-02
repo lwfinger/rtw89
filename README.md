@@ -10,7 +10,7 @@ I am working on fixing builds on older kernels.
 
 This repository includes drivers for the following cards:
 
-Realtek 8852BE
+Realtek 8852AE
 
 If you are looking for a driver for chips such as 
 RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL8723BE, or RTL8821AE,

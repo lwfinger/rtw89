@@ -2963,9 +2963,13 @@ static inline void
 rtw89_write_rf(struct rtw89_dev *rtwdev, enum rtw89_rf_path rf_path,
 	       u32 addr, u32 mask, u32 data)
 {
-	mutex_lock(&rtwdev->rf_mutex);
-	rtwdev->chip->ops->write_rf(rtwdev, rf_path, addr, mask, data);
-	mutex_unlock(&rtwdev->rf_mutex);
+	if (in_atomic()) {
+		rtwdev->chip->ops->write_rf(rtwdev, rf_path, addr, mask, data);
+	} else {
+		mutex_lock(&rtwdev->rf_mutex);
+		rtwdev->chip->ops->write_rf(rtwdev, rf_path, addr, mask, data);
+		mutex_unlock(&rtwdev->rf_mutex);
+	}
 }
 
 static inline struct ieee80211_txq *rtw89_txq_to_txq(struct rtw89_txq *rtwtxq)

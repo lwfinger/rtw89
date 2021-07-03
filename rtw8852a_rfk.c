@@ -1020,9 +1020,9 @@ static bool _iqk_nbrxk(struct rtw89_dev *rtwdev,
 	u32 idxrxgain_a = 0x1a0;
 	u32 idxattc2_a = 0x00;
 	u32 idxattc1_a = 0x5;
-	u32 idxrxgain_g = 0x1CC;
-	u32 idxattc2_g = 0x0;
-	u32 idxattc1_g = 0x1;
+	u32 idxrxgain_g = 0x1E0;
+	u32 idxattc2_g = 0x15;
+	u32 idxattc1_g = 0x0;
 	bool fail = false;
 
 	switch (iqk_info->iqk_band[path]) {
@@ -1407,7 +1407,7 @@ void _iqk_by_path(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx, u8 path)
 
 	_iqk_rxclk_setting(rtwdev, path);
 	_iqk_rxk_setting(rtwdev, path);
-	if (iqk_info->is_nbiqk || rtwdev->dbcc_en)
+	if (iqk_info->is_nbiqk || rtwdev->dbcc_en || iqk_info->iqk_band[path] == RTW89_BAND_2G)
 		iqk_info->iqk_rx_fail[0][path] = _iqk_nbrxk(rtwdev, phy_idx, path);
 	else
 		iqk_info->iqk_rx_fail[0][path] = _rxk_group_sel(rtwdev, phy_idx, path);

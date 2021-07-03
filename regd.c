@@ -3,6 +3,7 @@
  */
 
 #include "debug.h"
+#include "ps.h"
 
 #define COUNTRY_REGD(_alpha2, _txpwr_regd_2g, _txpwr_regd_5g) \
 	{.alpha2 = (_alpha2), \
@@ -331,6 +332,7 @@ void rtw89_regd_notifier(struct wiphy *wiphy, struct regulatory_request *request
 	struct rtw89_dev *rtwdev = hw->priv;
 
 	mutex_lock(&rtwdev->mutex);
+	rtw89_leave_ps_mode(rtwdev);
 
 	if (wiphy->regd) {
 		rtw89_debug(rtwdev, RTW89_DBG_REGD,

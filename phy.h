@@ -19,6 +19,7 @@
 #define get_phy_cond_rfe(addr)		FIELD_GET(GENMASK(23, 16), addr)
 #define get_phy_cond_pkg(addr)		FIELD_GET(GENMASK(15, 8), addr)
 #define get_phy_cond_cv(addr)		FIELD_GET(GENMASK(7, 0), addr)
+#define phy_div(a, b) ({typeof(b) _b = (b); (_b) ? ((a) / (_b)) : 0; })
 #define PHY_COND_BRANCH_IF	0x8
 #define PHY_COND_BRANCH_ELIF	0x9
 #define PHY_COND_BRANCH_ELSE	0xa
@@ -43,11 +44,17 @@
 #define RA_MASK_HE_3SS_RATES	GENMASK_ULL(47, 36)
 #define RA_MASK_HE_4SS_RATES	GENMASK_ULL(59, 48)
 
-#define CFO_TRK_ENABLE_TH 4
-#define CFO_TRK_STOP_TH_4 120
-#define CFO_TRK_STOP_TH_3 80
-#define CFO_TRK_STOP_TH_2 40
-#define CFO_TRK_STOP_TH 4
+#define CFO_TRK_ENABLE_TH (5 << 2)
+#define CFO_TRK_STOP_TH_4 (30 << 2)
+#define CFO_TRK_STOP_TH_3 (20 << 2)
+#define CFO_TRK_STOP_TH_2 (10 << 2)
+#define CFO_TRK_STOP_TH_1 (00 << 2)
+#define CFO_TRK_STOP_TH (5 << 2)
+#define CFO_SW_COMP_FINE_TUNE (2 << 2)
+#define CFO_PERIOD_CNT 15
+#define CFO_TP_UPPER 100
+#define CFO_TP_LOWER 50
+#define CFO_COMP_PERIOD 250
 #define CFO_COMP_WEIGHT 8
 #define MAX_CFO_TOLERANCE 30
 
@@ -280,9 +287,11 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 			      u8 bw, u8 ntx, u8 rs, u8 bf, u8 ch);
 void rtw89_phy_ra_assoc(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta);
 void rtw89_phy_ra_update(struct rtw89_dev *rtwdev);
+void rtw89_phy_ra_updata_sta(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta);
 void rtw89_phy_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 			  u32 len, u8 class, u8 func);
 void rtw89_phy_cfo_track(struct rtw89_dev *rtwdev);
+void rtw89_phy_cfo_track_work(struct work_struct *work);
 void rtw89_phy_cfo_parse(struct rtw89_dev *rtwdev, s16 cfo_val,
 			 struct rtw89_rx_phy_ppdu *phy_ppdu);
 void rtw89_phy_stat_track(struct rtw89_dev *rtwdev);
@@ -292,4 +301,5 @@ void rtw89_phy_set_phy_regs(struct rtw89_dev *rtwdev, u32 addr, u32 mask,
 void rtw89_phy_dig_reset(struct rtw89_dev *rtwdev);
 void rtw89_phy_dig(struct rtw89_dev *rtwdev);
 void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif);
+
 #endif

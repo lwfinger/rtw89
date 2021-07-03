@@ -6,7 +6,9 @@
 #include "debug.h"
 #include "fw.h"
 #include "mac.h"
+#include "ps.h"
 #include "reg.h"
+#include "sar.h"
 
 #ifdef CONFIG_RTW89_DEBUGMSG
 unsigned int rtw89_debug_mask;
@@ -553,9 +555,15 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 	int ret = 0;
 
 	mutex_lock(&rtwdev->mutex);
+	rtw89_leave_ps_mode(rtwdev);
 
 	seq_puts(m, "[Regulatory] ");
 	__print_regd(m, rtwdev);
+
+	seq_puts(m, "[SAR]\n");
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	rtw89_print_sar(m, rtwdev);
+#endif
 
 	seq_puts(m, "\n[TX power byrate]\n");
 	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);
@@ -751,8 +759,7 @@ static void rtw89_debug_dump_mac_mem(struct seq_file *m,
 		dump_len = min_t(u32, remain, MAC_MEM_DUMP_PAGE_SIZE);
 		rtw89_write32(rtwdev, R_AX_FILTER_MODEL_ADDR, base_addr);
 		for (i = R_AX_INDIR_ACCESS_ENTRY + residue;
-		     i < R_AX_INDIR_ACCESS_ENTRY + dump_len;
-		     i += 4) {
+		     i < R_AX_INDIR_ACCESS_ENTRY + dump_len;) {
 			seq_printf(m, "%08xh:", i);
 			for (j = 0;
 			     j < 4 && i < R_AX_INDIR_ACCESS_ENTRY + dump_len;
@@ -773,10 +780,13 @@ rtw89_debug_priv_mac_mem_dump_get(struct seq_file *m, void *v)
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
 
+	mutex_lock(&rtwdev->mutex);
+	rtw89_leave_ps_mode(rtwdev);
 	rtw89_debug_dump_mac_mem(m, rtwdev,
 				 debugfs_priv->mac_mem.sel,
 				 debugfs_priv->mac_mem.start,
 				 debugfs_priv->mac_mem.len);
+	mutex_unlock(&rtwdev->mutex);
 
 	return 0;
 }
@@ -2127,12 +2137,32 @@ static ssize_t rtw89_debug_priv_btc_manual_set(struct file *filp,
 	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
 	struct rtw89_btc *btc = &rtwdev->btc;
-	int btc_manual;
+	bool btc_manual;
 
-	if (kstrtoint_from_user(user_buf, count, 10, &btc_manual) != 0)
+	if (kstrtobool_from_user(user_buf, count, &btc_manual))
 		goto out;
 
-	btc->ctrl.manual = !!btc_manual;
+	btc->ctrl.manual = btc_manual;
+out:
+	return count;
+}
+
+static ssize_t rtw89_debug_fw_log_btc_manual_set(struct file *filp,
+						 const char __user *user_buf,
+						 size_t count, loff_t *loff)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	bool fw_log_manual;
+
+	if (kstrtobool_from_user(user_buf, count, &fw_log_manual))
+		goto out;
+
+	mutex_lock(&rtwdev->mutex);
+	fw_info->fw_log_enable = fw_log_manual;
+	rtw89_fw_h2c_fw_log(rtwdev, fw_log_manual);
+	mutex_unlock(&rtwdev->mutex);
 out:
 	return count;
 }
@@ -2164,7 +2194,9 @@ static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
 			   he_gi_str[rate->he_gi] : "N/A");
 	else
 		seq_printf(m, "Legacy %d", rate->legacy);
-	seq_printf(m, "\t(hw_rate=0x%x)\n", rtwsta->ra_report.hw_rate);
+	seq_printf(m, "\t(hw_rate=0x%x)", rtwsta->ra_report.hw_rate);
+	seq_printf(m, "\t==> agg_wait=%d (%d)\n", rtwsta->max_agg_wait,
+		   sta->max_rc_amsdu_len);
 
 	seq_printf(m, "RX rate [%d]: ", rtwsta->mac_id);
 
@@ -2229,10 +2261,12 @@ static int rtw89_debug_priv_phy_info_get(struct seq_file *m, void *v)
 	const struct rtw89_rx_rate_cnt_info *info;
 	int i;
 
-	seq_printf(m, "TP TX: %u Mbps (lv: %d), RX: %u Mbps (lv: %d)\n",
-		   stats->tx_throughput, stats->tx_tfc_lv,
-		   stats->rx_throughput, stats->rx_tfc_lv);
+	seq_printf(m, "TP TX: %u [%u] Mbps (lv: %d), RX: %u [%u] Mbps (lv: %d)\n",
+		   stats->tx_throughput, stats->tx_throughput_raw, stats->tx_tfc_lv,
+		   stats->rx_throughput, stats->rx_throughput_raw, stats->rx_tfc_lv);
 	seq_printf(m, "Beacon: %u\n", pkt_stat->beacon_nr);
+	seq_printf(m, "Avg packet length: TX=%u, RX=%u\n", stats->tx_avg_len,
+		   stats->rx_avg_len);
 
 	seq_puts(m, "RX count:\n");
 	for (i = 0; i < ARRAY_SIZE(rtw89_rx_rate_cnt_infos); i++) {
@@ -2301,6 +2335,10 @@ static struct rtw89_debugfs_priv rtw89_debug_priv_btc_manual = {
 	.cb_write = rtw89_debug_priv_btc_manual_set,
 };
 
+static struct rtw89_debugfs_priv rtw89_debug_priv_fw_log_manual = {
+	.cb_write = rtw89_debug_fw_log_btc_manual_set,
+};
+
 static struct rtw89_debugfs_priv rtw89_debug_priv_phy_info = {
 	.cb_read = rtw89_debug_priv_phy_info_get,
 };
@@ -2340,6 +2378,7 @@ void rtw89_debugfs_init(struct rtw89_dev *rtwdev)
 	rtw89_debugfs_add_w(send_h2c);
 	rtw89_debugfs_add_r(btc_info);
 	rtw89_debugfs_add_w(btc_manual);
+	rtw89_debugfs_add_w(fw_log_manual);
 	rtw89_debugfs_add_r(phy_info);
 }
 #endif

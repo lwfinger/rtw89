@@ -69,6 +69,44 @@ enum rtw89_fw_c2h_category {
 	RTW89_C2H_CAT_OUTSRC,
 };
 
+enum rtw89_fw_log_level {
+	RTW89_FW_LOG_LEVEL_OFF,
+	RTW89_FW_LOG_LEVEL_CRT,
+	RTW89_FW_LOG_LEVEL_SER,
+	RTW89_FW_LOG_LEVEL_WARN,
+	RTW89_FW_LOG_LEVEL_LOUD,
+	RTW89_FW_LOG_LEVEL_TR,
+};
+
+enum rtw89_fw_log_path {
+	RTW89_FW_LOG_LEVEL_UART,
+	RTW89_FW_LOG_LEVEL_C2H,
+	RTW89_FW_LOG_LEVEL_SNI,
+};
+
+enum rtw89_fw_log_comp {
+	RTW89_FW_LOG_COMP_VER,
+	RTW89_FW_LOG_COMP_INIT,
+	RTW89_FW_LOG_COMP_TASK,
+	RTW89_FW_LOG_COMP_CNS,
+	RTW89_FW_LOG_COMP_H2C,
+	RTW89_FW_LOG_COMP_C2H,
+	RTW89_FW_LOG_COMP_TX,
+	RTW89_FW_LOG_COMP_RX,
+	RTW89_FW_LOG_COMP_IPSEC,
+	RTW89_FW_LOG_COMP_TIMER,
+	RTW89_FW_LOG_COMP_DBGPKT,
+	RTW89_FW_LOG_COMP_PS,
+	RTW89_FW_LOG_COMP_ERROR,
+	RTW89_FW_LOG_COMP_WOWLAN,
+	RTW89_FW_LOG_COMP_SECURE_BOOT,
+	RTW89_FW_LOG_COMP_BTC,
+	RTW89_FW_LOG_COMP_BB,
+	RTW89_FW_LOG_COMP_TWT,
+	RTW89_FW_LOG_COMP_RF,
+	RTW89_FW_LOG_COMP_MCC = 20,
+};
+
 #define FWDL_SECTION_MAX_NUM 10
 #define FWDL_SECTION_CHKSUM_LEN	8
 #define FWDL_SECTION_PER_PKT_LEN 2020
@@ -913,6 +951,15 @@ do { \
 #define SET_GENERAL_PKT_CTS2SELF_ID(h2c, val) \
 	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8))
 
+#define SET_LOG_CFG_LEVEL(h2c, val) \
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
+#define SET_LOG_CFG_PATH(h2c, val) \
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8))
+#define SET_LOG_CFG_COMP(h2c, val) \
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(31, 0))
+#define SET_LOG_CFG_COMP_EXT(h2c, val) \
+	le32p_replace_bits((__le32 *)(h2c) + 2, val, GENMASK(31, 0))
+
 #define SET_BA_CAM_VALID(h2c, val) \
 	le32p_replace_bits((__le32 *)h2c, val, BIT(0))
 #define SET_BA_CAM_INIT_REQ(h2c, val) \
@@ -949,6 +996,161 @@ do { \
 #define SET_LPS_PARM_LASTRPWM(h2c, val) \
 	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8))
 
+enum rtw89_btc_btf_h2c_class {
+	BTFC_SET = 0x10,
+	BTFC_GET = 0x11,
+	BTFC_FW_EVENT = 0x12,
+};
+
+enum rtw89_btc_btf_set {
+	SET_REPORT_EN = 0x0,
+	SET_SLOT_TABLE,
+	SET_MREG_TABLE,
+	SET_CX_POLICY,
+	SET_GPIO_DBG,
+	SET_DRV_INFO,
+	SET_DRV_EVENT,
+	SET_BT_WREG_ADDR,
+	SET_BT_WREG_VAL,
+	SET_BT_RREG_ADDR,
+	SET_BT_WL_CH_INFO,
+	SET_BT_INFO_REPORT,
+	SET_BT_IGNORE_WLAN_ACT,
+	SET_BT_TX_PWR,
+	SET_BT_LNA_CONSTRAIN,
+	SET_BT_GOLDEN_RX_RANGE,
+	SET_BT_PSD_REPORT,
+	SET_H2C_TEST,
+	SET_MAX1,
+};
+
+enum rtw89_btc_cxdrvinfo {
+	CXDRVINFO_INIT = 0,
+	CXDRVINFO_ROLE,
+	CXDRVINFO_DBCC,
+	CXDRVINFO_SMAP,
+	CXDRVINFO_RFK,
+	CXDRVINFO_RUN,
+	CXDRVINFO_CTRL,
+	CXDRVINFO_SCAN,
+	CXDRVINFO_MAX,
+};
+
+#define RTW89_SET_FWCMD_CXHDR_TYPE(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 0, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXHDR_LEN(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 1, GENMASK(7, 0))
+
+#define RTW89_SET_FWCMD_CXINIT_ANT_TYPE(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 2, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_ANT_NUM(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 3, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_ANT_ISO(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 4, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_ANT_POS(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 5, BIT(0))
+#define RTW89_SET_FWCMD_CXINIT_ANT_DIVERSITY(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 5, BIT(1))
+#define RTW89_SET_FWCMD_CXINIT_MOD_RFE(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_MOD_CV(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 7, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_MOD_BT_SOLO(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(0))
+#define RTW89_SET_FWCMD_CXINIT_MOD_BT_POS(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(1))
+#define RTW89_SET_FWCMD_CXINIT_MOD_SW_TYPE(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(2))
+#define RTW89_SET_FWCMD_CXINIT_WL_GCH(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 10, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXINIT_WL_ONLY(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(0))
+#define RTW89_SET_FWCMD_CXINIT_WL_INITOK(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(1))
+#define RTW89_SET_FWCMD_CXINIT_DBCC_EN(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(2))
+#define RTW89_SET_FWCMD_CXINIT_CX_OTHER(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(3))
+#define RTW89_SET_FWCMD_CXINIT_BT_ONLY(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(4))
+
+#define RTW89_SET_FWCMD_CXROLE_CONNECT_CNT(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 2, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXROLE_LINK_MODE(cmd, val) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 3, GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_NONE(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(0))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_STA(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(1))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_AP(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(2))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_VAP(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(3))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(4))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC_MASTER(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(5))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_MESH(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(6))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_MONITOR(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(7))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_DEV(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(8))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GC(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(9))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GO(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(10))
+#define RTW89_SET_FWCMD_CXROLE_ROLE_NAN(cmd, val) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(11))
+#define RTW89_SET_FWCMD_CXROLE_ACT_CONNECTED(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_PID(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), GENMASK(3, 1))
+#define RTW89_SET_FWCMD_CXROLE_ACT_PHY(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(4))
+#define RTW89_SET_FWCMD_CXROLE_ACT_NOA(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(5))
+#define RTW89_SET_FWCMD_CXROLE_ACT_BAND(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), GENMASK(7, 6))
+#define RTW89_SET_FWCMD_CXROLE_ACT_CLIENT_PS(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 7 + 12 * (n), BIT(0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_BW(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 7 + 12 * (n), GENMASK(7, 1))
+#define RTW89_SET_FWCMD_CXROLE_ACT_ROLE(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 8 + 12 * (n), GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_CH(cmd, val, n) \
+	RTW89_SET_FWCMD_UA8(cmd, val, 9 + 12 * (n), GENMASK(7, 0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_TX_LVL(cmd, val, n) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 10 + 12 * (n), GENMASK(15, 0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_RX_LVL(cmd, val, n) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 12 + 12 * (n), GENMASK(15, 0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_TX_RATE(cmd, val, n) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 14 + 12 * (n), GENMASK(15, 0))
+#define RTW89_SET_FWCMD_CXROLE_ACT_RX_RATE(cmd, val, n) \
+	RTW89_SET_FWCMD_UA16(cmd, val, 16 + 12 * (n), GENMASK(15, 0))
+
+#define RTW89_SET_FWCMD_CXCTRL_MANUAL(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(0))
+#define RTW89_SET_FWCMD_CXCTRL_IGNORE_BT(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(1))
+#define RTW89_SET_FWCMD_CXCTRL_ALWAYS_FREERUN(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(2))
+#define RTW89_SET_FWCMD_CXCTRL_TRACE_STEP(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(18, 3))
+
+#define RTW89_SET_FWCMD_CXRFK_STATE(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(1, 0))
+#define RTW89_SET_FWCMD_CXRFK_PATH_MAP(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(5, 2))
+#define RTW89_SET_FWCMD_CXRFK_PHY_MAP(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(7, 6))
+#define RTW89_SET_FWCMD_CXRFK_BAND(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(9, 8))
+#define RTW89_SET_FWCMD_CXRFK_TYPE(cmd, val) \
+	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(17, 10))
+
+#define RTW89_C2H_HEADER_LEN 8
+
 #define RTW89_GET_C2H_CATEGORY(c2h) \
 	le32_get_bits(*((__le32 *)c2h), GENMASK(1, 0))
 #define RTW89_GET_C2H_CLASS(c2h) \
@@ -957,6 +1159,9 @@ do { \
 	le32_get_bits(*((__le32 *)c2h), GENMASK(15, 8))
 #define RTW89_GET_C2H_LEN(c2h) \
 	le32_get_bits(*((__le32 *)(c2h) + 1), GENMASK(13, 0))
+
+#define RTW89_GET_C2H_LOG_SRT_PRT(c2h) (char *)((__le32 *)(c2h) + 2)
+#define RTW89_GET_C2H_LOG_LEN(len) ((len) - RTW89_C2H_HEADER_LEN)
 
 #define RTW89_GET_MAC_C2H_DONE_ACK_CAT(c2h) \
 	le32_get_bits(*((__le32 *)(c2h) + 2), GENMASK(1, 0))
@@ -1049,6 +1254,7 @@ struct rtw89_fw_h2c_rf_reg_info {
 
 /* CLASS 0 - FW INFO */
 #define H2C_CL_FW_INFO			0x0
+#define H2C_FUNC_LOG_CFG		0x0
 #define H2C_FUNC_MAC_GENERAL_PKT	0x1
 
 /* CLASS 2 - PS */
@@ -1123,6 +1329,10 @@ int rtw89_fw_h2c_set_edca(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
 			  u8 ac, u32 val);
 int rtw89_fw_h2c_set_ofld_cfg(struct rtw89_dev *rtwdev);
 int rtw89_fw_h2c_ra(struct rtw89_dev *rtwdev, struct rtw89_ra_info *ra, bool csi);
+int rtw89_fw_h2c_cxdrv_init(struct rtw89_dev *rtwdev);
+int rtw89_fw_h2c_cxdrv_role(struct rtw89_dev *rtwdev);
+int rtw89_fw_h2c_cxdrv_ctrl(struct rtw89_dev *rtwdev);
+int rtw89_fw_h2c_cxdrv_rfk(struct rtw89_dev *rtwdev);
 int rtw89_fw_h2c_rf_reg(struct rtw89_dev *rtwdev,
 			struct rtw89_fw_h2c_rf_reg_info *info,
 			u16 len, u8 page);
@@ -1133,18 +1343,36 @@ int rtw89_fw_h2c_raw(struct rtw89_dev *rtwdev, const u8 *buf, u16 len);
 int rtw89_fw_h2c_general_pkt(struct rtw89_dev *rtwdev, u8 macid);
 int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
 			struct ieee80211_ampdu_params *params);
-int rtw89_fw_h2c_lps_parm(struct rtw89_dev *rtwdev, u8 macid);
+int rtw89_fw_h2c_lps_parm(struct rtw89_dev *rtwdev,
+			  struct rtw89_lps_parm *lps_param);
 struct sk_buff *rtw89_fw_h2c_alloc_skb_with_hdr(u32 len);
 struct sk_buff *rtw89_fw_h2c_alloc_skb_no_hdr(u32 len);
 int rtw89_fw_msg_reg(struct rtw89_dev *rtwdev,
 		     struct rtw89_mac_h2c_info *h2c_info,
 		     struct rtw89_mac_c2h_info *c2h_info);
+int rtw89_fw_h2c_fw_log(struct rtw89_dev *rtwdev, bool enable);
+void rtw89_fw_st_dbg_dump(struct rtw89_dev *rtwdev);
 
 static __always_inline void RTW89_SET_FWCMD(u8 *cmd, u32 val, u8 offset, u32 mask)
 {
 	u32 *cmd32 = (u32 *)cmd;
 
 	le32p_replace_bits((__le32 *)(cmd32 + offset), val, mask);
+}
+
+static __always_inline void RTW89_SET_FWCMD_UA8(u8 *cmd, u8 val, u8 offset, u32 mask)
+{
+	u8p_replace_bits(cmd + offset, val, mask);
+}
+
+static __always_inline void RTW89_SET_FWCMD_UA16(u8 *cmd, u16 val, u8 offset, u32 mask)
+{
+	le16p_replace_bits((__le16 *)(cmd + offset), val, mask);
+}
+
+static __always_inline void RTW89_SET_FWCMD_UA32(u8 *cmd, u32 val, u8 offset, u32 mask)
+{
+	le32p_replace_bits((__le32 *)(cmd + offset), val, mask);
 }
 
 #endif

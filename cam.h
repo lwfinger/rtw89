@@ -157,8 +157,9 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 			  struct ieee80211_vif *vif,
 			  struct ieee80211_sta *sta,
-			  struct ieee80211_key_conf *key);
+			  struct ieee80211_key_conf *key,
+			  bool inform_fw);
 void rtw89_cam_bssid_changed(struct rtw89_dev *rtwdev,
 			     struct rtw89_vif *rtwvif);
-
+void rtw89_cam_reset_keys(struct rtw89_dev *rtwdev);
 #endif

@@ -2,9 +2,14 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include "cam.h"
+#include "debug.h"
 #include "mac.h"
-#include "pci.h"
+#include "ps.h"
 #include "ser.h"
+#include "util.h"
+
+#define SER_RECFG_TIMEOUT 1000
 
 enum ser_evt {
 	SER_EV_NONE,
@@ -14,6 +19,8 @@ enum ser_evt {
 	SER_EV_DO_RECOVERY, /* M3 */
 	SER_EV_MAC_RESET_DONE, /* M5 */
 	SER_EV_L2_RESET,
+	SER_EV_L2_RECFG_DONE,
+	SER_EV_L2_RECFG_TIMEOUT,
 	SER_EV_M3_TIMEOUT,
 	SER_EV_FW_M5_TIMEOUT,
 	SER_EV_L0_RESET,
@@ -66,6 +73,8 @@ static void ser_state_run(struct rtw89_ser *ser, u8 evt)
 
 	rtw89_debug(rtwdev, RTW89_DBG_SER, "ser: %s receive %s\n",
 		    ser_st_name(ser), ser_ev_name(ser, evt));
+
+	rtw89_leave_lps(rtwdev, false);
 	ser->st_tbl[ser->state].st_func(ser, evt);
 }
 
@@ -204,6 +213,23 @@ static void drv_resume_rx(struct rtw89_ser *ser)
 	clear_bit(RTW89_SER_DRV_STOP_RX, ser->flags);
 }
 
+static void ser_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
+{
+	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
+	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
+
+	rtw89_core_release_bit_map(rtwdev->hw_port, rtwvif->port);
+	rtwvif->net_type = RTW89_NET_TYPE_NO_LINK;
+	rtwvif->trigger = false;
+}
+
+static void ser_reset_mac_binding(struct rtw89_dev *rtwdev)
+{
+	rtw89_cam_reset_keys(rtwdev);
+	rtw89_core_release_all_bits_map(rtwdev->mac_id_map, RTW89_MAX_MAC_ID_NUM);
+	rtw89_iterate_vifs(rtwdev, ser_reset_vif_iter, rtwdev, false);
+}
+
 /* hal function */
 static int hal_enable_dma(struct rtw89_ser *ser)
 {
@@ -216,8 +242,7 @@ static int hal_enable_dma(struct rtw89_ser *ser)
 	if (!rtwdev->hci.ops->mac_lv1_rcvy)
 		return -EIO;
 
-	ret = rtwdev->hci.ops->mac_lv1_rcvy(rtwdev,
-					    MAC_AX_LV1_RCVY_STEP_2);
+	ret = rtwdev->hci.ops->mac_lv1_rcvy(rtwdev, RTW89_LV1_RCVY_STEP_2);
 	if (!ret)
 		clear_bit(RTW89_SER_HAL_STOP_DMA, ser->flags);
 
@@ -232,8 +257,7 @@ static int hal_stop_dma(struct rtw89_ser *ser)
 	if (!rtwdev->hci.ops->mac_lv1_rcvy)
 		return -EIO;
 
-	ret = rtwdev->hci.ops->mac_lv1_rcvy(rtwdev,
-					    MAC_AX_LV1_RCVY_STEP_1);
+	ret = rtwdev->hci.ops->mac_lv1_rcvy(rtwdev, RTW89_LV1_RCVY_STEP_1);
 	if (!ret)
 		set_bit(RTW89_SER_HAL_STOP_DMA, ser->flags);
 
@@ -325,6 +349,9 @@ static void ser_do_hci_st_hdl(struct rtw89_ser *ser, u8 evt)
 		break;
 
 	case SER_EV_FW_M5_TIMEOUT:
+		ser_state_goto(ser, SER_L2_RESET_ST);
+		break;
+
 	case SER_EV_MAC_RESET_DONE:
 		ser_state_goto(ser, SER_IDLE_ST);
 		break;
@@ -340,12 +367,30 @@ static void ser_do_hci_st_hdl(struct rtw89_ser *ser, u8 evt)
 
 static void ser_l2_reset_st_hdl(struct rtw89_ser *ser, u8 evt)
 {
+	struct rtw89_dev *rtwdev = container_of(ser, struct rtw89_dev, ser);
+
 	switch (evt) {
 	case SER_EV_STATE_IN:
+		mutex_lock(&rtwdev->mutex);
+		ser_reset_mac_binding(rtwdev);
+		rtw89_core_stop(rtwdev);
+		mutex_unlock(&rtwdev->mutex);
+
+		ieee80211_restart_hw(rtwdev->hw);
+		ser_set_alarm(ser, SER_RECFG_TIMEOUT, SER_EV_L2_RECFG_TIMEOUT);
+		break;
+
+	case SER_EV_L2_RECFG_TIMEOUT:
+		rtw89_info(rtwdev, "Err: ser L2 re-config timeout\n");
+		fallthrough;
+	case SER_EV_L2_RECFG_DONE:
 		ser_state_goto(ser, SER_IDLE_ST);
 		break;
 
 	case SER_EV_STATE_OUT:
+		ser_del_alarm(ser);
+		break;
+
 	default:
 		break;
 	}
@@ -359,6 +404,8 @@ static struct event_ent ser_ev_tbl[] = {
 	{SER_EV_DO_RECOVERY, "SER_EV_DO_RECOVERY m3"},
 	{SER_EV_MAC_RESET_DONE, "SER_EV_MAC_RESET_DONE m5"},
 	{SER_EV_L2_RESET, "SER_EV_L2_RESET"},
+	{SER_EV_L2_RECFG_DONE, "SER_EV_L2_RECFG_DONE"},
+	{SER_EV_L2_RECFG_TIMEOUT, "SER_EV_L2_RECFG_TIMEOUT"},
 	{SER_EV_M3_TIMEOUT, "SER_EV_M3_TIMEOUT"},
 	{SER_EV_FW_M5_TIMEOUT, "SER_EV_FW_M5_TIMEOUT"},
 	{SER_EV_L0_RESET, "SER_EV_L0_RESET"},
@@ -400,6 +447,11 @@ int rtw89_ser_deinit(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
+void rtw89_ser_recfg_done(struct rtw89_dev *rtwdev)
+{
+	ser_send_msg(&rtwdev->ser, SER_EV_L2_RECFG_DONE);
+}
+
 int rtw89_ser_notify(struct rtw89_dev *rtwdev, u32 err)
 {
 	u8 event = SER_EV_NONE;
@@ -423,6 +475,10 @@ int rtw89_ser_notify(struct rtw89_dev *rtwdev, u32 err)
 		event = SER_EV_L0_RESET;
 		break;
 	default:
+		if (err == MAC_AX_ERR_L1_PROMOTE_TO_L2 ||
+		    (err >= MAC_AX_ERR_L2_ERR_AH_DMA &&
+		     err <= MAC_AX_GET_ERR_MAX))
+			event = SER_EV_L2_RESET;
 		break;
 	}
 

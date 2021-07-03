@@ -330,10 +330,6 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 	case WLAN_CIPHER_SUITE_WEP104:
 		hw_key_type = RTW89_SEC_KEY_TYPE_WEP104;
 		break;
-	case WLAN_CIPHER_SUITE_TKIP:
-		hw_key_type = RTW89_SEC_KEY_TYPE_TKIP;
-		key->flags |= IEEE80211_KEY_FLAG_GENERATE_MMIC;
-		break;
 	case WLAN_CIPHER_SUITE_CCMP:
 		hw_key_type = RTW89_SEC_KEY_TYPE_CCMP128;
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
@@ -352,6 +348,7 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
 		ext_key = true;
 		break;
+	case WLAN_CIPHER_SUITE_TKIP:
 	case WLAN_CIPHER_SUITE_AES_CMAC:
 	case WLAN_CIPHER_SUITE_BIP_CMAC_256:
 	case WLAN_CIPHER_SUITE_BIP_GMAC_128:
@@ -378,7 +375,8 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 			  struct ieee80211_vif *vif,
 			  struct ieee80211_sta *sta,
-			  struct ieee80211_key_conf *key)
+			  struct ieee80211_key_conf *key,
+			  bool inform_fw)
 {
 	struct rtw89_cam_info *cam_info = &rtwdev->cam_info;
 	struct rtw89_vif *rtwvif;
@@ -386,7 +384,7 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	struct rtw89_sec_cam_entry *sec_cam;
 	u8 key_idx = key->hw_key_idx;
 	u8 sec_cam_idx;
-	int ret;
+	int ret = 0;
 
 	if (!vif) {
 		rtw89_err(rtwdev, "No iface for deleting sec cam\n");
@@ -400,9 +398,11 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	/* detach sec cam from addr cam */
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;
-	ret = rtw89_fw_h2c_cam(rtwdev, rtwvif);
-	if (ret)
-		rtw89_err(rtwdev, "failed to update cam del key: %d\n", ret);
+	if (inform_fw) {
+		ret = rtw89_fw_h2c_cam(rtwdev, rtwvif);
+		if (ret)
+			rtw89_err(rtwdev, "failed to update cam del key: %d\n", ret);
+	}
 
 	/* clear valid bit in addr cam will disable sec cam,
 	 * so we don't need to send H2C command again
@@ -417,6 +417,19 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	return ret;
 }
 
+static void rtw89_cam_reset_key_iter(struct ieee80211_hw *hw,
+				     struct ieee80211_vif *vif,
+				     struct ieee80211_sta *sta,
+				     struct ieee80211_key_conf *key,
+				     void *data)
+{
+	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
+	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
+
+	rtw89_cam_sec_key_del(rtwdev, vif, sta, key, false);
+	rtw89_cam_deinit(rtwdev, rtwvif);
+}
+
 void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
 	struct rtw89_cam_info *cam_info = &rtwdev->cam_info;
@@ -427,6 +440,13 @@ void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	bssid_cam->valid = false;
 	clear_bit(addr_cam->addr_cam_idx, cam_info->addr_cam_map);
 	clear_bit(bssid_cam->bssid_cam_idx, cam_info->bssid_cam_map);
+}
+
+void rtw89_cam_reset_keys(struct rtw89_dev *rtwdev)
+{
+	rcu_read_lock();
+	ieee80211_iter_keys_rcu(rtwdev->hw, NULL, rtw89_cam_reset_key_iter, rtwdev);
+	rcu_read_unlock();
 }
 
 static int rtw89_cam_get_avail_addr_cam(struct rtw89_dev *rtwdev,

@@ -5,7 +5,9 @@
 #include "debug.h"
 #include "fw.h"
 #include "phy.h"
+#include "ps.h"
 #include "reg.h"
+#include "sar.h"
 
 static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 			     const struct rtw89_ra_report *report)
@@ -119,6 +121,55 @@ static u64 rtw89_phy_ra_mask_rssi(struct rtw89_dev *rtwdev, u8 rssi,
 	return 0xffffffffffffffffULL;
 }
 
+static u64 rtw89_phy_ra_mask_cfg(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta)
+{
+	struct rtw89_hal *hal = &rtwdev->hal;
+	struct ieee80211_sta *sta = rtwsta_to_sta(rtwsta);
+	struct cfg80211_bitrate_mask *mask = &rtwsta->mask;
+	enum nl80211_band band;
+	u64 cfg_mask;
+
+	if (!rtwsta->use_cfg_mask)
+		return -1;
+
+	switch (hal->current_band_type) {
+	case RTW89_BAND_2G:
+		band = NL80211_BAND_2GHZ;
+		cfg_mask = u64_encode_bits(mask->control[NL80211_BAND_2GHZ].legacy,
+					   RA_MASK_CCK_RATES | RA_MASK_OFDM_RATES);
+		break;
+	case RTW89_BAND_5G:
+		band = NL80211_BAND_5GHZ;
+		cfg_mask = u64_encode_bits(mask->control[NL80211_BAND_5GHZ].legacy,
+					   RA_MASK_OFDM_RATES);
+		break;
+	default:
+		rtw89_warn(rtwdev, "unhandled band type %d\n", hal->current_band_type);
+		return -1;
+	}
+
+	if (sta->he_cap.has_he) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[0],
+					    RA_MASK_HE_1SS_RATES);
+		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[1],
+					    RA_MASK_HE_2SS_RATES);
+#endif
+	} else if (sta->vht_cap.vht_supported) {
+		cfg_mask |= u64_encode_bits(mask->control[band].vht_mcs[0],
+					    RA_MASK_VHT_1SS_RATES);
+		cfg_mask |= u64_encode_bits(mask->control[band].vht_mcs[1],
+					    RA_MASK_VHT_2SS_RATES);
+	} else if (sta->ht_cap.ht_supported) {
+		cfg_mask |= u64_encode_bits(mask->control[band].ht_mcs[0],
+					    RA_MASK_HT_1SS_RATES);
+		cfg_mask |= u64_encode_bits(mask->control[band].ht_mcs[1],
+					    RA_MASK_HT_2SS_RATES);
+	}
+
+	return cfg_mask;
+}
+
 static const u64
 rtw89_ra_mask_ht_rates[4] = {RA_MASK_HT_1SS_RATES, RA_MASK_HT_2SS_RATES,
 			     RA_MASK_HT_3SS_RATES, RA_MASK_HT_4SS_RATES};
@@ -211,8 +262,10 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		ra_mask = RA_MASK_CCK_RATES;
 	}
 
-	if (mode != RTW89_RA_MODE_CCK)
+	if (mode != RTW89_RA_MODE_CCK) {
 		ra_mask &= rtw89_phy_ra_mask_rssi(rtwdev, rssi, 0);
+		ra_mask &= rtw89_phy_ra_mask_cfg(rtwdev, rtwsta);
+	}
 
 	switch (sta->bandwidth) {
 	case IEEE80211_STA_RX_BW_80:
@@ -258,9 +311,8 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	ra->csi_mode = csi_mode;
 }
 
-static void rtw89_phy_ra_updata_sta_iter(void *data, struct ieee80211_sta *sta)
+void rtw89_phy_ra_updata_sta(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta)
 {
-	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
 	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
 	struct rtw89_ra_info *ra = &rtwsta->ra;
 
@@ -275,6 +327,13 @@ static void rtw89_phy_ra_updata_sta_iter(void *data, struct ieee80211_sta *sta)
 		    ra->giltf);
 
 	rtw89_fw_h2c_ra(rtwdev, ra, false);
+}
+
+static void rtw89_phy_ra_updata_sta_iter(void *data, struct ieee80211_sta *sta)
+{
+	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
+
+	rtw89_phy_ra_updata_sta(rtwdev, sta);
 }
 
 void rtw89_phy_ra_update(struct rtw89_dev *rtwdev)
@@ -430,6 +489,7 @@ bool rtw89_phy_write_rf(struct rtw89_dev *rtwdev, enum rtw89_rf_path rf_path,
 
 	rtw89_phy_write32_mask(rtwdev, direct_addr, mask, data);
 
+	/* delay to ensure writing properly */
 	udelay(1);
 
 	return true;
@@ -914,7 +974,11 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
-	s8 lmt = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	s8 lmt = 0, sar;
+#else
+	s8 lmt;
+#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -928,7 +992,14 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 		return 0;
 	}
 
-	return _phy_txpwr_rf_to_mac(rtwdev, lmt);
+	lmt = _phy_txpwr_rf_to_mac(rtwdev, lmt);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	sar = rtw89_query_sar(rtwdev);
+
+	return min(lmt, sar);
+#else
+	return lmt;
+#endif
 }
 
 #define __fill_txpwr_limit_nonbf_bf(ptr, bw, ntx, rs, ch)		\
@@ -1036,7 +1107,11 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	s8 lmt_ru = 0, sar;
+#else
 	s8 lmt_ru = 0;
+#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -1050,7 +1125,14 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 		return 0;
 	}
 
-	return _phy_txpwr_rf_to_mac(rtwdev, lmt_ru);
+	lmt_ru = _phy_txpwr_rf_to_mac(rtwdev, lmt_ru);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	sar = rtw89_query_sar(rtwdev);
+
+	return min(lmt_ru, sar);
+#else
+	return lmt_ru;
+#endif
 }
 
 static void
@@ -1206,6 +1288,7 @@ static void rtw89_phy_c2h_ra_rpt_iter(void *data, struct ieee80211_sta *sta)
 	ra_report->hw_rate = FIELD_PREP(RTW89_HW_RATE_MASK_MOD, mode) |
 			     FIELD_PREP(RTW89_HW_RATE_MASK_VAL, rate);
 	sta->max_rc_amsdu_len = get_max_amsdu_len(rtwdev, ra_report);
+	rtwsta->max_agg_wait = sta->max_rc_amsdu_len / 1500 - 1;
 }
 
 static void
@@ -1276,22 +1359,25 @@ static void rtw89_phy_cfo_set_xcap_reg(struct rtw89_dev *rtwdev, bool sc_xo,
 }
 
 static void rtw89_phy_cfo_set_crystal_cap(struct rtw89_dev *rtwdev,
-					  u8 crystal_cap)
+					  u8 crystal_cap, bool force)
 {
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	u8 sc_xi_val, sc_xo_val;
 
-	if (cfo->crystal_cap == crystal_cap)
+	if (!force && cfo->crystal_cap == crystal_cap)
 		return;
-
+	crystal_cap = clamp_t(u8, crystal_cap, 0, 127);
 	rtw89_phy_cfo_set_xcap_reg(rtwdev, true, crystal_cap);
 	rtw89_phy_cfo_set_xcap_reg(rtwdev, false, crystal_cap);
 	sc_xo_val = rtw89_phy_cfo_get_xcap_reg(rtwdev, true);
 	sc_xi_val = rtw89_phy_cfo_get_xcap_reg(rtwdev, false);
 	cfo->crystal_cap = sc_xi_val;
+	cfo->x_cap_ofst = (s8)((int)cfo->crystal_cap - cfo->def_x_cap);
 
 	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Set sc_xi=0x%x\n", sc_xi_val);
 	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Set sc_xo=0x%x\n", sc_xo_val);
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Get xcap_ofst=%d\n",
+		    cfo->x_cap_ofst);
 	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Set xcap OK\n");
 }
 
@@ -1301,15 +1387,47 @@ static void rtw89_phy_cfo_reset(struct rtw89_dev *rtwdev)
 	u8 cap;
 
 	cfo->def_x_cap = cfo->crystal_cap_default & B_AX_XTAL_SC_MSK;
-	cfo->is_adjust = true;
+	cfo->is_adjust = false;
 	if (cfo->crystal_cap == cfo->def_x_cap)
 		return;
 	cap = cfo->crystal_cap;
 	cap += (cap > cfo->def_x_cap ? -1 : 1);
-	rtw89_phy_cfo_set_crystal_cap(rtwdev, cap);
-
+	rtw89_phy_cfo_set_crystal_cap(rtwdev, cap, false);
 	rtw89_debug(rtwdev, RTW89_DBG_CFO,
-		    "X-cap approach to init-val (0x%x)\n", cfo->crystal_cap);
+		    "(0x%x) approach to dflt_val=(0x%x)\n", cfo->crystal_cap,
+		    cfo->def_x_cap);
+}
+
+static void rtw89_dcfo_comp(struct rtw89_dev *rtwdev, s32 curr_cfo)
+{
+	bool is_linked = rtwdev->total_sta_assoc > 0;
+	s32 cfo_avg_312;
+	s32 dcfo_comp;
+	int sign;
+
+	if (!is_linked) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "DCFO: is_linked=%d\n",
+			    is_linked);
+		return;
+	}
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "DCFO: curr_cfo=%d\n", curr_cfo);
+	if (curr_cfo == 0)
+		return;
+	dcfo_comp = rtw89_phy_read32_mask(rtwdev, R_DCFO, B_DCFO);
+	sign = curr_cfo > 0 ? 1 : -1;
+	cfo_avg_312 = (curr_cfo << 3) / 5 + sign * dcfo_comp;
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "DCFO: avg_cfo=%d\n", cfo_avg_312);
+	if (rtwdev->chip->chip_id == RTL8852A && rtwdev->hal.cv == CHIP_CBV)
+		cfo_avg_312 = -cfo_avg_312;
+	rtw89_phy_set_phy_regs(rtwdev, R_DCFO_COMP_S0, B_DCFO_COMP_S0_MSK,
+			       cfo_avg_312);
+}
+
+static void rtw89_dcfo_comp_init(struct rtw89_dev *rtwdev)
+{
+	rtw89_phy_set_phy_regs(rtwdev, R_DCFO_OPT, B_DCFO_OPT_EN, 1);
+	rtw89_phy_set_phy_regs(rtwdev, R_DCFO_WEIGHT, B_DCFO_WEIGHT_MSK, 8);
+	rtw89_write32_clr(rtwdev, R_AX_PWR_UL_CTRL2, B_AX_PWR_UL_CFO_MSK);
 }
 
 static void rtw89_phy_cfo_init(struct rtw89_dev *rtwdev)
@@ -1317,180 +1435,188 @@ static void rtw89_phy_cfo_init(struct rtw89_dev *rtwdev)
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	struct rtw89_efuse *efuse = &rtwdev->efuse;
 
-	cfo->crystal_cap_default = efuse->xtal_cap;
-	cfo->crystal_cap = cfo->crystal_cap_default & B_AX_XTAL_SC_MSK;
+	cfo->crystal_cap_default = efuse->xtal_cap & B_AX_XTAL_SC_MSK;
+	cfo->crystal_cap = cfo->crystal_cap_default;
 	cfo->def_x_cap = cfo->crystal_cap;
-	cfo->is_adjust = true;
+	cfo->is_adjust = false;
+	cfo->x_cap_ofst = 0;
+	cfo->rtw89_multi_cfo_mode = RTW89_TP_BASED_AVG_MODE;
 	cfo->apply_compensation = false;
 	cfo->residual_cfo_acc = 0;
-
 	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Default xcap=%0x\n",
 		    cfo->crystal_cap_default);
+	rtw89_phy_cfo_set_crystal_cap(rtwdev, cfo->crystal_cap_default, true);
+	rtw89_phy_set_phy_regs(rtwdev, R_DCFO, B_DCFO, 1);
+	rtw89_dcfo_comp_init(rtwdev);
+	cfo->cfo_timer_ms = 2000;
+	cfo->cfo_trig_by_timer_en = false;
+	cfo->phy_cfo_trk_cnt = 0;
+	cfo->phy_cfo_status = RTW89_PHY_DCFO_STATE_NORMAL;
 }
 
-static void rtw89_phy_digital_cfo_compensation(struct rtw89_dev *rtwdev)
-{
-	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
-	s16 cfo_avg_312p5khz;
-
-	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Digital cfo compensation\n");
-	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Residual cfo: ((%dK))\n",
-		    cfo->cfo_avg_pre >> 2);
-
-	cfo->residual_cfo_acc = cfo->residual_cfo_acc + cfo->cfo_avg_pre;
-	cfo_avg_312p5khz = -1 * (s16)(cfo->residual_cfo_acc << 10) / 625;
-
-	rtw89_debug(rtwdev, RTW89_DBG_CFO,
-		    "r_cfo_comp_312p5khz=0x%x\n",
-		    (s16)(cfo_avg_312p5khz & B_CFO_COMP_VAL_MSK));
-
-	cfo_avg_312p5khz &= B_CFO_COMP_VAL_MSK;
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG0_L, B_CFO_COMP_VAL_MSK,
-			       cfo_avg_312p5khz);
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG1_L, B_CFO_COMP_VAL_MSK,
-			       cfo_avg_312p5khz);
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG0_H,
-			       B_CFO_COMP_WEIGHT_MSK, CFO_COMP_WEIGHT);
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG1_H,
-			       B_CFO_COMP_WEIGHT_MSK, CFO_COMP_WEIGHT);
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG0_CTRL,
-			       B_CFO_COMP_VALID_BIT, 1);
-	rtw89_phy_write32_mask(rtwdev, R_CFO_COMP_SEG1_CTRL,
-			       B_CFO_COMP_VALID_BIT, 1);
-	rtw89_write32_clr(rtwdev, R_AX_PWR_UL_CTRL2, B_AX_PWR_UL_CTRL2_MSK);
-}
-
-static void rtw89_phy_cfo_crystal_cap_adjust(struct rtw89_dev *rtwdev)
+static void rtw89_phy_cfo_crystal_cap_adjust(struct rtw89_dev *rtwdev,
+					     s32 curr_cfo)
 {
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	s8 crystal_cap = cfo->crystal_cap;
-	int cfo_previous, sign;
+	s32 cfo_abs = abs(curr_cfo);
+	int sign;
 
-	cfo_previous = abs(cfo->cfo_avg_pre);
 	if (!cfo->is_adjust) {
-		if (cfo_previous > CFO_TRK_ENABLE_TH)
+		if (cfo_abs > CFO_TRK_ENABLE_TH)
 			cfo->is_adjust = true;
-	}
-
-	sign = cfo->cfo_avg_pre > 0 ? 1 : -1;
-	if (cfo->is_adjust) {
-		cfo_previous = abs(cfo->cfo_avg_pre);
-		if (cfo_previous > CFO_TRK_STOP_TH_4)
-			crystal_cap += 7 * sign;
-		else if (cfo_previous > CFO_TRK_STOP_TH_3)
-			crystal_cap += 5 * sign;
-		else if (cfo_previous > CFO_TRK_STOP_TH_2)
-			crystal_cap += 3 * sign;
-		else if (cfo_previous > CFO_TRK_STOP_TH)
-			crystal_cap += 1 * sign;
-		else if (cfo_previous <= CFO_TRK_STOP_TH)
-			cfo->is_adjust = false;
-
-		if (crystal_cap > B_AX_XTAL_SC_MSK)
-			crystal_cap = B_AX_XTAL_SC_MSK;
-		else if (crystal_cap < 0)
-			crystal_cap = 0;
-		rtw89_phy_cfo_set_crystal_cap(rtwdev, (u8)crystal_cap);
-
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "X_cap{Curr,Default}={0x%x,0x%x}\n",
-			    cfo->crystal_cap, cfo->def_x_cap);
-
 	} else {
-		if (cfo->apply_compensation)
-			rtw89_phy_digital_cfo_compensation(rtwdev);
+		if (cfo_abs < CFO_TRK_STOP_TH)
+			cfo->is_adjust = false;
 	}
+	if (!cfo->is_adjust) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Stop CFO tracking\n");
+		return;
+	}
+	sign = curr_cfo > 0 ? 1 : -1;
+	if (cfo_abs > CFO_TRK_STOP_TH_4)
+		crystal_cap += 7 * sign;
+	else if (cfo_abs > CFO_TRK_STOP_TH_3)
+		crystal_cap += 5 * sign;
+	else if (cfo_abs > CFO_TRK_STOP_TH_2)
+		crystal_cap += 3 * sign;
+	else if (cfo_abs > CFO_TRK_STOP_TH_1)
+		crystal_cap += 1 * sign;
+	else
+		return;
+	rtw89_phy_cfo_set_crystal_cap(rtwdev, (u8)crystal_cap, false);
+	rtw89_debug(rtwdev, RTW89_DBG_CFO,
+		    "X_cap{Curr,Default}={0x%x,0x%x}\n",
+		    cfo->crystal_cap, cfo->def_x_cap);
 }
 
-static void rtw89_phy_average_cfo_calc(struct rtw89_dev *rtwdev)
+static s32 rtw89_phy_average_cfo_calc(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
-	s32 cfo_khz_avg[CFO_TRACK_MAX_USER] = {0};
-	s32 cfo_max = 0, cfo_min = U16_MAX, cfo_khz_all = 0;
-	s32 cnt_max = 0, cnt_min = U16_MAX, cfo_cnt_all = 0;
-	s16 val;
-	u8 cnt_max_macid = 0, cnt_min_macid = 0;
-	u8 cfo_max_macid = 0, cfo_min_macid = 0, i;
+	s32 cfo_khz_all = 0;
+	s32 cfo_cnt_all = 0;
+	s32 cfo_all_avg = 0;
+	u8 i;
 
-	rtw89_debug(rtwdev, RTW89_DBG_CFO, "one_entry_only=%d\n",
-		    rtwdev->total_sta_assoc == 1);
+	if (rtwdev->total_sta_assoc != 1)
+		return 0;
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "one_entry_only\n");
+	for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
+		if (cfo->cfo_cnt[i] == 0)
+			continue;
+		cfo_khz_all += cfo->cfo_tail[i];
+		cfo_cnt_all += cfo->cfo_cnt[i];
+		cfo_all_avg = phy_div(cfo_khz_all, cfo_cnt_all);
+		cfo->pre_cfo_avg[i] = cfo->cfo_avg[i];
+	}
+	rtw89_debug(rtwdev, RTW89_DBG_CFO,
+		    "CFO track for macid = %d\n", i);
+	rtw89_debug(rtwdev, RTW89_DBG_CFO,
+		    "Total cfo=%dK, pkt_cnt=%d, avg_cfo=%dK\n",
+		    cfo_khz_all, cfo_cnt_all, cfo_all_avg);
+	return cfo_all_avg;
+}
 
-	if (rtwdev->total_sta_assoc == 1) {
+static s32 rtw89_phy_multi_sta_cfo_calc(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
+	struct rtw89_traffic_stats *stats = &rtwdev->stats;
+	s32 target_cfo = 0;
+	s32 cfo_khz_all = 0;
+	s32 cfo_khz_all_tp_wgt = 0;
+	s32 cfo_avg = 0;
+	s32 max_cfo_lb = BIT(31);
+	s32 min_cfo_ub = GENMASK(30, 0);
+	u16 cfo_cnt_all = 0;
+	u8 active_entry_cnt = 0;
+	u8 sta_cnt = 0;
+	u32 tp_all = 0;
+	u64 active_entry = 0;
+	u8 i;
+	u8 cfo_tol = 0;
+
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Multi entry cfo_trk\n");
+	if (cfo->rtw89_multi_cfo_mode == RTW89_PKT_BASED_AVG_MODE) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Pkt based avg mode\n");
 		for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
 			if (cfo->cfo_cnt[i] == 0)
 				continue;
 			cfo_khz_all += cfo->cfo_tail[i];
 			cfo_cnt_all += cfo->cfo_cnt[i];
-			if (cfo_cnt_all == 0)
-				cfo->cfo_avg_pre = 0;
-			else
-				cfo->cfo_avg_pre = cfo_khz_all / cfo_cnt_all;
+			cfo_avg = phy_div(cfo_khz_all, (s32)cfo_cnt_all);
+			rtw89_debug(rtwdev, RTW89_DBG_CFO,
+				    "Msta cfo=%d, pkt_cnt=%d, avg_cfo=%d\n",
+				    cfo_khz_all, cfo_cnt_all, cfo_avg);
+			target_cfo = cfo_avg;
 		}
+	} else if (cfo->rtw89_multi_cfo_mode == RTW89_ENTRY_BASED_AVG_MODE) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Entry based avg mode\n");
+		for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
+			if (cfo->cfo_cnt[i] == 0)
+				continue;
+			active_entry |= BIT_ULL(i);
+			cfo->cfo_avg[i] = phy_div(cfo->cfo_tail[i],
+						  (s32)cfo->cfo_cnt[i]);
+			cfo_khz_all += cfo->cfo_avg[i];
+			rtw89_debug(rtwdev, RTW89_DBG_CFO,
+				    "Macid=%d, cfo_avg=%d\n", i,
+				    cfo->cfo_avg[i]);
+		}
+		sta_cnt = rtwdev->total_sta_assoc;
+		cfo_avg = phy_div(cfo_khz_all, (s32)sta_cnt);
 		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "CFO track for one entry only\n");
+			    "Msta cfo_acc=%d, ent_cnt=%d, avg_cfo=%d\n",
+			    cfo_khz_all, sta_cnt, cfo_avg);
+		target_cfo = cfo_avg;
+	} else if (cfo->rtw89_multi_cfo_mode == RTW89_TP_BASED_AVG_MODE) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "TP based avg mode\n");
+		cfo_tol = cfo->sta_cfo_tolerance;
+		for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
+			sta_cnt++;
+			if (cfo->cfo_cnt[i] != 0) {
+				cfo->cfo_avg[i] = phy_div(cfo->cfo_tail[i],
+							  (s32)cfo->cfo_cnt[i]);
+				active_entry_cnt++;
+			} else {
+				cfo->cfo_avg[i] = cfo->pre_cfo_avg[i];
+			}
+			max_cfo_lb = max(cfo->cfo_avg[i] - cfo_tol, max_cfo_lb);
+			min_cfo_ub = min(cfo->cfo_avg[i] + cfo_tol, min_cfo_ub);
+			cfo_khz_all += cfo->cfo_avg[i];
+			/* need tp for each entry */
+			rtw89_debug(rtwdev, RTW89_DBG_CFO,
+				    "[%d] cfo_avg=%d, tp=tbd\n",
+				    i, cfo->cfo_avg[i]);
+			if (sta_cnt >= rtwdev->total_sta_assoc)
+				break;
+		}
+		tp_all = stats->rx_throughput; /* need tp for each entry */
+		cfo_avg =  phy_div(cfo_khz_all_tp_wgt, (s32)tp_all);
+
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Assoc sta cnt=%d\n",
+			    sta_cnt);
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Active sta cnt=%d\n",
+			    active_entry_cnt);
 		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "Total cfo=(%dK), pkt_cnt=(%d), avg_cfo=(%dK)\n",
-			    cfo_khz_all >> 2, cfo_cnt_all,
-			    cfo->cfo_avg_pre >> 2);
-		return;
+			    "Msta cfo with tp_wgt=%d, avg_cfo=%d\n",
+			    cfo_khz_all_tp_wgt, cfo_avg);
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "cfo_lb=%d,cfo_ub=%d\n",
+			    max_cfo_lb, min_cfo_ub);
+		if (max_cfo_lb <= min_cfo_ub) {
+			rtw89_debug(rtwdev, RTW89_DBG_CFO,
+				    "cfo win_size=%d\n",
+				    min_cfo_ub - max_cfo_lb);
+			target_cfo = clamp(cfo_avg, max_cfo_lb, min_cfo_ub);
+		} else {
+			rtw89_debug(rtwdev, RTW89_DBG_CFO,
+				    "No intersection of cfo torlence windows\n");
+			target_cfo = phy_div(cfo_khz_all, (s32)sta_cnt);
+		}
+		for (i = 0; i < CFO_TRACK_MAX_USER; i++)
+			cfo->pre_cfo_avg[i] = cfo->cfo_avg[i];
 	}
-
-	for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
-		if (cfo->cfo_cnt[i] == 0)
-			continue;
-
-		cfo_khz_all += cfo->cfo_tail[i];
-		cfo_cnt_all += cfo->cfo_cnt[i];
-		if (cfo->cfo_cnt[i] == 0)
-			cfo_khz_avg[i] = 0;
-		else
-			cfo_khz_avg[i] = cfo->cfo_tail[i] / cfo->cfo_cnt[i];
-
-		if (cfo->cfo_cnt[i] > cnt_max) {
-			cnt_max = cfo->cfo_cnt[i];
-			cnt_max_macid = i;
-		}
-		if (cfo->cfo_cnt[i] < cnt_min) {
-			cnt_min = cfo->cfo_cnt[i];
-			cnt_min_macid = i;
-		}
-		if (cfo_khz_avg[i] > cfo_max) {
-			cfo_max = cfo_khz_avg[i];
-			cfo_max_macid = i;
-		}
-		if (cfo_khz_avg[i] < cfo_min) {
-			cfo_min = cfo_khz_avg[i];
-			cfo_min_macid = i;
-		}
-	}
-
-	rtw89_debug(rtwdev, RTW89_DBG_CFO,
-		    "cnt macid = {%d, %d}, cfo macid = {%d, %d}\n",
-		    cnt_min_macid, cnt_max_macid, cfo_min_macid, cfo_max_macid);
-
-	/* Multi-sta CFO tracking strategy */
-	val = (s16)abs(cfo_max - cfo_min);
-	if (val < MAX_CFO_TOLERANCE || val > (MAX_CFO_TOLERANCE << 1)) {
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "CFO track for only pri-user\n");
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "Total cfo=(%dK), pkt_cnt=(%d), avg_cfo=(%dK)\n",
-			    cfo->cfo_tail[cnt_max_macid] >> 2,
-			    cfo->cfo_cnt[cnt_max_macid],
-			    cfo_khz_avg[cnt_max_macid] >> 2);
-		cfo->cfo_avg_pre = cfo_khz_avg[cnt_max_macid];
-	} else {
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "CFO track for average of all user\n");
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "Total cfo=(%dK), pkt_cnt=(%d), avg_cfo=(%dK)\n",
-			    cfo_khz_all >> 2, cfo_cnt_all,
-			    cfo->cfo_avg_pre >> 2);
-		if (cfo_cnt_all == 0)
-			cfo->cfo_avg_pre = 0;
-		else
-			cfo->cfo_avg_pre = cfo_khz_all / cfo_cnt_all;
-	}
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Target cfo=%d\n", target_cfo);
+	return target_cfo;
 }
 
 static void rtw89_phy_cfo_statistics_reset(struct rtw89_dev *rtwdev)
@@ -1504,27 +1630,117 @@ static void rtw89_phy_cfo_statistics_reset(struct rtw89_dev *rtwdev)
 	cfo->cfo_avg_pre = 0;
 }
 
-void rtw89_phy_cfo_track(struct rtw89_dev *rtwdev)
+static void rtw89_phy_cfo_dm(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
+	s32 new_cfo = 0;
+	bool x_cap_update = false;
+	u8 pre_x_cap = cfo->crystal_cap;
+
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "CFO:total_sta_assoc=%d\n",
+		    rtwdev->total_sta_assoc);
+	if (rtwdev->total_sta_assoc == 0) {
+		rtw89_phy_cfo_reset(rtwdev);
+		return;
+	}
+	if (cfo->packet_count == 0) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Pkt cnt = 0\n");
+		return;
+	}
+	if (cfo->packet_count == cfo->packet_count_pre) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "Pkt cnt doesn't change\n");
+		return;
+	}
+	if (rtwdev->total_sta_assoc == 1)
+		new_cfo = rtw89_phy_average_cfo_calc(rtwdev);
+	else
+		new_cfo = rtw89_phy_multi_sta_cfo_calc(rtwdev);
+	if (new_cfo == 0) {
+		rtw89_debug(rtwdev, RTW89_DBG_CFO, "curr_cfo=0\n");
+		return;
+	}
+	rtw89_phy_cfo_crystal_cap_adjust(rtwdev, new_cfo);
+	cfo->cfo_avg_pre = new_cfo;
+	x_cap_update =  cfo->crystal_cap == pre_x_cap ? false : true;
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Xcap_up=%d\n", x_cap_update);
+	rtw89_debug(rtwdev, RTW89_DBG_CFO, "Xcap: D:%x C:%x->%x, ofst=%d\n",
+		    cfo->def_x_cap, pre_x_cap, cfo->crystal_cap,
+		    cfo->x_cap_ofst);
+	if (x_cap_update) {
+		if (new_cfo > 0)
+			new_cfo -= CFO_SW_COMP_FINE_TUNE;
+		else
+			new_cfo += CFO_SW_COMP_FINE_TUNE;
+	}
+	rtw89_dcfo_comp(rtwdev, new_cfo);
+	rtw89_phy_cfo_statistics_reset(rtwdev);
+}
+
+void rtw89_phy_cfo_track_work(struct work_struct *work)
+{
+	struct rtw89_dev *rtwdev = container_of(work, struct rtw89_dev,
+						cfo_track_work.work);
+	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
+
+	mutex_lock(&rtwdev->mutex);
+	if (!cfo->cfo_trig_by_timer_en)
+		goto out;
+	rtw89_leave_ps_mode(rtwdev);
+	rtw89_phy_cfo_dm(rtwdev);
+	ieee80211_queue_delayed_work(rtwdev->hw, &rtwdev->cfo_track_work,
+				     msecs_to_jiffies(cfo->cfo_timer_ms));
+out:
+	mutex_unlock(&rtwdev->mutex);
+}
+
+static void rtw89_phy_cfo_start_work(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 
-	if (rtwdev->total_sta_assoc != 1) {
-		rtw89_phy_cfo_reset(rtwdev);
-		rtw89_debug(rtwdev, RTW89_DBG_CFO, "total_sta_assoc = %d\n",
-			    rtwdev->total_sta_assoc);
-		return;
-	}
+	ieee80211_queue_delayed_work(rtwdev->hw, &rtwdev->cfo_track_work,
+				     msecs_to_jiffies(cfo->cfo_timer_ms));
+}
 
-	if (cfo->packet_count == cfo->packet_count_pre) {
-		rtw89_debug(rtwdev, RTW89_DBG_CFO,
-			    "Pkt cnt doesn't change\n");
-		return;
-	}
+void rtw89_phy_cfo_track(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
+	struct rtw89_traffic_stats *stats = &rtwdev->stats;
 
-	cfo->packet_count_pre = cfo->packet_count;
-	rtw89_phy_average_cfo_calc(rtwdev);
-	rtw89_phy_cfo_crystal_cap_adjust(rtwdev);
-	rtw89_phy_cfo_statistics_reset(rtwdev);
+	switch (cfo->phy_cfo_status) {
+	case RTW89_PHY_DCFO_STATE_NORMAL:
+		if (stats->tx_throughput >= CFO_TP_UPPER) {
+			cfo->phy_cfo_status = RTW89_PHY_DCFO_STATE_ENHANCE;
+			cfo->cfo_trig_by_timer_en = true;
+			cfo->cfo_timer_ms = CFO_COMP_PERIOD;
+			rtw89_phy_cfo_start_work(rtwdev);
+		}
+		break;
+	case RTW89_PHY_DCFO_STATE_ENHANCE:
+		if (cfo->phy_cfo_trk_cnt >= CFO_PERIOD_CNT) {
+			cfo->phy_cfo_trk_cnt = 0;
+			cfo->cfo_trig_by_timer_en = false;
+		}
+		if (cfo->cfo_trig_by_timer_en == 1)
+			cfo->phy_cfo_trk_cnt++;
+		if (stats->tx_throughput <= CFO_TP_LOWER) {
+			cfo->phy_cfo_status = RTW89_PHY_DCFO_STATE_NORMAL;
+			cfo->phy_cfo_trk_cnt = 0;
+			cfo->cfo_trig_by_timer_en = false;
+		}
+		break;
+	default:
+		cfo->phy_cfo_status = RTW89_PHY_DCFO_STATE_NORMAL;
+		cfo->phy_cfo_trk_cnt = 0;
+		break;
+	}
+	rtw89_debug(rtwdev, RTW89_DBG_CFO,
+		    "[CFO]WatchDog tp=%d,state=%d,timer_en=%d,trk_cnt=%d,thermal=%ld\n",
+		    stats->tx_throughput, cfo->phy_cfo_status,
+		    cfo->cfo_trig_by_timer_en, cfo->phy_cfo_trk_cnt,
+		    ewma_thermal_read(&rtwdev->phystat.avg_thermal[0]));
+	if (cfo->cfo_trig_by_timer_en)
+		return;
+	rtw89_phy_cfo_dm(rtwdev);
 }
 
 void rtw89_phy_cfo_parse(struct rtw89_dev *rtwdev, s16 cfo_val,

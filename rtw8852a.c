@@ -1313,6 +1313,31 @@ static u32 rtw8852a_bb_cal_txpwr_ref(struct rtw89_dev *rtwdev,
 	return (tssi_ofst_cw << 18) | (pwr_cw << 9) | (ref & GENMASK(8, 0));
 }
 
+static
+void rtw8852a_set_txpwr_ul_tb_offset(struct rtw89_dev *rtwdev,
+				     s16 pw_ofst, enum rtw89_mac_idx mac_idx)
+{
+	s32 val_1t = 0;
+	s32 val_2t = 0;
+	u32 reg;
+
+	if (pw_ofst < -16 || pw_ofst > 15) {
+		rtw89_debug(rtwdev, RTW89_DBG_TXPWR, "[ULTB] Err pwr_offset=%d\n",
+			    pw_ofst);
+		return;
+	}
+	reg = rtw89_mac_reg_by_idx(R_AX_PWR_UL_TB_CTRL, mac_idx);
+	rtw89_write32_set(rtwdev, reg, B_AX_PWR_UL_TB_CTRL_EN);
+	val_1t = (s32)pw_ofst;
+	reg = rtw89_mac_reg_by_idx(R_AX_PWR_UL_TB_1T, mac_idx);
+	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_1T_MSK, val_1t);
+	val_2t = max(val_1t - 3, -16);
+	reg = rtw89_mac_reg_by_idx(R_AX_PWR_UL_TB_2T, mac_idx);
+	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_2T_MSK, val_2t);
+	rtw89_debug(rtwdev, RTW89_DBG_TXPWR, "[ULTB] Set TB pwr_offset=(%d, %d)\n",
+		    val_1t, val_2t);
+}
+
 static void rtw8852a_set_txpwr_ref(struct rtw89_dev *rtwdev,
 				   enum rtw89_phy_idx phy_idx)
 {
@@ -1496,6 +1521,10 @@ rtw8852a_init_txpwr_unit(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx)
 		return ret;
 
 	ret = rtw89_mac_txpwr_write32(rtwdev, phy_idx, R_AX_PWR_COEXT_CTRL, 0x01ebf004);
+	if (ret)
+		return ret;
+
+	ret = rtw89_mac_txpwr_write32(rtwdev, phy_idx, R_AX_PWR_UL_CTRL0, 0x0002f8ff);
 	if (ret)
 		return ret;
 
@@ -1749,6 +1778,7 @@ static void rtw8852a_btc_init_cfg(struct rtw89_dev *rtwdev)
 
 	/* set WL Tx response = Hi-Pri */
 	chip->ops->btc_set_wl_pri(rtwdev, BTC_PRI_MASK_TX_RESP, true);
+	chip->ops->btc_set_wl_pri(rtwdev, BTC_PRI_MASK_BEACON, true);
 
 	/* set rf gnt debug off */
 	rtw89_write_rf(rtwdev, RF_PATH_A, RR_WLSEL, 0xfffff, 0x0);
@@ -1773,7 +1803,6 @@ static void rtw8852a_btc_init_cfg(struct rtw89_dev *rtwdev)
 	 /* enable BT counter 0xda40[16,2] = 2b'11 */
 	rtw89_write32_set(rtwdev,
 			  R_AX_CSR_MODE, B_AX_BT_CNT_REST | B_AX_STATIS_BT_EN);
-	rtw89_mac_cfg_ctrl_path(rtwdev, false);
 	btc->cx.wl.status.map.init_ok = true;
 }
 
@@ -1781,19 +1810,25 @@ static
 void rtw8852a_btc_set_wl_pri(struct rtw89_dev *rtwdev, u8 map, bool state)
 {
 	u32 bitmap = 0;
+	u32 reg = 0;
 
 	switch (map) {
 	case BTC_PRI_MASK_TX_RESP:
+		reg = R_BTC_BT_COEX_MSK_TABLE;
 		bitmap = B_BTC_PRI_MASK_TX_RESP_V1;
+		break;
+	case BTC_PRI_MASK_BEACON:
+		reg = R_AX_BTC_WL_PRI_MSK;
+		bitmap = B_AX_BTC_PTA_WL_PRI_MASK_BCNQ;
 		break;
 	default:
 		return;
 	}
 
 	if (state)
-		rtw89_write32_set(rtwdev, R_BTC_BT_COEX_MSK_TABLE, bitmap);
+		rtw89_write32_set(rtwdev, reg, bitmap);
 	else
-		rtw89_write32_clr(rtwdev, R_BTC_BT_COEX_MSK_TABLE, bitmap);
+		rtw89_write32_clr(rtwdev, reg, bitmap);
 }
 
 static inline u32 __btc_ctrl_val_all_time(u32 ctrl)
@@ -1895,18 +1930,18 @@ static struct rtw89_btc_rf_trx_para rtw89_btc_8852a_rf_dl[] = {
 };
 
 static struct rtw89_btc_fbtc_mreg rtw89_btc_8852a_mon_reg[] = {
-	{REG_MAC, 4, 0xda24},
-	{REG_MAC, 4, 0xda28},
-	{REG_MAC, 4, 0xda2c},
-	{REG_MAC, 4, 0xda30},
-	{REG_MAC, 4, 0xda4c},
-	{REG_MAC, 4, 0xda10},
-	{REG_MAC, 4, 0xda20},
-	{REG_MAC, 4, 0xda34},
-	{REG_MAC, 4, 0xcef4},
-	{REG_MAC, 4, 0x8424},
-	{REG_BB, 4, 0x980},
-	{REG_BT_MODEM, 4, 0x178},
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda24),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda28),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda2c),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda30),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda4c),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda10),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda20),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda34),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xcef4),
+	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0x8424),
+	RTW89_DEF_FBTC_MREG(REG_BB, 4, 0x980),
+	RTW89_DEF_FBTC_MREG(REG_BT_MODEM, 4, 0x178),
 };
 
 static
@@ -1980,6 +2015,7 @@ static const struct rtw89_chip_ops rtw8852a_chip_ops = {
 	.ctrl_btg		= rtw8852a_ctrl_btg,
 	.query_ppdu		= rtw8852a_query_ppdu,
 	.bb_ctrl_btc_preagc	= rtw8852a_bb_ctrl_btc_preagc,
+	.set_txpwr_ul_tb_offset	= rtw8852a_set_txpwr_ul_tb_offset,
 
 	.btc_set_rfe		= rtw8852a_btc_set_rfe,
 	.btc_init_cfg		= rtw8852a_btc_init_cfg,

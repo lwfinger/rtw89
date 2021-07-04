@@ -465,7 +465,12 @@ static int rtw89_ops_ampdu_action(struct ieee80211_hw *hw,
 
 	switch (params->action) {
 	case IEEE80211_AMPDU_TX_START:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
 		return IEEE80211_AMPDU_TX_START_IMMEDIATE;
+#else
+		ieee80211_start_tx_ba_cb_irqsafe(vif, sta->addr, tid);
+		break;
+#endif
 	case IEEE80211_AMPDU_TX_STOP_CONT:
 	case IEEE80211_AMPDU_TX_STOP_FLUSH:
 	case IEEE80211_AMPDU_TX_STOP_FLUSH_CONT:

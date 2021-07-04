@@ -356,6 +356,12 @@ enum rtw89_pcie_clkdly_hw {
 	PCIE_CLKDLY_HW_200US = 0x5
 };
 
+enum rtw89_pci_flags {
+	RTW89_PCI_FLAG_DOING_RX,
+
+	NUM_OF_RTW89_PCI_FLAGS
+};
+
 struct rtw89_pci_bd_ram {
 	u8 start_idx;
 	u8 max_num;
@@ -491,6 +497,11 @@ struct rtw89_pci_rx_ring {
 	struct rtw89_rx_desc_info diliver_desc;
 };
 
+struct rtw89_pci_isrs {
+	u32 halt_c2h_isrs;
+	u32 isrs[2];
+};
+
 struct rtw89_pci {
 	struct pci_dev *pdev;
 
@@ -499,14 +510,13 @@ struct rtw89_pci {
 	/* protect TRX resources (exclude RXQ) */
 	spinlock_t trx_lock;
 	bool running;
+	DECLARE_BITMAP(flags, NUM_OF_RTW89_PCI_FLAGS);
 	struct rtw89_pci_tx_ring tx_rings[RTW89_TXCH_NUM];
 	struct rtw89_pci_rx_ring rx_rings[RTW89_RXCH_NUM];
 	struct sk_buff_head h2c_queue;
 
-	u32 halt_c2h_isrs;
 	u32 halt_c2h_intrs;
 	u32 intrs[2];
-	u32 isrs[2];
 	u16 link_ctrl;
 	void __iomem *mmap;
 };

@@ -2743,8 +2743,11 @@ void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif
 	if (!vif->bss_conf.he_support || !vif->bss_conf.assoc)
 		return;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	bss_color = vif->bss_conf.he_bss_color.color;
-
+#else
+	bss_color = 0;
+#endif
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_VLD0, 0x1,
 			      phy_idx);
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_TGT, bss_color,

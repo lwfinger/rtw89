@@ -63,6 +63,22 @@ enum rtw89_mac_c2h_type {
 	RTW89_FWCMD_C2HREG_FUNC_NULL = 0xFF
 };
 
+struct rtw89_c2h_phy_cap {
+	u32 func:7;
+	u32 ack:1;
+	u32 len:4;
+	u32 seq:4;
+	u32 rx_nss:8;
+	u32 bw:8;
+
+	u32 tx_nss:8;
+	u32 prot:8;
+	u32 nic:8;
+	u32 wl_func:8;
+
+	u32 hw_type:8;
+} __packed;
+
 enum rtw89_fw_c2h_category {
 	RTW89_C2H_CAT_TEST,
 	RTW89_C2H_CAT_MAC,

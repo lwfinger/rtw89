@@ -753,7 +753,7 @@ static void __get_sta_he_pkt_padding(struct rtw89_dev *rtwdev,
 {
 	bool ppe_th;
 	u8 ppe16, ppe8;
-	u8 nss = min(sta->rx_nss, rtwdev->chip->tx_nss) - 1;
+	u8 nss = min(sta->rx_nss, rtwdev->hal.tx_nss) - 1;
 	u8 ppe_thres_hdr = sta->he_cap.ppe_thres[0];
 	u8 ru_bitmap;
 	u8 n, idx, sh;

@@ -2994,6 +2994,7 @@ static void rtw89_pci_remove(struct pci_dev *pdev)
 
 static const struct pci_device_id rtw89_pci_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8852), .driver_data = RTL8852A },
+	{ PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0xa85a), .driver_data = RTL8852A },
 	{},
 };
 MODULE_DEVICE_TABLE(pci, rtw89_pci_id_table);

@@ -247,7 +247,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	}
 
 	if (mode >= RTW89_RA_MODE_HT) {
-		for (i = 0; i < rtwdev->chip->tx_nss; i++)
+		for (i = 0; i < rtwdev->hal.tx_nss; i++)
 			high_rate_mask |= high_rate_masks[i];
 		ra_mask &= high_rate_mask;
 		if (mode & RTW89_RA_MODE_OFDM)
@@ -294,7 +294,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	ra->macid = rtwsta->mac_id;
 	ra->stbc_cap = stbc_en;
 	ra->ldpc_cap = ldpc_en;
-	ra->ss_num = min(sta->rx_nss, rtwdev->chip->tx_nss) - 1;
+	ra->ss_num = min(sta->rx_nss, rtwdev->hal.tx_nss) - 1;
 	ra->en_sgi = sgi;
 	ra->ra_mask = ra_mask;
 

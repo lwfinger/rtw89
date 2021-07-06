@@ -1829,33 +1829,49 @@ int rtw89_core_sta_remove(struct rtw89_dev *rtwdev,
 static void rtw89_init_ht_cap(struct rtw89_dev *rtwdev,
 			      struct ieee80211_sta_ht_cap *ht_cap)
 {
+	static const __le16 highest[] = {cpu_to_le16(150), cpu_to_le16(300)};
+	struct rtw89_hal *hal = &rtwdev->hal;
+	u8 nss = hal->rx_nss;
+	int i;
+
 	ht_cap->ht_supported = true;
 	ht_cap->cap = 0;
 	ht_cap->cap |= IEEE80211_HT_CAP_SGI_20 |
 		       IEEE80211_HT_CAP_MAX_AMSDU |
 		       IEEE80211_HT_CAP_TX_STBC |
 		       (1 << IEEE80211_HT_CAP_RX_STBC_SHIFT);
-
 	ht_cap->cap |= IEEE80211_HT_CAP_LDPC_CODING;
-
 	ht_cap->cap |= IEEE80211_HT_CAP_SUP_WIDTH_20_40 |
 		       IEEE80211_HT_CAP_DSSSCCK40 |
 		       IEEE80211_HT_CAP_SGI_40;
 	ht_cap->ampdu_factor = IEEE80211_HT_MAX_AMPDU_64K;
 	ht_cap->ampdu_density = IEEE80211_HT_MPDU_DENSITY_NONE;
 	ht_cap->mcs.tx_params = IEEE80211_HT_MCS_TX_DEFINED;
-	ht_cap->mcs.rx_mask[0] = 0xFF;
-	ht_cap->mcs.rx_mask[1] = 0xFF;
+	for (i = 0; i < 4; i++)
+		ht_cap->mcs.rx_mask[i] = i < nss ? 0xFF : 0;
 	ht_cap->mcs.rx_mask[4] = 0x01;
-	ht_cap->mcs.rx_highest = cpu_to_le16(300);
+	ht_cap->mcs.rx_highest = nss <= ARRAY_SIZE(highest) ? highest[nss - 1] : 0;
 }
 
 static void rtw89_init_vht_cap(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sta_vht_cap *vht_cap)
 {
-	u16 mcs_map;
-	__le16 highest;
+	static const __le16 highest[] = {cpu_to_le16(433), cpu_to_le16(867)};
+	struct rtw89_hal *hal = &rtwdev->hal;
+	u16 tx_mcs_map = 0, rx_mcs_map = 0;
 	u8 sts_cap = 3;
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		if (i < hal->tx_nss)
+			tx_mcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << (i * 2);
+		else
+			tx_mcs_map |= IEEE80211_VHT_MCS_NOT_SUPPORTED << (i * 2);
+		if (i < hal->rx_nss)
+			rx_mcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << (i * 2);
+		else
+			rx_mcs_map |= IEEE80211_VHT_MCS_NOT_SUPPORTED << (i * 2);
+	}
 
 	vht_cap->vht_supported = true;
 	vht_cap->cap = IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454 |
@@ -1869,20 +1885,12 @@ static void rtw89_init_vht_cap(struct rtw89_dev *rtwdev,
 	vht_cap->cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE |
 			IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
 	vht_cap->cap |= sts_cap << IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT;
-
-	mcs_map = IEEE80211_VHT_MCS_SUPPORT_0_9 << 0 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 4 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 6 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 8 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 10 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 12 |
-		  IEEE80211_VHT_MCS_NOT_SUPPORTED << 14;
-	highest = cpu_to_le16(867);
-	mcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << 2;
-	vht_cap->vht_mcs.rx_mcs_map = cpu_to_le16(mcs_map);
-	vht_cap->vht_mcs.tx_mcs_map = cpu_to_le16(mcs_map);
-	vht_cap->vht_mcs.rx_highest = highest;
-	vht_cap->vht_mcs.tx_highest = highest;
+	vht_cap->vht_mcs.rx_mcs_map = cpu_to_le16(rx_mcs_map);
+	vht_cap->vht_mcs.tx_mcs_map = cpu_to_le16(tx_mcs_map);
+	vht_cap->vht_mcs.rx_highest = hal->rx_nss <= ARRAY_SIZE(highest) ?
+				      highest[hal->rx_nss - 1] : 0;
+	vht_cap->vht_mcs.tx_highest = hal->tx_nss <= ARRAY_SIZE(highest) ?
+				      highest[hal->tx_nss - 1] : 0;
 }
 
 #define RTW89_SBAND_IFTYPES_NR 2
@@ -1898,7 +1906,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 		       (chip->chip_id == RTL8852B && hal->cv == CHIP_CAV);
 	u16 mcs_map = 0;
 	int i;
-	int nss = chip->rx_nss;
+	int nss = hal->rx_nss;
 	int idx = 0;
 
 	iftype_data = kcalloc(RTW89_SBAND_IFTYPES_NR, sizeof(*iftype_data), GFP_KERNEL);
@@ -2238,6 +2246,10 @@ static int rtw89_chip_efuse_info_setup(struct rtw89_dev *rtwdev)
 		return ret;
 
 	ret = rtw89_parse_phycap_map(rtwdev);
+	if (ret)
+		return ret;
+
+	ret = rtw89_mac_setup_phycap(rtwdev);
 	if (ret)
 		return ret;
 

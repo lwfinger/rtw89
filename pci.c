@@ -609,10 +609,10 @@ static void rtw89_pci_recognize_intrs(struct rtw89_dev *rtwdev,
 static void rtw89_pci_enable_intr(struct rtw89_dev *rtwdev,
 				  struct rtw89_pci *rtwpci, bool exclude_rx)
 {
-	if (exclude_rx || test_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags))
-		rtwpci->intrs[0] &= ~B_AX_RXDMA_INTS_MASK;
-	else
-		rtwpci->intrs[0] |= B_AX_RXDMA_INTS_MASK;
+	//if (exclude_rx || test_bit(RTW89_PCI_FLAG_DOING_RX, rtwpci->flags))
+	//      rtwpci->intrs[0] &= ~B_AX_RXDMA_INTS_MASK;
+	//else
+	rtwpci->intrs[0] |= B_AX_RXDMA_INTS_MASK;
 
 	rtw89_write32(rtwdev, R_AX_HIMR0, rtwpci->halt_c2h_intrs);
 	rtw89_write32(rtwdev, R_AX_PCIE_HIMR00, rtwpci->intrs[0]);
@@ -2994,6 +2994,7 @@ static void rtw89_pci_remove(struct pci_dev *pdev)
 
 static const struct pci_device_id rtw89_pci_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8852), .driver_data = RTL8852A },
+	{ PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0xa85a), .driver_data = RTL8852A },
 	{},
 };
 MODULE_DEVICE_TABLE(pci, rtw89_pci_id_table);

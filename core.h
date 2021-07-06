@@ -2339,6 +2339,8 @@ struct rtw89_hal {
 	u32 sw_amsdu_max_size;
 	u32 antenna_tx;
 	u32 antenna_rx;
+	u8 tx_nss;
+	u8 rx_nss;
 };
 
 #define RTW89_MAX_MAC_ID_NUM 128

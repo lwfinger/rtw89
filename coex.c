@@ -4449,6 +4449,7 @@ void rtw89_btc_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 static void _show_cx_info(struct rtw89_dev *rtwdev, struct seq_file *m)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
+	struct rtw89_hal *hal = &rtwdev->hal;
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_dm *dm = &btc->dm;
 	struct rtw89_btc_bt_info *bt = &btc->cx.bt;
@@ -4515,8 +4516,8 @@ static void _show_cx_info(struct rtw89_dev *rtwdev, struct seq_file *m)
 		   "1Ant_Pos:S1, " : "1Ant_Pos:S0, ")));
 
 	seq_printf(m, "3rd_coex:%d, dbcc:%d, tx_num:%d, rx_num:%d\n",
-		   btc->cx.other.type, rtwdev->dbcc_en, chip->tx_nss,
-		   chip->rx_nss);
+		   btc->cx.other.type, rtwdev->dbcc_en, hal->tx_nss,
+		   hal->rx_nss);
 }
 
 static void _show_wl_role_info(struct rtw89_dev *rtwdev, struct seq_file *m)

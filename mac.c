@@ -2208,6 +2208,51 @@ static int cmac_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 	return ret;
 }
 
+static int rtw89_mac_read_phycap(struct rtw89_dev *rtwdev,
+				 struct rtw89_mac_c2h_info *c2h_info)
+{
+	struct rtw89_mac_h2c_info h2c_info = {0};
+	u32 ret;
+
+	h2c_info.id = RTW89_FWCMD_H2CREG_FUNC_GET_FEATURE;
+	h2c_info.content_len = 0;
+
+	ret = rtw89_fw_msg_reg(rtwdev, &h2c_info, c2h_info);
+	if (ret)
+		return ret;
+
+	if (c2h_info->id != RTW89_FWCMD_C2HREG_FUNC_PHY_CAP)
+		return -EINVAL;
+
+	return 0;
+}
+
+int rtw89_mac_setup_phycap(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_hal *hal = &rtwdev->hal;
+	const struct rtw89_chip_info *chip = rtwdev->chip;
+	struct rtw89_mac_c2h_info c2h_info = {0};
+	struct rtw89_c2h_phy_cap *cap =
+		(struct rtw89_c2h_phy_cap *)&c2h_info.c2hreg[0];
+	u32 ret;
+
+	ret = rtw89_mac_read_phycap(rtwdev, &c2h_info);
+	if (ret)
+		return ret;
+
+	hal->tx_nss = cap->tx_nss ?
+		      min_t(u8, cap->tx_nss, chip->tx_nss) : chip->tx_nss;
+	hal->rx_nss = cap->rx_nss ?
+		      min_t(u8, cap->rx_nss, chip->rx_nss) : chip->rx_nss;
+
+	rtw89_debug(rtwdev, RTW89_DBG_FW,
+		    "phycap hal/phy/chip: tx_nss=0x%x/0x%x/0x%x rx_nss=0x%x/0x%x/0x%x\n",
+		    hal->tx_nss, cap->tx_nss, chip->tx_nss,
+		    hal->rx_nss, cap->rx_nss, chip->rx_nss);
+
+	return 0;
+}
+
 static int rtw89_hw_sch_tx_en_h2c(struct rtw89_dev *rtwdev, u8 band,
 				  u16 tx_en_u16, u16 mask_u16)
 {

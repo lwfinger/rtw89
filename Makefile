@@ -63,6 +63,7 @@ ifeq ($(COMPRESS_XZ), y)
 endif
 	@depmod -a $(KVER)
 
+	@mkdir -p /lib/firmware/rtw89/
 	cp *.bin /lib/firmware/rtw89/.
 
 	@echo "Install rtw89 SUCCESS"

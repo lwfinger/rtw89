@@ -1097,6 +1097,15 @@ static void rtw8852a_bb_reset(struct rtw89_dev *rtwdev,
 	rtw89_phy_write32_clr(rtwdev, R_P1_TSSI_TRK, B_P1_TSSI_TRK_EN);
 }
 
+static void rtw8852a_bb_macid_ctrl_init(struct rtw89_dev *rtwdev,
+					enum rtw89_phy_idx phy_idx)
+{
+	u32 addr;
+
+	for (addr = R_AX_PWR_MACID_TABLE0; addr <= R_AX_PWR_MACID_TABLE127; addr += 4)
+		rtw89_mac_txpwr_write32(rtwdev, phy_idx, addr, 0);
+}
+
 static void rtw8852a_bb_sethw(struct rtw89_dev *rtwdev)
 {
 	rtw89_phy_write32_clr(rtwdev, R_P0_EN_SOUND_WO_NDP, B_P0_EN_SOUND_WO_NDP);
@@ -1117,6 +1126,8 @@ static void rtw8852a_bb_sethw(struct rtw89_dev *rtwdev)
 	rtw89_phy_write32_idx(rtwdev, R_MAC_SEL, B_MAC_SEL_MOD, 0x0, RTW89_PHY_1);
 	rtw89_phy_write32_clr(rtwdev, R_NDP_BRK0, B_NDP_RU_BRK);
 	rtw89_phy_write32_set(rtwdev, R_NDP_BRK1, B_NDP_RU_BRK);
+
+	rtw8852a_bb_macid_ctrl_init(rtwdev, RTW89_PHY_0);
 }
 
 static void rtw8852a_bbrst_for_rfk(struct rtw89_dev *rtwdev,

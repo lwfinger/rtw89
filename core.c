@@ -597,6 +597,7 @@ int rtw89_h2c_tx(struct rtw89_dev *rtwdev,
 		 struct sk_buff *skb, bool fwdl)
 {
 	struct rtw89_core_tx_request tx_req = {0};
+	u32 cnt;
 	int ret;
 
 	tx_req.skb = skb;
@@ -608,6 +609,12 @@ int rtw89_h2c_tx(struct rtw89_dev *rtwdev,
 
 	if (!fwdl)
 		rtw89_hex_dump(rtwdev, RTW89_DBG_FW, "H2C: ", skb->data, skb->len);
+
+	cnt = rtw89_hci_check_and_reclaim_tx_resource(rtwdev, RTW89_TXCH_CH12);
+	if (cnt == 0) {
+		rtw89_err(rtwdev, "no tx fwcmd resource\n");
+		return -ENOSPC;
+	}
 
 	ret = rtw89_hci_tx_write(rtwdev, &tx_req);
 	if (ret) {

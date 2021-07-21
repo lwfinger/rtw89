@@ -73,18 +73,31 @@ static u32 rtw89_pci_txbd_recalc(struct rtw89_dev *rtwdev,
 
 static void rtw89_pci_release_fwcmd(struct rtw89_dev *rtwdev,
 				    struct rtw89_pci *rtwpci,
-				    u32 cnt)
+				    u32 cnt, bool release_all)
 {
 	struct rtw89_pci_tx_data *tx_data;
 	struct sk_buff *skb;
+	__u32 qlen;
 
 	while (cnt--) {
 		skb = skb_dequeue(&rtwpci->h2c_queue);
 		if (!skb) {
+			rtw89_err(rtwdev, "failed to pre-release fwcmd\n");
+			return;
+		}
+		skb_queue_tail(&rtwpci->h2c_release_queue, skb);
+	}
+
+	qlen = skb_queue_len(&rtwpci->h2c_release_queue);
+	if (!release_all)
+	       qlen = qlen > RTW89_PCI_MULTITAG ? qlen - RTW89_PCI_MULTITAG : 0;
+
+	while (qlen--) {
+		skb = skb_dequeue(&rtwpci->h2c_release_queue);
+		if (!skb) {
 			rtw89_err(rtwdev, "failed to release fwcmd\n");
 			return;
 		}
-
 		tx_data = RTW89_PCI_TX_SKB_CB(skb);
 		dma_unmap_single(&rtwpci->pdev->dev, tx_data->dma, skb->len,
 				 DMA_TO_DEVICE);
@@ -92,25 +105,16 @@ static void rtw89_pci_release_fwcmd(struct rtw89_dev *rtwdev,
 	}
 }
 
-static void rtw89_pci_isr_txch_dma(struct rtw89_dev *rtwdev,
-				   struct rtw89_pci *rtwpci,
-				   enum rtw89_tx_channel txch)
+static void rtw89_pci_reclaim_tx_fwcmd(struct rtw89_dev *rtwdev,
+				       struct rtw89_pci *rtwpci)
 {
-	struct rtw89_pci_tx_ring *tx_ring = &rtwpci->tx_rings[txch];
+	struct rtw89_pci_tx_ring *tx_ring = &rtwpci->tx_rings[RTW89_TXCH_CH12];
 	u32 cnt;
-
-	if (txch != RTW89_TXCH_CH12)
-		return;
-
-	spin_lock_bh(&rtwpci->trx_lock);
 
 	cnt = rtw89_pci_txbd_recalc(rtwdev, tx_ring);
 	if (!cnt)
-		rtw89_debug(rtwdev, RTW89_DBG_TXRX,
-			    "No fwcmd TXBD consumed after DMA kicked off\n");
-	rtw89_pci_release_fwcmd(rtwdev, rtwpci, cnt);
-
-	spin_unlock_bh(&rtwpci->trx_lock);
+		return;
+	rtw89_pci_release_fwcmd(rtwdev, rtwpci, cnt, false);
 }
 
 static u32 rtw89_pci_rxbd_recalc(struct rtw89_dev *rtwdev,
@@ -639,10 +643,6 @@ static irqreturn_t rtw89_pci_interrupt_threadfn(int irq, void *dev)
 	rtw89_pci_recognize_intrs(rtwdev, rtwpci, &isrs);
 	spin_unlock_irqrestore(&rtwpci->irq_lock, flags);
 
-	/* TX ISR */
-	if (isrs.isrs[0] & B_AX_TXDMA_CH12_INT)
-		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_TXCH_CH12);
-
 	/* RX ISR */
 	if (isrs.isrs[0] & (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT))
 		rx = true;
@@ -770,8 +770,23 @@ static u32 rtw89_pci_get_avail_txbd_num(struct rtw89_pci_tx_ring *ring)
 	return bd_ring->len - (bd_ring->wp - bd_ring->rp) - 1;
 }
 
-static u32 rtw89_pci_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev,
-						   u8 txch)
+static
+u32 __rtw89_pci_check_and_reclaim_tx_fwcmd_resource(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
+	struct rtw89_pci_tx_ring *tx_ring = &rtwpci->tx_rings[RTW89_TXCH_CH12];
+	u32 cnt;
+
+	spin_lock_bh(&rtwpci->trx_lock);
+	rtw89_pci_reclaim_tx_fwcmd(rtwdev, rtwpci);
+	cnt = rtw89_pci_get_avail_txbd_num(tx_ring);
+	spin_unlock_bh(&rtwpci->trx_lock);
+
+	return cnt;
+}
+
+static u32 __rtw89_pci_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev,
+						     u8 txch)
 {
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
 	struct rtw89_pci_tx_ring *tx_ring = &rtwpci->tx_rings[txch];
@@ -803,6 +818,15 @@ out_unlock:
 	spin_unlock_bh(&rtwpci->trx_lock);
 
 	return min_cnt;
+}
+
+static u32 rtw89_pci_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev,
+						   u8 txch)
+{
+	if (txch == RTW89_TXCH_CH12)
+		return __rtw89_pci_check_and_reclaim_tx_fwcmd_resource(rtwdev);
+
+	return __rtw89_pci_check_and_reclaim_tx_resource(rtwdev, txch);
 }
 
 static void __rtw89_pci_tx_kick_off(struct rtw89_dev *rtwdev, struct rtw89_pci_tx_ring *tx_ring)
@@ -1160,7 +1184,8 @@ static void rtw89_pci_ops_reset(struct rtw89_dev *rtwdev)
 	spin_lock_bh(&rtwpci->trx_lock);
 	for (txch = 0; txch < RTW89_TXCH_NUM; txch++) {
 		if (txch == RTW89_TXCH_CH12) {
-			rtw89_pci_release_fwcmd(rtwdev, rtwpci, rtwpci->h2c_queue.qlen);
+			rtw89_pci_release_fwcmd(rtwdev, rtwpci,
+						skb_queue_len(&rtwpci->h2c_queue), true);
 			continue;
 		}
 		rtw89_pci_release_tx_ring(rtwdev, &rtwpci->tx_rings[txch]);
@@ -1844,7 +1869,7 @@ static int rtw89_pci_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 			   RTW89_MAC_WD_DMA_INTVL_256NS);
 
 	/* fill TRX BD indexes */
-	rtw89_pci_reset_trx_rings(rtwdev);
+	rtw89_pci_ops_reset(rtwdev);
 
 	ret = rtw89_pci_rst_bdram_pcie(rtwdev);
 	if (ret) {
@@ -2417,6 +2442,7 @@ static void rtw89_pci_h2c_init(struct rtw89_dev *rtwdev,
 			       struct rtw89_pci *rtwpci)
 {
 	skb_queue_head_init(&rtwpci->h2c_queue);
+	skb_queue_head_init(&rtwpci->h2c_release_queue);
 }
 
 static int rtw89_pci_setup_resource(struct rtw89_dev *rtwdev,
@@ -2462,8 +2488,7 @@ static void rtw89_pci_default_intr_mask(struct rtw89_dev *rtwdev)
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
 
 	rtwpci->halt_c2h_intrs = B_AX_HALT_C2H_INT_EN | 0;
-	rtwpci->intrs[0] = B_AX_TXDMA_CH12_INT_EN |
-			   B_AX_TXDMA_STUCK_INT_EN |
+	rtwpci->intrs[0] = B_AX_TXDMA_STUCK_INT_EN |
 			   B_AX_RXDMA_INT_EN |
 			   B_AX_RXP1DMA_INT_EN |
 			   B_AX_RPQDMA_INT_EN |

@@ -320,7 +320,8 @@
 #define RTW89_PCI_ADDRINFO_MAX		4
 #define RTW89_PCI_RX_BUF_SIZE		11460
 
-#define RTW89_PCI_POLL_BDRAM_RST_CNT 100
+#define RTW89_PCI_POLL_BDRAM_RST_CNT	100
+#define RTW89_PCI_MULTITAG		8
 
 /* PCIE CFG register */
 #define RTW89_PCIE_TIMER_CTRL		0x0718
@@ -514,6 +515,7 @@ struct rtw89_pci {
 	struct rtw89_pci_tx_ring tx_rings[RTW89_TXCH_NUM];
 	struct rtw89_pci_rx_ring rx_rings[RTW89_RXCH_NUM];
 	struct sk_buff_head h2c_queue;
+	struct sk_buff_head h2c_release_queue;
 
 	u32 halt_c2h_intrs;
 	u32 intrs[2];

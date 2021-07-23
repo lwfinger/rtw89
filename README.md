@@ -43,6 +43,13 @@ sudo modprobe -r rtw89pci         #This unloads the module
 sudo modprobe rtw89pci            #This loads the module
 ```
 
+##### Problem with recovery after sleep or hibernation
+Some BIOSs have trouble changing power state from D3hot to D0. If you have this problem, then
+
+sudo cp suspend_rtw89 /usr/lib/systemd/system-sleep/.
+
+That script will unload the driver before sleep or hibernation, and reload it following resumption.
+
 ##### Option configuration
 If it turns out that your system needs one of the configuration options, then do the following:
 ```bash

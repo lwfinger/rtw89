@@ -2597,8 +2597,8 @@ static void rtw89_pci_link_cfg(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
 	struct pci_dev *pdev = rtwpci->pdev;
-	u16 link_ctrl;
-	int ret;
+	u16 link_ctrl=0;
+	int ret=0;
 
 	/* Though there is standard PCIE configuration space to set the
 	 * link control register, but by Realtek's design, driver should

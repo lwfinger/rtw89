@@ -1274,7 +1274,7 @@
 #define B_AX_SNIFFER_MODE BIT(0)
 #define DEFAULT_AX_RX_FLTR (B_AX_A_A1_MATCH | B_AX_A_BC | B_AX_A_MC |	       \
 			    B_AX_A_UC_CAM_MATCH | B_AX_A_BC_CAM_MATCH |	       \
-			    B_AX_A_MC_LIST_CAM_MATCH |			       \
+			    B_AX_A_PWR_MGNT | B_AX_A_FTM_REQ |			\
 			    u32_encode_bits(3, B_AX_UID_FILTER_MASK) |	       \
 			    B_AX_A_BCN_CHK_EN)
 

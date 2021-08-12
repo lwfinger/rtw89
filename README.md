@@ -1,6 +1,6 @@
 Fork of [lwfinger/rtw89](https://github.com/lwfinger/rtw89) - for newest versions see always upstream repository
 
-WLAN Driver for Lenovo IdeaPad 5 (Realtek 8852AE WiFi 6 WLAN Adapter)
+Linux WLAN Driver for Lenovo IdeaPad 5 (Realtek 8852AE WiFi 6 WLAN Adapter)
 
 ## How-to install
 

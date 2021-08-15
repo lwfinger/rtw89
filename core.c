@@ -1519,8 +1519,10 @@ static void rtw89_traffic_stats_calc(struct rtw89_dev *rtwdev,
 						   stats->tx_cnt);
 	stats->rx_tfc_lv = rtw89_get_traffic_level(rtwdev, stats->rx_throughput,
 						   stats->rx_cnt);
-	stats->tx_avg_len = (u32)(stats->tx_cnt ? stats->tx_unicast / stats->tx_cnt : 0);
-	stats->rx_avg_len = (u32)(stats->rx_cnt ? stats->rx_unicast / stats->rx_cnt : 0);
+	stats->tx_avg_len = (u32)(stats->tx_cnt ?
+				  DIV_ROUND_DOWN_ULL(stats->tx_unicast, stats->tx_cnt) : 0);
+	stats->rx_avg_len = (u32)(stats->rx_cnt ?
+				  DIV_ROUND_DOWN_ULL(stats->rx_unicast, stats->rx_cnt) : 0);
 
 	stats->tx_unicast = 0;
 	stats->rx_unicast = 0;

@@ -48,13 +48,15 @@ rtw89pci-y := pci.o
 
 ccflags-y += -D__CHECK_ENDIAN__
 
-all: 
+.PHONY: all install uninstall clean sign sign-install
+
+all:
 	$(MAKE) -C $(KSRC) M=$(PWD) modules
 install: all
 	@rm -f $(MODDESTDIR)/rtw89*.ko
 
 	@mkdir -p $(MODDESTDIR)
-	@install -p -D -m 644 *.ko $(MODDESTDIR)	
+	@install -p -D -m 644 *.ko $(MODDESTDIR)
 ifeq ($(COMPRESS_GZIP), y)
 	@gzip -f $(MODDESTDIR)/*.ko
 endif
@@ -72,7 +74,7 @@ uninstall:
 	@rm -f $(MODDESTDIR)/rtw89.ko
 
 	@depmod -a
-	
+
 	@echo "Uninstall rtw89 SUCCESS"
 
 clean:

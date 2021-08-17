@@ -18,6 +18,7 @@ endif
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.xz)")
 COMPRESS_XZ := y
 endif
+MOK_KEY_DIR ?= /var/lib/shim-signed/mok
 
 EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
@@ -48,13 +49,15 @@ rtw89pci-y := pci.o
 
 ccflags-y += -D__CHECK_ENDIAN__
 
-all: 
+.PHONY: all install uninstall clean sign sign-install
+
+all:
 	$(MAKE) -C $(KSRC) M=$(PWD) modules
 install: all
 	@rm -f $(MODDESTDIR)/rtw89*.ko
 
 	@mkdir -p $(MODDESTDIR)
-	@install -p -D -m 644 *.ko $(MODDESTDIR)	
+	@install -p -D -m 644 *.ko $(MODDESTDIR)
 ifeq ($(COMPRESS_GZIP), y)
 	@gzip -f $(MODDESTDIR)/*.ko
 endif
@@ -72,7 +75,7 @@ uninstall:
 	@rm -f $(MODDESTDIR)/rtw89.ko
 
 	@depmod -a
-	
+
 	@echo "Uninstall rtw89 SUCCESS"
 
 clean:
@@ -82,3 +85,9 @@ clean:
 	@rm -fr Module.symvers
 	@rm -fr Module.markers
 	@rm -fr modules.order
+
+sign:
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89core.ko
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89pci.ko
+
+sign-install: all sign install

@@ -14,7 +14,7 @@ This repository includes drivers for the following card:
 
 Realtek 8852AE
 
-If you are looking for a driver for chips such as 
+If you are looking for a driver for chips such as
 RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL8723BE, or RTL8821AE,
 these should be provided by your kernel. If not, then you should go to the Backports Project
 (https://backports.wiki.kernel.org/index.php/Main_Page) to obtain the necessary code.
@@ -27,7 +27,7 @@ You can install them with the following command, on **Ubuntu**:
 sudo apt-get update
 sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
 ```
-If any of the packages above are not found check if your distro installs them like that. 
+If any of the packages above are not found check if your distro installs them like that.
 
 ##### Installation
 For all distros:
@@ -37,6 +37,24 @@ cd rtw89
 make
 sudo make install
 ```
+
+##### Installation with module signing for SecureBoot
+For Ubuntu:
+```bash
+git clone https://github.com/lwfinger/rtw89.git -b v5
+cd rtw89
+make
+sudo make sign-install
+```
+
+For other distros, supply the location of the MOK.der and MOK.priv files as the MOK_KEY_DIR environment variable:
+```
+git clone https://github.com/lwfinger/rtw89.git -b v5
+cd rtw89
+make
+sudo bash -c 'MOK_KEY_DIR=/var/lib/shim-signed/mok make sign-install'
+```
+
 ##### How to disable/enable a Kernel module
  ```bash
 sudo modprobe -r rtw89pci         #This unloads the module
@@ -53,7 +71,7 @@ That script will unload the driver before sleep or hibernation, and reload it fo
 ##### Option configuration
 If it turns out that your system needs one of the configuration options, then do the following:
 ```bash
-sudo nano /etc/modprobe.d/<dev_name>.conf 
+sudo nano /etc/modprobe.d/<dev_name>.conf
 ```
 There, enter the line below:
 ```bash
@@ -86,4 +104,3 @@ chips, and the Realtek engineers who do will not read these issues. To reach the
 linux-wireless@vger.kernel.org. Include a detailed description of any messages in the kernel
 logs and any steps that you have taken to analyze or fix the problem. If your description is
 not complete, you are unlikely to get any satisfaction.
-

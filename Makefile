@@ -18,6 +18,7 @@ endif
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.xz)")
 COMPRESS_XZ := y
 endif
+MOK_KEY_DIR ?= /var/lib/shim-signed/mok
 
 EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
@@ -84,3 +85,9 @@ clean:
 	@rm -fr Module.symvers
 	@rm -fr Module.markers
 	@rm -fr modules.order
+
+sign:
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89core.ko
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89pci.ko
+
+sign-install: all sign install

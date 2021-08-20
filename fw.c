@@ -379,7 +379,7 @@ static void rtw89_fw_prog_cnt_dump(struct rtw89_dev *rtwdev)
 	rtw89_write32(rtwdev, R_AX_DBG_CTRL,
 		      FIELD_PREP(B_AX_DBG_SEL0, FW_PROG_CNTR_DBG_SEL) |
 		      FIELD_PREP(B_AX_DBG_SEL1, FW_PROG_CNTR_DBG_SEL));
-	rtw89_write32_mask(rtwdev, R_AX_SYS_STATUS1, B_AX_SEL_0XC0, MAC_DBG_SEL);
+	rtw89_write32_mask(rtwdev, R_AX_SYS_STATUS1, B_AX_SEL_0XC0_MASK, MAC_DBG_SEL);
 
 	for (index = 0; index < 15; index++) {
 		val32 = rtw89_read32(rtwdev, R_AX_DBG_PORT_SEL);
@@ -1556,7 +1556,8 @@ int rtw89_fw_msg_reg(struct rtw89_dev *rtwdev,
 {
 	u32 ret;
 
-	lockdep_assert_held(&rtwdev->mutex);
+	if (h2c_info && h2c_info->id != RTW89_FWCMD_H2CREG_FUNC_GET_FEATURE)
+		lockdep_assert_held(&rtwdev->mutex);
 
 	if (!h2c_info && !c2h_info)
 		return -EINVAL;

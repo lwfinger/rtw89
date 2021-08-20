@@ -561,9 +561,7 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 	__print_regd(m, rtwdev);
 
 	seq_puts(m, "[SAR]\n");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	rtw89_print_sar(m, rtwdev);
-#endif
 
 	seq_puts(m, "\n[TX power byrate]\n");
 	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);
@@ -861,9 +859,9 @@ static int rtw89_debug_mac_dump_dle_dbg(struct rtw89_dev *rtwdev,
 	u32 __data, __val32;						\
 	int __ret;							\
 									\
-	__ctrl = FIELD_PREP(B_AX_##__type##_DFI_TRGSEL,			\
+	__ctrl = FIELD_PREP(B_AX_##__type##_DFI_TRGSEL_MASK,		\
 			    DLE_DFI_TYPE_##__target) |			\
-		 FIELD_PREP(B_AX_##__type##_DFI_ADDR, __sel) |		\
+		 FIELD_PREP(B_AX_##__type##_DFI_ADDR_MASK, __sel) |	\
 		 B_AX_WDE_DFI_ACTIVE;					\
 	rtw89_write32(rtwdev, __reg_ctrl, __ctrl);			\
 	__ret = read_poll_timeout(rtw89_read32, __val32,		\
@@ -1025,8 +1023,8 @@ static int rtw89_debug_mac_dump_cmac_dbg(struct rtw89_dev *rtwdev,
 		   rtw89_read32(rtwdev, R_AX_PTCL_ISR0));
 	seq_printf(m, "[3]R_AX_DLE_CTRL=0x%08x\n",
 		   rtw89_read32(rtwdev, R_AX_DLE_CTRL));
-	seq_printf(m, "[4]R_AX_PHYINFO_ERR_ISR=0x%02x\n",
-		   rtw89_read8(rtwdev, R_AX_PHYINFO_ERR_ISR));
+	seq_printf(m, "[4]R_AX_PHYINFO_ERR_ISR=0x%08x\n",
+		   rtw89_read32(rtwdev, R_AX_PHYINFO_ERR_ISR));
 	seq_printf(m, "[5]R_AX_TXPWR_ISR=0x%08x\n",
 		   rtw89_read32(rtwdev, R_AX_TXPWR_ISR));
 	seq_printf(m, "[6]R_AX_RMAC_ERR_ISR=0x%08x\n",
@@ -1049,7 +1047,7 @@ static int rtw89_debug_mac_dump_cmac_dbg(struct rtw89_dev *rtwdev,
 	seq_printf(m, "[3]R_AX_DLE_CTRL_C1=0x%08x\n",
 		   rtw89_read32(rtwdev, R_AX_DLE_CTRL_C1));
 	seq_printf(m, "[4]R_AX_PHYINFO_ERR_ISR_C1=0x%02x\n",
-		   rtw89_read8(rtwdev, R_AX_PHYINFO_ERR_ISR_C1));
+		   rtw89_read32(rtwdev, R_AX_PHYINFO_ERR_ISR_C1));
 	seq_printf(m, "[5]R_AX_TXPWR_ISR_C1=0x%08x\n",
 		   rtw89_read32(rtwdev, R_AX_TXPWR_ISR_C1));
 	seq_printf(m, "[6]R_AX_RMAC_ERR_ISR_C1=0x%08x\n",
@@ -1063,496 +1061,496 @@ static int rtw89_debug_mac_dump_cmac_dbg(struct rtw89_dev *rtwdev,
 static const struct rtw89_mac_dbg_port_info dbg_port_ptcl_c0 = {
 	.sel_addr = R_AX_PTCL_DBG,
 	.sel_byte = 1,
-	.sel_msk = B_AX_PTCL_DBG_SEL,
+	.sel_msk = B_AX_PTCL_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x3F,
 	.rd_addr = R_AX_PTCL_DBG_INFO,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PTCL_DBG_INFO_MSK
+	.rd_msk = B_AX_PTCL_DBG_INFO_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ptcl_c1 = {
 	.sel_addr = R_AX_PTCL_DBG_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_PTCL_DBG_SEL,
+	.sel_msk = B_AX_PTCL_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x3F,
 	.rd_addr = R_AX_PTCL_DBG_INFO_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PTCL_DBG_INFO_MSK
+	.rd_msk = B_AX_PTCL_DBG_INFO_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_sch_c0 = {
 	.sel_addr = R_AX_SCH_DBG_SEL,
 	.sel_byte = 1,
-	.sel_msk = B_AX_SCH_DBG_SEL_MSK,
+	.sel_msk = B_AX_SCH_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x2F,
 	.rd_addr = R_AX_SCH_DBG,
 	.rd_byte = 4,
-	.rd_msk = B_AX_SCHEDULER_DBG_MSK
+	.rd_msk = B_AX_SCHEDULER_DBG_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_sch_c1 = {
 	.sel_addr = R_AX_SCH_DBG_SEL_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_SCH_DBG_SEL_MSK,
+	.sel_msk = B_AX_SCH_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x2F,
 	.rd_addr = R_AX_SCH_DBG_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_SCHEDULER_DBG_MSK
+	.rd_msk = B_AX_SCHEDULER_DBG_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tmac_c0 = {
 	.sel_addr = R_AX_MACTX_DBG_SEL_CNT,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DBGSEL_MACTX,
+	.sel_msk = B_AX_DBGSEL_MACTX_MASK,
 	.srt = 0x00,
 	.end = 0x19,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tmac_c1 = {
 	.sel_addr = R_AX_MACTX_DBG_SEL_CNT_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DBGSEL_MACTX,
+	.sel_msk = B_AX_DBGSEL_MACTX_MASK,
 	.srt = 0x00,
 	.end = 0x19,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmac_c0 = {
 	.sel_addr = R_AX_RX_DEBUG_SELECT,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DEBUG_SEL,
+	.sel_msk = B_AX_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x58,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmac_c1 = {
 	.sel_addr = R_AX_RX_DEBUG_SELECT_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DEBUG_SEL,
+	.sel_msk = B_AX_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x58,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmacst_c0 = {
 	.sel_addr = R_AX_RX_STATE_MONITOR,
 	.sel_byte = 1,
-	.sel_msk = B_AX_STATE_SEL,
+	.sel_msk = B_AX_STATE_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x17,
 	.rd_addr = R_AX_RX_STATE_MONITOR,
 	.rd_byte = 4,
-	.rd_msk = R_AX_RX_STATE_MONITOR_MSK
+	.rd_msk = B_AX_RX_STATE_MONITOR_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmacst_c1 = {
 	.sel_addr = R_AX_RX_STATE_MONITOR_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_STATE_SEL,
+	.sel_msk = B_AX_STATE_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x17,
 	.rd_addr = R_AX_RX_STATE_MONITOR_C1,
 	.rd_byte = 4,
-	.rd_msk = R_AX_RX_STATE_MONITOR_MSK
+	.rd_msk = B_AX_RX_STATE_MONITOR_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmac_plcp_c0 = {
 	.sel_addr = R_AX_RMAC_PLCP_MON,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PCLP_MON_SEL,
+	.sel_msk = B_AX_PCLP_MON_SEL_MASK,
 	.srt = 0x0,
 	.end = 0xF,
 	.rd_addr = R_AX_RMAC_PLCP_MON,
 	.rd_byte = 4,
-	.rd_msk = R_AX_RMAC_PLCP_MON_MSK
+	.rd_msk = B_AX_RMAC_PLCP_MON_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_rmac_plcp_c1 = {
 	.sel_addr = R_AX_RMAC_PLCP_MON_C1,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PCLP_MON_SEL,
+	.sel_msk = B_AX_PCLP_MON_SEL_MASK,
 	.srt = 0x0,
 	.end = 0xF,
 	.rd_addr = R_AX_RMAC_PLCP_MON_C1,
 	.rd_byte = 4,
-	.rd_msk = R_AX_RMAC_PLCP_MON_MSK
+	.rd_msk = B_AX_RMAC_PLCP_MON_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_trxptcl_c0 = {
 	.sel_addr = R_AX_DBGSEL_TRXPTCL,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DBGSEL_TRXPTCL_MSK,
+	.sel_msk = B_AX_DBGSEL_TRXPTCL_MASK,
 	.srt = 0x08,
 	.end = 0x10,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_trxptcl_c1 = {
 	.sel_addr = R_AX_DBGSEL_TRXPTCL_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_DBGSEL_TRXPTCL_MSK,
+	.sel_msk = B_AX_DBGSEL_TRXPTCL_MASK,
 	.srt = 0x08,
 	.end = 0x10,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tx_infol_c0 = {
 	.sel_addr = R_AX_WMAC_TX_CTRL_DEBUG,
 	.sel_byte = 1,
-	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL,
+	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x07,
 	.rd_addr = R_AX_WMAC_TX_INFO0_DEBUG,
 	.rd_byte = 4,
-	.rd_msk = B_AX_TX_CTRL_INFO_P0_MSK
+	.rd_msk = B_AX_TX_CTRL_INFO_P0_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tx_infoh_c0 = {
 	.sel_addr = R_AX_WMAC_TX_CTRL_DEBUG,
 	.sel_byte = 1,
-	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL,
+	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x07,
 	.rd_addr = R_AX_WMAC_TX_INFO1_DEBUG,
 	.rd_byte = 4,
-	.rd_msk = B_AX_TX_CTRL_INFO_P1_MSK
+	.rd_msk = B_AX_TX_CTRL_INFO_P1_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tx_infol_c1 = {
 	.sel_addr = R_AX_WMAC_TX_CTRL_DEBUG_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL,
+	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x07,
 	.rd_addr = R_AX_WMAC_TX_INFO0_DEBUG_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_TX_CTRL_INFO_P0_MSK
+	.rd_msk = B_AX_TX_CTRL_INFO_P0_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_tx_infoh_c1 = {
 	.sel_addr = R_AX_WMAC_TX_CTRL_DEBUG_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL,
+	.sel_msk = B_AX_TX_CTRL_DEBUG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x07,
 	.rd_addr = R_AX_WMAC_TX_INFO1_DEBUG_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_TX_CTRL_INFO_P1_MSK
+	.rd_msk = B_AX_TX_CTRL_INFO_P1_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_txtf_infol_c0 = {
 	.sel_addr = R_AX_WMAC_TX_TF_INFO_0,
 	.sel_byte = 1,
-	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL,
+	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x04,
 	.rd_addr = R_AX_WMAC_TX_TF_INFO_1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WMAC_TX_TF_INFO_P0
+	.rd_msk = B_AX_WMAC_TX_TF_INFO_P0_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_txtf_infoh_c0 = {
 	.sel_addr = R_AX_WMAC_TX_TF_INFO_0,
 	.sel_byte = 1,
-	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL,
+	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x04,
 	.rd_addr = R_AX_WMAC_TX_TF_INFO_2,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WMAC_TX_TF_INFO_P1
+	.rd_msk = B_AX_WMAC_TX_TF_INFO_P1_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_txtf_infol_c1 = {
 	.sel_addr = R_AX_WMAC_TX_TF_INFO_0_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL,
+	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x04,
 	.rd_addr = R_AX_WMAC_TX_TF_INFO_1_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WMAC_TX_TF_INFO_P0
+	.rd_msk = B_AX_WMAC_TX_TF_INFO_P0_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_txtf_infoh_c1 = {
 	.sel_addr = R_AX_WMAC_TX_TF_INFO_0_C1,
 	.sel_byte = 1,
-	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL,
+	.sel_msk = B_AX_WMAC_TX_TF_INFO_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x04,
 	.rd_addr = R_AX_WMAC_TX_TF_INFO_2_C1,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WMAC_TX_TF_INFO_P1
+	.rd_msk = B_AX_WMAC_TX_TF_INFO_P1_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_bufmgn_freepg = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80000000,
 	.end = 0x80000001,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_bufmgn_quota = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80010000,
 	.end = 0x80010004,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_bufmgn_pagellt = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80020000,
 	.end = 0x80020FFF,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_bufmgn_pktinfo = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80030000,
 	.end = 0x80030FFF,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_quemgn_prepkt = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80040000,
 	.end = 0x80040FFF,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_quemgn_nxtpkt = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80050000,
 	.end = 0x80050FFF,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_quemgn_qlnktbl = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80060000,
 	.end = 0x80060453,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_wde_quemgn_qempty = {
 	.sel_addr = R_AX_WDE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_WDE_DFI_DATA_MSK,
+	.sel_msk = B_AX_WDE_DFI_DATA_MASK,
 	.srt = 0x80070000,
 	.end = 0x80070011,
 	.rd_addr = R_AX_WDE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_WDE_DFI_DATA_MSK
+	.rd_msk = B_AX_WDE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_bufmgn_freepg = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80000000,
 	.end = 0x80000001,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_bufmgn_quota = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80010000,
 	.end = 0x8001000A,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_bufmgn_pagellt = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80020000,
 	.end = 0x80020DBF,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_bufmgn_pktinfo = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80030000,
 	.end = 0x80030DBF,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_quemgn_prepkt = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80040000,
 	.end = 0x80040DBF,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_quemgn_nxtpkt = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80050000,
 	.end = 0x80050DBF,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_quemgn_qlnktbl = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80060000,
 	.end = 0x80060041,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_ple_quemgn_qempty = {
 	.sel_addr = R_AX_PLE_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_PLE_DFI_DATA_MSK,
+	.sel_msk = B_AX_PLE_DFI_DATA_MASK,
 	.srt = 0x80070000,
 	.end = 0x80070001,
 	.rd_addr = R_AX_PLE_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_PLE_DFI_DATA_MSK
+	.rd_msk = B_AX_PLE_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pktinfo = {
 	.sel_addr = R_AX_DBG_FUN_INTF_CTL,
 	.sel_byte = 4,
-	.sel_msk = B_AX_DFI_DATA_MSK,
+	.sel_msk = B_AX_DFI_DATA_MASK,
 	.srt = 0x80000000,
 	.end = 0x8000017f,
 	.rd_addr = R_AX_DBG_FUN_INTF_DATA,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DFI_DATA_MSK
+	.rd_msk = B_AX_DFI_DATA_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_txdma = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x03,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_rxdma = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x04,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_cvt = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x01,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_cxpl = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x05,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_io = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x05,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_misc = {
 	.sel_addr = R_AX_PCIE_DBG_CTRL,
 	.sel_byte = 2,
-	.sel_msk = B_AX_LOOPBACK_DBG_SEL,
+	.sel_msk = B_AX_DBG_SEL_MASK,
 	.srt = 0x00,
 	.end = 0x06,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info dbg_port_pcie_misc2 = {
@@ -1563,7 +1561,7 @@ static const struct rtw89_mac_dbg_port_info dbg_port_pcie_misc2 = {
 	.end = 0x3C,
 	.rd_addr = R_AX_DBG_PORT_SEL,
 	.rd_byte = 4,
-	.rd_msk = B_AX_DEBUG_ST_MSK
+	.rd_msk = B_AX_DEBUG_ST_MASK
 };
 
 static const struct rtw89_mac_dbg_port_info *
@@ -1608,7 +1606,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		info = &dbg_port_tmac_c0;
 		val32 = rtw89_read32(rtwdev, R_AX_DBGSEL_TRXPTCL);
 		val32 = u32_replace_bits(val32, TRXPTRL_DBG_SEL_TMAC,
-					 B_AX_DBGSEL_TRXPTCL_MSK);
+					 B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write32(rtwdev, R_AX_DBGSEL_TRXPTCL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_DBG_CTRL);
@@ -1617,7 +1615,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 		seq_puts(m, "Enable TMAC C0 dbgport.\n");
 		break;
@@ -1625,7 +1623,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		info = &dbg_port_tmac_c1;
 		val32 = rtw89_read32(rtwdev, R_AX_DBGSEL_TRXPTCL_C1);
 		val32 = u32_replace_bits(val32, TRXPTRL_DBG_SEL_TMAC,
-					 B_AX_DBGSEL_TRXPTCL_MSK);
+					 B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write32(rtwdev, R_AX_DBGSEL_TRXPTCL_C1, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_DBG_CTRL);
@@ -1634,7 +1632,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 		seq_puts(m, "Enable TMAC C1 dbgport.\n");
 		break;
@@ -1642,7 +1640,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		info = &dbg_port_rmac_c0;
 		val32 = rtw89_read32(rtwdev, R_AX_DBGSEL_TRXPTCL);
 		val32 = u32_replace_bits(val32, TRXPTRL_DBG_SEL_RMAC,
-					 B_AX_DBGSEL_TRXPTCL_MSK);
+					 B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write32(rtwdev, R_AX_DBGSEL_TRXPTCL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_DBG_CTRL);
@@ -1651,12 +1649,12 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 
 		val8 = rtw89_read8(rtwdev, R_AX_DBGSEL_TRXPTCL);
 		val8 = u8_replace_bits(val8, RMAC_CMAC_DBG_SEL,
-				       B_AX_DBGSEL_TRXPTCL_MSK);
+				       B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write8(rtwdev, R_AX_DBGSEL_TRXPTCL, val8);
 		seq_puts(m, "Enable RMAC C0 dbgport.\n");
 		break;
@@ -1664,7 +1662,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		info = &dbg_port_rmac_c1;
 		val32 = rtw89_read32(rtwdev, R_AX_DBGSEL_TRXPTCL_C1);
 		val32 = u32_replace_bits(val32, TRXPTRL_DBG_SEL_RMAC,
-					 B_AX_DBGSEL_TRXPTCL_MSK);
+					 B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write32(rtwdev, R_AX_DBGSEL_TRXPTCL_C1, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_DBG_CTRL);
@@ -1673,12 +1671,12 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 
 		val8 = rtw89_read8(rtwdev, R_AX_DBGSEL_TRXPTCL_C1);
 		val8 = u8_replace_bits(val8, RMAC_CMAC_DBG_SEL,
-				       B_AX_DBGSEL_TRXPTCL_MSK);
+				       B_AX_DBGSEL_TRXPTCL_MASK);
 		rtw89_write8(rtwdev, R_AX_DBGSEL_TRXPTCL_C1, val8);
 		seq_puts(m, "Enable RMAC C1 dbgport.\n");
 		break;
@@ -1706,7 +1704,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 		seq_puts(m, "Enable TRXPTCL C0 dbgport.\n");
 		break;
@@ -1718,7 +1716,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		rtw89_write32(rtwdev, R_AX_DBG_CTRL, val32);
 
 		val32 = rtw89_read32(rtwdev, R_AX_SYS_STATUS1);
-		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0);
+		val32 = u32_replace_bits(val32, MAC_DBG_SEL, B_AX_SEL_0XC0_MASK);
 		rtw89_write32(rtwdev, R_AX_SYS_STATUS1, val32);
 		seq_puts(m, "Enable TRXPTCL C1 dbgport.\n");
 		break;
@@ -1898,7 +1896,7 @@ rtw89_debug_mac_dbg_port_sel(struct seq_file *m,
 		info = &dbg_port_pcie_misc2;
 		val16 = rtw89_read16(rtwdev, R_AX_PCIE_DBG_CTRL);
 		val16 = u16_replace_bits(val16, PCIE_MISC2_DBG_SEL,
-					 B_AX_LOOPBACK_DBG_SEL);
+					 B_AX_DBG_SEL_MASK);
 		rtw89_write16(rtwdev, R_AX_PCIE_DBG_CTRL, val16);
 		seq_puts(m, "Enable pcie misc2 dump.\n");
 		break;

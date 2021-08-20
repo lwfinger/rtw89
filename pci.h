@@ -103,7 +103,6 @@
 #define B_AX_RPQDMA_INT			BIT(2)
 #define B_AX_RXP1DMA_INT		BIT(1)
 #define B_AX_RXDMA_INT			BIT(0)
-#define B_AX_RXDMA_INTS_MASK (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT | B_AX_RDU_INT)
 
 #define R_AX_PCIE_HIMR10	0x13B0
 #define B_AX_HC10ISR_IND_INT_EN		BIT(28)
@@ -289,6 +288,17 @@
 #define R_AX_PCIE_PS_CTRL		0x1008
 #define B_AX_L1OFF_PWR_OFF_EN		BIT(5)
 
+#define R_AX_INT_MIT_RX			0x10D4
+#define B_AX_RXMIT_RXP2_SEL		BIT(19)
+#define B_AX_RXMIT_RXP1_SEL		BIT(18)
+#define B_AX_RXTIMER_UNIT_MASK		GENMASK(17, 16)
+#define AX_RXTIMER_UNIT_64US		0
+#define AX_RXTIMER_UNIT_128US		1
+#define AX_RXTIMER_UNIT_256US		2
+#define AX_RXTIMER_UNIT_512US		3
+#define B_AX_RXCOUNTER_MATCH_MASK	GENMASK(15, 8)
+#define B_AX_RXTIMER_MATCH_MASK		GENMASK(7, 0)
+
 #define R_AX_DBG_ERR_FLAG		0x11C4
 #define B_AX_PCIE_RPQ_FULL		BIT(29)
 #define B_AX_PCIE_RXQ_FULL		BIT(28)
@@ -355,12 +365,6 @@ enum rtw89_pcie_clkdly_hw {
 	PCIE_CLKDLY_HW_100US = 0x3,
 	PCIE_CLKDLY_HW_150US = 0x4,
 	PCIE_CLKDLY_HW_200US = 0x5
-};
-
-enum rtw89_pci_flags {
-	RTW89_PCI_FLAG_DOING_RX,
-
-	NUM_OF_RTW89_PCI_FLAGS
 };
 
 struct rtw89_pci_bd_ram {
@@ -511,7 +515,6 @@ struct rtw89_pci {
 	/* protect TRX resources (exclude RXQ) */
 	spinlock_t trx_lock;
 	bool running;
-	DECLARE_BITMAP(flags, NUM_OF_RTW89_PCI_FLAGS);
 	struct rtw89_pci_tx_ring tx_rings[RTW89_TXCH_NUM];
 	struct rtw89_pci_rx_ring rx_rings[RTW89_RXCH_NUM];
 	struct sk_buff_head h2c_queue;

@@ -1579,11 +1579,8 @@ static void _iqk_macbb_setting(struct rtw89_dev *rtwdev,
 static void _iqk_dbcc(struct rtw89_dev *rtwdev, u8 path)
 {
 	struct rtw89_iqk_info *iqk_info = &rtwdev->iqk;
-	bool bkdbcc = false;
 	u8 phy_idx = 0x0;
 
-	bkdbcc = rtwdev->dbcc_en;
-	rtwdev->dbcc_en = true;
 	iqk_info->iqk_times++;
 
 	if (path == 0x0)
@@ -1597,7 +1594,6 @@ static void _iqk_dbcc(struct rtw89_dev *rtwdev, u8 path)
 	_iqk_start_iqk(rtwdev, phy_idx, path);
 	_iqk_restore(rtwdev, path);
 	_iqk_afebb_restore(rtwdev, phy_idx, path);
-	rtwdev->dbcc_en = bkdbcc;
 }
 
 static void _iqk_track(struct rtw89_dev *rtwdev)
@@ -3778,7 +3774,6 @@ void rtw8852a_tssi_scan(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
 {
 	u8 i;
 
-	return;
 	rtw89_debug(rtwdev, RTW89_DBG_TSSI, "[TSSI] %s: phy=%d\n",
 		    __func__, phy);
 

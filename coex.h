@@ -29,6 +29,8 @@ enum btc_wl_rfk_type {
 #define FC_EXEC true
 
 #define RTW89_COEX_ACT1_WORK_PERIOD	round_jiffies_relative(HZ * 4)
+#define RTW89_COEX_BT_DEVINFO_WORK_PERIOD	round_jiffies_relative(HZ * 16)
+#define RTW89_COEX_RFK_CHK_WORK_PERIOD	round_jiffies_relative(HZ * 0.3)
 #define BTC_RFK_PATH_MAP GENMASK(3, 0)
 #define BTC_RFK_PHY_MAP GENMASK(5, 4)
 #define BTC_RFK_BAND_MAP GENMASK(7, 6)
@@ -55,6 +57,29 @@ enum btc_bt_trs {
 	BTC_BT_RX_GROUP = 0x3,
 	BTC_BT_MAX_GROUP,
 };
+
+enum btc_rssi_st {
+	BTC_RSSI_ST_LOW = 0x0,
+	BTC_RSSI_ST_HIGH,
+	BTC_RSSI_ST_STAY_LOW,
+	BTC_RSSI_ST_STAY_HIGH,
+	BTC_RSSI_ST_MAX
+};
+
+#define	BTC_RSSI_HIGH(_rssi_) \
+	({typeof(_rssi_) __rssi = (_rssi_); \
+	  ((__rssi == BTC_RSSI_ST_HIGH || \
+	    __rssi == BTC_RSSI_ST_STAY_HIGH) ? 1 : 0); })
+
+#define	BTC_RSSI_LOW(_rssi_) \
+	({typeof(_rssi_) __rssi = (_rssi_); \
+	  ((__rssi == BTC_RSSI_ST_LOW || \
+	    __rssi == BTC_RSSI_ST_STAY_LOW) ? 1 : 0); })
+
+#define BTC_RSSI_CHANGE(_rssi_) \
+	({typeof(_rssi_) __rssi = (_rssi_); \
+	  ((__rssi == BTC_RSSI_ST_LOW || \
+	    __rssi == BTC_RSSI_ST_HIGH) ? 1 : 0); })
 
 enum btc_ant {
 	BTC_ANT_SHARED = 0,
@@ -126,6 +151,8 @@ void rtw89_btc_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 			  u32 len, u8 class, u8 func);
 void rtw89_btc_dump_info(struct rtw89_dev *rtwdev, struct seq_file *m);
 void rtw89_coex_act1_work(struct work_struct *work);
+void rtw89_coex_bt_devinfo_work(struct work_struct *work);
+void rtw89_coex_rfk_chk_work(struct work_struct *work);
 void rtw89_coex_power_on(struct rtw89_dev *rtwdev);
 
 static inline u8 rtw89_btc_phymap(struct rtw89_dev *rtwdev,

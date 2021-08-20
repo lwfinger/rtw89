@@ -14,15 +14,21 @@ static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 {
 	const struct rate_info *txrate = &report->txrate;
 	u32 bit_rate = report->bit_rate;
+	u8 mcs;
 
 	/* lower than ofdm, do not aggregate */
 	if (bit_rate < 550)
 		return 1;
 
 	/* prevent hardware rate fallback to G mode rate */
-	if ((txrate->flags & (RATE_INFO_FLAGS_MCS | RATE_INFO_FLAGS_VHT_MCS |
-			      RATE_INFO_FLAGS_HE_MCS)) &&
-	    (txrate->mcs & 0x07) <= 2)
+	if (txrate->flags & RATE_INFO_FLAGS_MCS)
+		mcs = txrate->mcs & 0x07;
+	else if (txrate->flags & (RATE_INFO_FLAGS_VHT_MCS | RATE_INFO_FLAGS_HE_MCS))
+		mcs = txrate->mcs;
+	else
+		mcs = 0;
+
+	if (mcs <= 2)
 		return 1;
 
 	/* lower than 20M vht 2ss mcs8, make it small */
@@ -149,12 +155,10 @@ static u64 rtw89_phy_ra_mask_cfg(struct rtw89_dev *rtwdev, struct rtw89_sta *rtw
 	}
 
 	if (sta->he_cap.has_he) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[0],
 					    RA_MASK_HE_1SS_RATES);
 		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[1],
 					    RA_MASK_HE_2SS_RATES);
-#endif
 	} else if (sta->vht_cap.vht_supported) {
 		cfg_mask |= u64_encode_bits(mask->control[band].vht_mcs[0],
 					    RA_MASK_VHT_1SS_RATES);
@@ -974,11 +978,7 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	s8 lmt = 0, sar;
-#else
-	s8 lmt;
-#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -993,13 +993,9 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	}
 
 	lmt = _phy_txpwr_rf_to_mac(rtwdev, lmt);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	sar = rtw89_query_sar(rtwdev);
 
 	return min(lmt, sar);
-#else
-	return lmt;
-#endif
 }
 
 #define __fill_txpwr_limit_nonbf_bf(ptr, bw, ntx, rs, ch)		\
@@ -1107,11 +1103,7 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	s8 lmt_ru = 0, sar;
-#else
-	s8 lmt_ru = 0;
-#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -1126,13 +1118,9 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 	}
 
 	lmt_ru = _phy_txpwr_rf_to_mac(rtwdev, lmt_ru);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	sar = rtw89_query_sar(rtwdev);
 
 	return min(lmt_ru, sar);
-#else
-	return lmt_ru;
-#endif
 }
 
 static void
@@ -1338,9 +1326,9 @@ static u8 rtw89_phy_cfo_get_xcap_reg(struct rtw89_dev *rtwdev, bool sc_xo)
 	u32 reg_mask;
 
 	if (sc_xo)
-		reg_mask = B_AX_XTAL_SC_XO_MSK;
+		reg_mask = B_AX_XTAL_SC_XO_MASK;
 	else
-		reg_mask = B_AX_XTAL_SC_XI_MSK;
+		reg_mask = B_AX_XTAL_SC_XI_MASK;
 
 	return (u8)rtw89_read32_mask(rtwdev, R_AX_XTAL_ON_CTRL0, reg_mask);
 }
@@ -1351,9 +1339,9 @@ static void rtw89_phy_cfo_set_xcap_reg(struct rtw89_dev *rtwdev, bool sc_xo,
 	u32 reg_mask;
 
 	if (sc_xo)
-		reg_mask = B_AX_XTAL_SC_XO_MSK;
+		reg_mask = B_AX_XTAL_SC_XO_MASK;
 	else
-		reg_mask = B_AX_XTAL_SC_XI_MSK;
+		reg_mask = B_AX_XTAL_SC_XI_MASK;
 
 	rtw89_write32_mask(rtwdev, R_AX_XTAL_ON_CTRL0, reg_mask, val);
 }
@@ -1386,7 +1374,7 @@ static void rtw89_phy_cfo_reset(struct rtw89_dev *rtwdev)
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	u8 cap;
 
-	cfo->def_x_cap = cfo->crystal_cap_default & B_AX_XTAL_SC_MSK;
+	cfo->def_x_cap = cfo->crystal_cap_default & B_AX_XTAL_SC_MASK;
 	cfo->is_adjust = false;
 	if (cfo->crystal_cap == cfo->def_x_cap)
 		return;
@@ -1427,7 +1415,7 @@ static void rtw89_dcfo_comp_init(struct rtw89_dev *rtwdev)
 {
 	rtw89_phy_set_phy_regs(rtwdev, R_DCFO_OPT, B_DCFO_OPT_EN, 1);
 	rtw89_phy_set_phy_regs(rtwdev, R_DCFO_WEIGHT, B_DCFO_WEIGHT_MSK, 8);
-	rtw89_write32_clr(rtwdev, R_AX_PWR_UL_CTRL2, B_AX_PWR_UL_CFO_MSK);
+	rtw89_write32_clr(rtwdev, R_AX_PWR_UL_CTRL2, B_AX_PWR_UL_CFO_MASK);
 }
 
 static void rtw89_phy_cfo_init(struct rtw89_dev *rtwdev)
@@ -1435,7 +1423,7 @@ static void rtw89_phy_cfo_init(struct rtw89_dev *rtwdev)
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	struct rtw89_efuse *efuse = &rtwdev->efuse;
 
-	cfo->crystal_cap_default = efuse->xtal_cap & B_AX_XTAL_SC_MSK;
+	cfo->crystal_cap_default = efuse->xtal_cap & B_AX_XTAL_SC_MASK;
 	cfo->crystal_cap = cfo->crystal_cap_default;
 	cfo->def_x_cap = cfo->crystal_cap;
 	cfo->is_adjust = false;
@@ -2654,6 +2642,7 @@ void rtw89_phy_dig_reset(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_dig_info *dig = &rtwdev->dig;
 
+	dig->bypass_dig = false;
 	rtw89_phy_dig_para_reset(rtwdev);
 	rtw89_phy_dig_set_igi_cr(rtwdev, dig->force_gaincode);
 	rtw89_phy_dig_dyn_pd_th(rtwdev, rssi_nolink, false);
@@ -2666,6 +2655,11 @@ void rtw89_phy_dig(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_dig_info *dig = &rtwdev->dig;
 	bool is_linked = rtwdev->total_sta_assoc > 0;
+
+	if (unlikely(dig->bypass_dig)) {
+		dig->bypass_dig = false;
+		return;
+	}
 
 	if (!dig->is_linked_pre && is_linked) {
 		rtw89_debug(rtwdev, RTW89_DBG_DIG, "First connected\n");
@@ -2743,11 +2737,8 @@ void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif
 	if (!vif->bss_conf.he_support || !vif->bss_conf.assoc)
 		return;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	bss_color = vif->bss_conf.he_bss_color.color;
-#else
-	bss_color = 0;
-#endif
+
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_VLD0, 0x1,
 			      phy_idx);
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_TGT, bss_color,

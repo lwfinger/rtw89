@@ -661,59 +661,15 @@ enum mac_ax_err_info {
 };
 
 extern struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie;
-extern struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie_wd128;
-extern struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie_stf;
 extern struct rtw89_dle_size wde_size0;
-extern struct rtw89_dle_size wde_size1;
-extern struct rtw89_dle_size wde_size2;
-extern struct rtw89_dle_size wde_size3;
 extern struct rtw89_dle_size wde_size4;
-extern struct rtw89_dle_size wde_size5;
-extern struct rtw89_dle_size wde_size6;
-extern struct rtw89_dle_size wde_size7;
-extern struct rtw89_dle_size wde_size8;
-extern struct rtw89_dle_size wde_size9;
-extern struct rtw89_dle_size wde_size10;
 extern struct rtw89_dle_size ple_size0;
-extern struct rtw89_dle_size ple_size2;
-extern struct rtw89_dle_size ple_size3;
 extern struct rtw89_dle_size ple_size4;
-extern struct rtw89_dle_size ple_size5;
-extern struct rtw89_dle_size ple_size6;
-extern struct rtw89_dle_size ple_size7;
-extern struct rtw89_dle_size ple_size8;
-extern struct rtw89_dle_size ple_size9;
-extern struct rtw89_dle_size ple_size10;
 extern struct rtw89_wde_quota wde_qt0;
-extern struct rtw89_wde_quota wde_qt1;
-extern struct rtw89_wde_quota wde_qt2;
-extern struct rtw89_wde_quota wde_qt3;
 extern struct rtw89_wde_quota wde_qt4;
-extern struct rtw89_wde_quota wde_qt5;
-extern struct rtw89_wde_quota wde_qt6;
-extern struct rtw89_wde_quota wde_qt7;
-extern struct rtw89_wde_quota wde_qt8;
-extern struct rtw89_wde_quota wde_qt9;
-extern struct rtw89_ple_quota ple_qt0;
-extern struct rtw89_ple_quota ple_qt1;
 extern struct rtw89_ple_quota ple_qt4;
 extern struct rtw89_ple_quota ple_qt5;
-extern struct rtw89_ple_quota ple_qt8;
-extern struct rtw89_ple_quota ple_qt9;
-extern struct rtw89_ple_quota ple_qt10;
-extern struct rtw89_ple_quota ple_qt11;
-extern struct rtw89_ple_quota ple_qt12;
 extern struct rtw89_ple_quota ple_qt13;
-extern struct rtw89_ple_quota ple_qt14;
-extern struct rtw89_ple_quota ple_qt15;
-extern struct rtw89_ple_quota ple_qt16;
-extern struct rtw89_ple_quota ple_qt18;
-extern struct rtw89_ple_quota ple_qt19;
-extern struct rtw89_ple_quota ple_qt20;
-extern struct rtw89_ple_quota ple_qt21;
-extern struct rtw89_ple_quota ple_qt22;
-extern struct rtw89_ple_quota ple_qt23;
-extern struct rtw89_ple_quota ple_qt24;
 
 static inline u32 rtw89_mac_reg_by_idx(u32 reg_base, u8 band)
 {
@@ -795,7 +751,6 @@ rtw89_write32_port_set(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
 	rtw89_write32_set(rtwdev, reg, bit);
 }
 
-int rtw89_mac_pwr_on(struct rtw89_dev *rtwdev);
 void rtw89_mac_pwr_off(struct rtw89_dev *rtwdev);
 int rtw89_mac_partial_init(struct rtw89_dev *rtwdev);
 int rtw89_mac_init(struct rtw89_dev *rtwdev);
@@ -823,7 +778,6 @@ int rtw89_mac_coex_init(struct rtw89_dev *rtwdev, const struct rtw89_mac_ax_coex
 int rtw89_mac_cfg_gnt(struct rtw89_dev *rtwdev,
 		      const struct rtw89_mac_ax_coex_gnt *gnt_cfg);
 int rtw89_mac_cfg_plt(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
-u16 rtw89_mac_get_plt(struct rtw89_dev *rtwdev, u8 band);
 void rtw89_mac_cfg_sb(struct rtw89_dev *rtwdev, u32 val);
 u32 rtw89_mac_get_sb(struct rtw89_dev *rtwdev);
 bool rtw89_mac_get_ctrl_path(struct rtw89_dev *rtwdev);
@@ -841,8 +795,8 @@ void rtw89_mac_bf_set_gid_table(struct rtw89_dev *rtwdev, struct ieee80211_vif *
 void rtw89_mac_bf_monitor_calc(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sta *sta, bool disconnect);
 void _rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev);
-void rtw89_restore_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
-void rtw89_remove_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif);
+int rtw89_mac_vif_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
+int rtw89_mac_vif_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
 int rtw89_mac_set_hw_muedca_ctrl(struct rtw89_dev *rtwdev,
 				 struct rtw89_vif *rtwvif, bool en);
 

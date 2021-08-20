@@ -11,38 +11,6 @@
 #include "rtw8852a_table.h"
 #include "txrx.h"
 
-static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie_sutp[] = {
-	{128, 256, grp_0}, /* ACH 0 */
-	{0, 0, grp_1}, /* ACH 1 */
-	{0, 0, grp_1}, /* ACH 2 */
-	{0, 0, grp_1}, /* ACH 3 */
-	{0, 0, grp_1}, /* ACH 4 */
-	{0, 0, grp_1}, /* ACH 5 */
-	{0, 0, grp_1}, /* ACH 6 */
-	{0, 0, grp_1}, /* ACH 7 */
-	{0, 0, grp_1}, /* B0MGQ */
-	{0, 0, grp_1}, /* B0HIQ */
-	{0, 0, grp_1}, /* B1MGQ */
-	{0, 0, grp_1}, /* B1HIQ */
-	{40, 0, 0} /* FWCMDQ */
-};
-
-static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie_stf[] = {
-	{8, 256, grp_0}, /* ACH 0 */
-	{8, 256, grp_0}, /* ACH 1 */
-	{8, 256, grp_0}, /* ACH 2 */
-	{8, 256, grp_0}, /* ACH 3 */
-	{8, 256, grp_1}, /* ACH 4 */
-	{8, 256, grp_1}, /* ACH 5 */
-	{8, 256, grp_1}, /* ACH 6 */
-	{8, 256, grp_1}, /* ACH 7 */
-	{8, 256, grp_0}, /* B0MGQ */
-	{8, 256, grp_0}, /* B0HIQ */
-	{8, 256, grp_1}, /* B1MGQ */
-	{8, 256, grp_1}, /* B1HIQ */
-	{40, 0, 0} /* FWCMDQ */
-};
-
 static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie[] = {
 	{128, 1896, grp_0}, /* ACH 0 */
 	{128, 1896, grp_0}, /* ACH 1 */
@@ -59,22 +27,6 @@ static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie[] = {
 	{40, 0, 0} /* FWCMDQ */
 };
 
-static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie_la[] = {
-	{64, 586, grp_0}, /* ACH 0 */
-	{64, 586, grp_0}, /* ACH 1 */
-	{64, 586, grp_0}, /* ACH 2 */
-	{64, 586, grp_0}, /* ACH 3 */
-	{64, 586, grp_1}, /* ACH 4 */
-	{64, 586, grp_1}, /* ACH 5 */
-	{64, 586, grp_1}, /* ACH 6 */
-	{64, 586, grp_1}, /* ACH 7 */
-	{32, 586, grp_0}, /* B0MGQ */
-	{64, 586, grp_0}, /* B0HIQ */
-	{32, 586, grp_1}, /* B1MGQ */
-	{64, 586, grp_1}, /* B1HIQ */
-	{40, 0, 0} /* FWCMDQ */
-};
-
 static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie = {
 	1896, /* Group 0 */
 	1896, /* Group 1 */
@@ -82,63 +34,18 @@ static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie = {
 	0 /* WP threshold */
 };
 
-static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie_stf = {
-	256, /* Group 0 */
-	256, /* Group 1 */
-	512, /* Public Max */
-	104 /* WP threshold */
-};
-
-static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie_sutp = {
-	256, /* Group 0 */
-	0, /* Group 1 */
-	256, /* Public Max */
-	0 /* WP threshold */
-};
-
-static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie_la = {
-	586, /* Group 0 */
-	586, /* Group 1 */
-	1172, /* Public Max */
-	0 /* WP threshold */
-};
-
 static struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	[RTW89_QTA_SCC] = {rtw8852a_hfc_chcfg_pcie, &rtw8852a_hfc_pubcfg_pcie,
 			   &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
-	[RTW89_QTA_DBCC] = {rtw8852a_hfc_chcfg_pcie, &rtw8852a_hfc_pubcfg_pcie,
-			    &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
-	[RTW89_QTA_SCC_STF] = {rtw8852a_hfc_chcfg_pcie_stf,
-			       &rtw8852a_hfc_pubcfg_pcie_stf,
-			       &rtw_hfc_preccfg_pcie_stf, RTW89_HCIFC_STF},
-	[RTW89_QTA_DBCC_STF] = {rtw8852a_hfc_chcfg_pcie_stf,
-				&rtw8852a_hfc_pubcfg_pcie_stf,
-				&rtw_hfc_preccfg_pcie_stf, RTW89_HCIFC_STF},
-	[RTW89_QTA_SU_TP] = {rtw8852a_hfc_chcfg_pcie_sutp,
-			     &rtw8852a_hfc_pubcfg_pcie_sutp,
-			     &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
 	[RTW89_QTA_DLFW] = {NULL, NULL, &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
-	[RTW89_QTA_LAMODE] = {rtw8852a_hfc_chcfg_pcie_la,
-			      &rtw8852a_hfc_pubcfg_pcie_la,
-			      &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
 	[RTW89_QTA_INVALID] = {NULL},
 };
 
 static struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
 	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &wde_size0, &ple_size0, &wde_qt0,
 			    &wde_qt0, &ple_qt4, &ple_qt5},
-	[RTW89_QTA_DBCC] = {RTW89_QTA_DBCC, &wde_size0, &ple_size0, &wde_qt0,
-			    &wde_qt0, &ple_qt0, &ple_qt1},
-	[RTW89_QTA_SCC_STF] = {RTW89_QTA_SCC_STF, &wde_size1, &ple_size2,
-			       &wde_qt1, &wde_qt1, &ple_qt8, &ple_qt9},
-	[RTW89_QTA_DBCC_STF] = {RTW89_QTA_DBCC_STF, &wde_size1, &ple_size2,
-				&wde_qt1, &wde_qt1, &ple_qt10, &ple_qt11},
-	[RTW89_QTA_SU_TP] = {RTW89_QTA_SU_TP, &wde_size3, &ple_size3,
-			     &wde_qt3, &wde_qt3, &ple_qt12, &ple_qt12},
 	[RTW89_QTA_DLFW] = {RTW89_QTA_DLFW, &wde_size4, &ple_size4,
 			    &wde_qt4, &wde_qt4, &ple_qt13, &ple_qt13},
-	[RTW89_QTA_LAMODE] = {RTW89_QTA_LAMODE, &wde_size10, &ple_size10,
-			      &wde_qt9, &wde_qt9, &ple_qt23, &ple_qt24},
 	[RTW89_QTA_INVALID] = {RTW89_QTA_INVALID, NULL, NULL, NULL, NULL, NULL,
 			       NULL},
 };
@@ -1102,7 +1009,8 @@ static void rtw8852a_bb_macid_ctrl_init(struct rtw89_dev *rtwdev,
 {
 	u32 addr;
 
-	for (addr = R_AX_PWR_MACID_TABLE0; addr <= R_AX_PWR_MACID_TABLE127; addr += 4)
+	for (addr = R_AX_PWR_MACID_LMT_TABLE0;
+	     addr <= R_AX_PWR_MACID_LMT_TABLE127; addr += 4)
 		rtw89_mac_txpwr_write32(rtwdev, phy_idx, addr, 0);
 }
 
@@ -1296,6 +1204,7 @@ static void rtw8852a_rfk_track(struct rtw89_dev *rtwdev)
 {
 	rtw8852a_dpk_track(rtwdev);
 	rtw8852a_iqk_track(rtwdev);
+	rtw8852a_tssi_track(rtwdev);
 }
 
 static u32 rtw8852a_bb_cal_txpwr_ref(struct rtw89_dev *rtwdev,
@@ -1341,10 +1250,10 @@ void rtw8852a_set_txpwr_ul_tb_offset(struct rtw89_dev *rtwdev,
 	rtw89_write32_set(rtwdev, reg, B_AX_PWR_UL_TB_CTRL_EN);
 	val_1t = (s32)pw_ofst;
 	reg = rtw89_mac_reg_by_idx(R_AX_PWR_UL_TB_1T, mac_idx);
-	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_1T_MSK, val_1t);
+	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_1T_MASK, val_1t);
 	val_2t = max(val_1t - 3, -16);
 	reg = rtw89_mac_reg_by_idx(R_AX_PWR_UL_TB_2T, mac_idx);
-	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_2T_MSK, val_2t);
+	rtw89_write32_mask(rtwdev, reg, B_AX_PWR_UL_TB_2T_MASK, val_2t);
 	rtw89_debug(rtwdev, RTW89_DBG_TXPWR, "[ULTB] Set TB pwr_offset=(%d, %d)\n",
 		    val_1t, val_2t);
 }
@@ -1813,7 +1722,7 @@ static void rtw8852a_btc_init_cfg(struct rtw89_dev *rtwdev)
 
 	 /* enable BT counter 0xda40[16,2] = 2b'11 */
 	rtw89_write32_set(rtwdev,
-			  R_AX_CSR_MODE, B_AX_BT_CNT_REST | B_AX_STATIS_BT_EN);
+			  R_AX_CSR_MODE, B_AX_BT_CNT_RST | B_AX_STATIS_BT_EN);
 	btc->cx.wl.status.map.init_ok = true;
 }
 
@@ -1829,8 +1738,8 @@ void rtw8852a_btc_set_wl_pri(struct rtw89_dev *rtwdev, u8 map, bool state)
 		bitmap = B_BTC_PRI_MASK_TX_RESP_V1;
 		break;
 	case BTC_PRI_MASK_BEACON:
-		reg = R_AX_BTC_WL_PRI_MSK;
-		bitmap = B_AX_BTC_PTA_WL_PRI_MASK_BCNQ;
+		reg = R_AX_WL_PRI_MSK;
+		bitmap = B_AX_PTA_WL_PRI_MASK_BCNQ;
 		break;
 	default:
 		return;
@@ -1854,8 +1763,8 @@ static inline u32 __btc_ctrl_rst_all_time(u32 cur)
 
 static inline u32 __btc_ctrl_gen_all_time(u32 cur, u32 val)
 {
-	u32 hv = cur & ~B_AX_FORCE_PWR_BY_RATE_VALUE_MSK;
-	u32 lv = val & B_AX_FORCE_PWR_BY_RATE_VALUE_MSK;
+	u32 hv = cur & ~B_AX_FORCE_PWR_BY_RATE_VALUE_MASK;
+	u32 lv = val & B_AX_FORCE_PWR_BY_RATE_VALUE_MASK;
 
 	return hv | lv | B_AX_FORCE_PWR_BY_RATE_EN;
 }
@@ -1872,8 +1781,8 @@ static inline u32 __btc_ctrl_rst_gnt_bt(u32 cur)
 
 static inline u32 __btc_ctrl_gen_gnt_bt(u32 cur, u32 val)
 {
-	u32 ov = cur & ~B_AX_TXAGC_BT_MSK;
-	u32 iv = FIELD_PREP(B_AX_TXAGC_BT_MSK, val);
+	u32 ov = cur & ~B_AX_TXAGC_BT_MASK;
+	u32 iv = FIELD_PREP(B_AX_TXAGC_BT_MASK, val);
 
 	return ov | iv | B_AX_TXAGC_BT_EN;
 }
@@ -1940,6 +1849,11 @@ static struct rtw89_btc_rf_trx_para rtw89_btc_8852a_rf_dl[] = {
 	{255, 1, 0, 7}
 };
 
+static const
+u8 rtw89_btc_8852a_wl_rssi_thres[BTC_WL_RSSI_THMAX] = {60, 50, 40, 30};
+static const
+u8 rtw89_btc_8852a_bt_rssi_thres[BTC_BT_RSSI_THMAX] = {40, 36, 31, 28};
+
 static struct rtw89_btc_fbtc_mreg rtw89_btc_8852a_mon_reg[] = {
 	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda24),
 	RTW89_DEF_FBTC_MREG(REG_MAC, 4, 0xda28),
@@ -1975,19 +1889,37 @@ void rtw8852a_btc_update_bt_cnt(struct rtw89_dev *rtwdev)
 	struct rtw89_btc_cx *cx = &btc->cx;
 	u32 val;
 
-	val = rtw89_read32(rtwdev, R_AX_BTC_BT_STAST_HIGH);
-	cx->cnt_bt[BTC_BCNT_HIPRI_TX] = FIELD_GET(B_AX_BTC_BCNT_HIPRI_TX, val);
-	cx->cnt_bt[BTC_BCNT_HIPRI_RX] = FIELD_GET(B_AX_BTC_BCNT_HIPRI_RX, val);
+	val = rtw89_read32(rtwdev, R_AX_BT_STAST_HIGH);
+	cx->cnt_bt[BTC_BCNT_HIPRI_TX] = FIELD_GET(B_AX_STATIS_BT_HI_TX_MASK, val);
+	cx->cnt_bt[BTC_BCNT_HIPRI_RX] = FIELD_GET(B_AX_STATIS_BT_HI_RX_MASK, val);
 
-	val = rtw89_read32(rtwdev, R_AX_BTC_BT_STAST_LOW);
-	cx->cnt_bt[BTC_BCNT_LOPRI_TX] = FIELD_GET(B_AX_BTC_BCNT_LOWPRI_TX, val);
-	cx->cnt_bt[BTC_BCNT_LOPRI_RX] = FIELD_GET(B_AX_BTC_BCNT_LOWPRI_RX, val);
+	val = rtw89_read32(rtwdev, R_AX_BT_STAST_LOW);
+	cx->cnt_bt[BTC_BCNT_LOPRI_TX] = FIELD_GET(B_AX_STATIS_BT_LO_TX_1_MASK, val);
+	cx->cnt_bt[BTC_BCNT_LOPRI_RX] = FIELD_GET(B_AX_STATIS_BT_LO_RX_1_MASK, val);
 
 	/* clock-gate off before reset counter*/
-	rtw89_write32_set(rtwdev, R_AX_BTC_CFG, B_AX_BTC_DIS_BTC_CLK_G);
-	rtw89_write32_clr(rtwdev, R_AX_CSR_MODE, B_AX_BTC_BT_CNT_REST);
-	rtw89_write32_set(rtwdev, R_AX_CSR_MODE, B_AX_BTC_BT_CNT_REST);
-	rtw89_write32_clr(rtwdev, R_AX_BTC_CFG, B_AX_BTC_DIS_BTC_CLK_G);
+	rtw89_write32_set(rtwdev, R_AX_BTC_CFG, B_AX_DIS_BTC_CLK_G);
+	rtw89_write32_clr(rtwdev, R_AX_CSR_MODE, B_AX_BT_CNT_RST);
+	rtw89_write32_set(rtwdev, R_AX_CSR_MODE, B_AX_BT_CNT_RST);
+	rtw89_write32_clr(rtwdev, R_AX_BTC_CFG, B_AX_DIS_BTC_CLK_G);
+}
+
+static
+void rtw8852a_btc_wl_s1_standby(struct rtw89_dev *rtwdev, bool state)
+{
+	rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x80000);
+	rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x1);
+	rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD1, RFREG_MASK, 0x1);
+
+	/* set WL standby = Rx for GNT_BT_Tx = 1->0 settle issue */
+	if (state)
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0,
+			       RFREG_MASK, 0xa2d7c);
+	else
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0,
+			       RFREG_MASK, 0xa2020);
+
+	rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x0);
 }
 
 static void rtw8852a_query_ppdu(struct rtw89_dev *rtwdev,
@@ -2035,6 +1967,7 @@ static const struct rtw89_chip_ops rtw8852a_chip_ops = {
 	.btc_get_bt_rssi	= rtw8852a_btc_get_bt_rssi,
 	.btc_bt_aci_imp		= rtw8852a_btc_bt_aci_imp,
 	.btc_update_bt_cnt	= rtw8852a_btc_update_bt_cnt,
+	.btc_wl_s1_standby	= rtw8852a_btc_wl_s1_standby,
 };
 
 const struct rtw89_chip_info rtw8852a_chip_info = {
@@ -2042,8 +1975,8 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.ops			= &rtw8852a_chip_ops,
 	.fw_name		= "rtw89/rtw8852a_fw.bin",
 	.fifo_size		= 458752,
-	.dle_lamode_size	= 262144,
 	.max_amsdu_limit	= 3500,
+	.dis_2g_40m_ul_ofdma	= true,
 	.hfc_param_ini		= rtw8852a_hfc_param_ini_pcie,
 	.dle_mem		= rtw8852a_dle_mem_pcie,
 	.rf_base_addr		= {0xc000, 0xd000},
@@ -2073,12 +2006,15 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.limit_efuse_size	= 1152,
 	.phycap_addr		= 0x580,
 	.phycap_size		= 128,
-	.para_ver		= 0x05050300,
+	.para_ver		= 0x05050764,
 	.wlcx_desired		= 0x05050000,
 	.btcx_desired		= 0x5,
 	.scbd			= 0x1,
 	.mailbox		= 0x1,
 	.afh_guard_ch		= 6,
+	.wl_rssi_thres		= rtw89_btc_8852a_wl_rssi_thres,
+	.bt_rssi_thres		= rtw89_btc_8852a_bt_rssi_thres,
+	.rssi_tol		= 2,
 	.mon_reg_num		= ARRAY_SIZE(rtw89_btc_8852a_mon_reg),
 	.mon_reg		= rtw89_btc_8852a_mon_reg,
 	.rf_para_ulink_num	= ARRAY_SIZE(rtw89_btc_8852a_rf_ul),

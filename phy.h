@@ -44,12 +44,12 @@
 #define RA_MASK_HE_3SS_RATES	GENMASK_ULL(47, 36)
 #define RA_MASK_HE_4SS_RATES	GENMASK_ULL(59, 48)
 
-#define CFO_TRK_ENABLE_TH (5 << 2)
+#define CFO_TRK_ENABLE_TH (2 << 2)
 #define CFO_TRK_STOP_TH_4 (30 << 2)
 #define CFO_TRK_STOP_TH_3 (20 << 2)
 #define CFO_TRK_STOP_TH_2 (10 << 2)
 #define CFO_TRK_STOP_TH_1 (00 << 2)
-#define CFO_TRK_STOP_TH (5 << 2)
+#define CFO_TRK_STOP_TH (2 << 2)
 #define CFO_SW_COMP_FINE_TUNE (2 << 2)
 #define CFO_PERIOD_CNT 15
 #define CFO_TP_UPPER 100

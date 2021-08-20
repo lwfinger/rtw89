@@ -11,7 +11,6 @@
 #include <linux/iopoll.h>
 #include <linux/workqueue.h>
 #include <net/mac80211.h>
-#include <linux/version.h>
 
 struct rtw89_dev;
 
@@ -39,8 +38,23 @@ extern const struct rtw89_chip_info rtw8852a_chip_info;
 #define RTW89_HTC_MASK_VARIANT GENMASK(1, 0)
 #define RTW89_HTC_VARIANT_HE 3
 #define RTW89_HTC_MASK_CTL_ID GENMASK(5, 2)
+#define RTW89_HTC_VARIANT_HE_CID_OM 1
 #define RTW89_HTC_VARIANT_HE_CID_CAS 6
 #define RTW89_HTC_MASK_CTL_INFO GENMASK(31, 6)
+
+#define RTW89_HTC_MASK_HTC_OM_RX_NSS GENMASK(8, 6)
+enum htc_om_channel_width {
+	HTC_OM_CHANNEL_WIDTH_20 = 0,
+	HTC_OM_CHANNEL_WIDTH_40 = 1,
+	HTC_OM_CHANNEL_WIDTH_80 = 2,
+	HTC_OM_CHANNEL_WIDTH_160_OR_80_80 = 3,
+};
+#define RTW89_HTC_MASK_HTC_OM_CH_WIDTH GENMASK(10, 9)
+#define RTW89_HTC_MASK_HTC_OM_UL_MU_DIS BIT(11)
+#define RTW89_HTC_MASK_HTC_OM_TX_NSTS GENMASK(14, 12)
+#define RTW89_HTC_MASK_HTC_OM_ER_SU_DIS BIT(15)
+#define RTW89_HTC_MASK_HTC_OM_DL_MU_MIMO_RR BIT(16)
+#define RTW89_HTC_MASK_HTC_OM_UL_MU_DATA_DIS BIT(17)
 
 enum rtw89_subband {
 	RTW89_CH_2G = 0,
@@ -1527,7 +1541,8 @@ struct rtw89_btc_dm {
 	u32 bt_only: 1;
 	u32 wl_btg_rx: 1;
 	u32 trx_para_level: 8;
-	u32 rsvd: 4;
+	u32 wl_stb_chg: 1;
+	u32 rsvd: 3;
 
 	u16 slot_dur[CXST_MAX];
 
@@ -1826,6 +1841,7 @@ struct rtw89_sta {
 	struct rtw89_ampdu_params ampdu_params[IEEE80211_NUM_TIDS];
 	struct ieee80211_rx_status rx_status;
 	u16 rx_hw_rate;
+	__le32 htc_template;
 
 	bool use_cfg_mask;
 	struct cfg80211_bitrate_mask mask;
@@ -1939,6 +1955,7 @@ struct rtw89_hci_ops {
 	int (*start)(struct rtw89_dev *rtwdev);
 	void (*stop)(struct rtw89_dev *rtwdev);
 	void (*link_ps)(struct rtw89_dev *rtwdev, bool enter);
+	void (*recalc_int_mit)(struct rtw89_dev *rtwdev);
 
 	u8 (*read8)(struct rtw89_dev *rtwdev, u32 addr);
 	u16 (*read16)(struct rtw89_dev *rtwdev, u32 addr);
@@ -2003,6 +2020,7 @@ struct rtw89_chip_ops {
 	s8 (*btc_get_bt_rssi)(struct rtw89_dev *rtwdev, s8 val);
 	void (*btc_bt_aci_imp)(struct rtw89_dev *rtwdev);
 	void (*btc_update_bt_cnt)(struct rtw89_dev *rtwdev);
+	void (*btc_wl_s1_standby)(struct rtw89_dev *rtwdev, bool state);
 };
 
 enum rtw89_dma_ch {
@@ -2024,15 +2042,7 @@ enum rtw89_dma_ch {
 
 enum rtw89_qta_mode {
 	RTW89_QTA_SCC,
-	RTW89_QTA_DBCC,
-	RTW89_QTA_SCC_WD128,
-	RTW89_QTA_DBCC_WD128,
-	RTW89_QTA_SCC_STF,
-	RTW89_QTA_DBCC_STF,
-	RTW89_QTA_SU_TP,
 	RTW89_QTA_DLFW,
-	RTW89_QTA_BCN_TEST,
-	RTW89_QTA_LAMODE,
 
 	/* keep last */
 	RTW89_QTA_INVALID,
@@ -2176,8 +2186,8 @@ struct rtw89_chip_info {
 	const struct rtw89_chip_ops *ops;
 	const char *fw_name;
 	u32 fifo_size;
-	u32 dle_lamode_size;
 	u16 max_amsdu_limit;
+	bool dis_2g_40m_ul_ofdma;
 	struct rtw89_hfc_param_ini *hfc_param_ini;
 	struct rtw89_dle_mem *dle_mem;
 	u32 rf_base_addr[2];
@@ -2223,6 +2233,9 @@ struct rtw89_chip_info {
 	u8 mailbox;
 
 	u8 afh_guard_ch;
+	const u8 *wl_rssi_thres;
+	const u8 *bt_rssi_thres;
+	u8 rssi_tol;
 
 	u8 mon_reg_num;
 	const struct rtw89_btc_fbtc_mreg *mon_reg;
@@ -2501,6 +2514,7 @@ struct rtw89_dig_info {
 	s8 tia_gain_g[TIA_GAIN_NUM];
 	s8 *tia_gain;
 	bool is_linked_pre;
+	bool bypass_dig;
 };
 
 enum rtw89_multi_cfo_mode {
@@ -2760,6 +2774,7 @@ struct rtw89_dev {
 
 	/* ensures exclusive access from mac80211 callbacks */
 	struct mutex mutex;
+	struct list_head rtwvifs_list;
 	/* used to protect rf read write */
 	struct mutex rf_mutex;
 	struct workqueue_struct *txq_wq;
@@ -2800,6 +2815,8 @@ struct rtw89_dev {
 	struct rtw89_phy_ch_info ch_info;
 	struct delayed_work track_work;
 	struct delayed_work coex_act1_work;
+	struct delayed_work coex_bt_devinfo_work;
+	struct delayed_work coex_rfk_chk_work;
 	struct delayed_work cfo_track_work;
 	struct rtw89_ppdu_sts_info ppdu_sts;
 	u8 total_sta_assoc;
@@ -2850,6 +2867,11 @@ static inline int rtw89_hci_deinit(struct rtw89_dev *rtwdev)
 static inline void rtw89_hci_link_ps(struct rtw89_dev *rtwdev, bool enter)
 {
 	rtwdev->hci.ops->link_ps(rtwdev, enter);
+}
+
+static inline void rtw89_hci_recalc_int_mit(struct rtw89_dev *rtwdev)
+{
+	rtwdev->hci.ops->recalc_int_mit(rtwdev);
 }
 
 static inline u32 rtw89_hci_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
@@ -3301,7 +3323,6 @@ void rtw89_core_napi_start(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_stop(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_init(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_deinit(struct rtw89_dev *rtwdev);
-int rtw89_core_power_on(struct rtw89_dev *rtwdev);
 int rtw89_core_sta_add(struct rtw89_dev *rtwdev,
 		       struct ieee80211_vif *vif,
 		       struct ieee80211_sta *sta);
@@ -3335,151 +3356,5 @@ void rtw89_traffic_stats_init(struct rtw89_dev *rtwdev,
 			      struct rtw89_traffic_stats *stats);
 int rtw89_core_start(struct rtw89_dev *rtwdev);
 void rtw89_core_stop(struct rtw89_dev *rtwdev);
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
-/**
- * read_poll_timeout_atomic - Periodically poll an address until a condition is
- * 				met or a timeout occurs
- * @op: accessor function (takes @args as its arguments)
- * @val: Variable to read the value into
- * @cond: Break condition (usually involving @val)
- * @delay_us: Time to udelay between reads in us (0 tight-loops).  Should
- *            be less than ~10us since udelay is used (see
- *            Documentation/timers/timers-howto.rst).
- * @timeout_us: Timeout in us, 0 means never timeout
- * @delay_before_read: if it is true, delay @delay_us before read.
- * @args: arguments for @op poll
- *
- * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
- * case, the last read value at @args is stored in @val.
- *
- * When available, you'll probably want to use one of the specialized
- * macros defined below rather than this macro directly.
- */
-#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
-					delay_before_read, args...) \
-({ \
-	u64 __timeout_us = (timeout_us); \
-	unsigned long __delay_us = (delay_us); \
-	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
-	if (delay_before_read && __delay_us) \
-		udelay(__delay_us); \
-	for (;;) { \
-		(val) = op(args); \
-		if (cond) \
-			break; \
-		if (__timeout_us && \
-		    ktime_compare(ktime_get(), __timeout) > 0) { \
-			(val) = op(args); \
-			break; \
-		} \
-		if (__delay_us) \
-			udelay(__delay_us); \
-	} \
-	(cond) ? 0 : -ETIMEDOUT; \
-})
-
-/* see Documentation/timers/timers-howto.rst for the thresholds */
-static inline void fsleep(unsigned long usecs)
-{
-	if (usecs <= 10)
-		udelay(usecs);
-	else if (usecs <= 20000)
-		usleep_range(usecs, 2 * usecs);
-	else
-		msleep(DIV_ROUND_UP(usecs, 1000));
-}
-
-#endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
-/**
- * read_poll_timeout_atomic - Periodically poll an address until a condition is
- * 				met or a timeout occurs
- * @op: accessor function (takes @args as its arguments)
- * @val: Variable to read the value into
- * @cond: Break condition (usually involving @val)
- * @delay_us: Time to udelay between reads in us (0 tight-loops).  Should
- *            be less than ~10us since udelay is used (see
- *            Documentation/timers/timers-howto.rst).
- * @timeout_us: Timeout in us, 0 means never timeout
- * @delay_before_read: if it is true, delay @delay_us before read.
- * @args: arguments for @op poll
- *
- * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
- * case, the last read value at @args is stored in @val.
- *
- * When available, you'll probably want to use one of the specialized
- * macros defined below rather than this macro directly.
- */
-#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
-					delay_before_read, args...) \
-({ \
-	u64 __timeout_us = (timeout_us); \
-	unsigned long __delay_us = (delay_us); \
-	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
-	if (delay_before_read && __delay_us) \
-		udelay(__delay_us); \
-	for (;;) { \
-		(val) = op(args); \
-		if (cond) \
-			break; \
-		if (__timeout_us && \
-		    ktime_compare(ktime_get(), __timeout) > 0) { \
-			(val) = op(args); \
-			break; \
-		} \
-		if (__delay_us) \
-			udelay(__delay_us); \
-	} \
-	(cond) ? 0 : -ETIMEDOUT; \
-})
-
-/**
- * read_poll_timeout - Periodically poll an address until a condition is
- *			met or a timeout occurs
- * @op: accessor function (takes @args as its arguments)
- * @val: Variable to read the value into
- * @cond: Break condition (usually involving @val)
- * @sleep_us: Maximum time to sleep between reads in us (0
- *            tight-loops).  Should be less than ~20ms since usleep_range
- *            is used (see Documentation/timers/timers-howto.rst).
- * @timeout_us: Timeout in us, 0 means never timeout
- * @sleep_before_read: if it is true, sleep @sleep_us before read.
- * @args: arguments for @op poll
- *
- * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
- * case, the last read value at @args is stored in @val. Must not
- * be called from atomic context if sleep_us or timeout_us are used.
- *
- * When available, you'll probably want to use one of the specialized
- * macros defined below rather than this macro directly.
- */
-#define read_poll_timeout(op, val, cond, sleep_us, timeout_us, \
-				sleep_before_read, args...) \
-({ \
-	u64 __timeout_us = (timeout_us); \
-	unsigned long __sleep_us = (sleep_us); \
-	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
-	might_sleep_if((__sleep_us) != 0); \
-	if (sleep_before_read && __sleep_us) \
-		usleep_range((__sleep_us >> 2) + 1, __sleep_us); \
-	for (;;) { \
-		(val) = op(args); \
-		if (cond) \
-			break; \
-		if (__timeout_us && \
-		    ktime_compare(ktime_get(), __timeout) > 0) { \
-			(val) = op(args); \
-			break; \
-		} \
-		if (__sleep_us) \
-			usleep_range((__sleep_us >> 2) + 1, __sleep_us); \
-	} \
-	(cond) ? 0 : -ETIMEDOUT; \
-})
-
-#define BSS_CHANGED_HE_BSS_COLOR        1<<29
-
-#endif
 
 #endif

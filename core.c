@@ -2002,11 +2002,19 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
 		mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
 				  IEEE80211_HE_MAC_CAP2_BSR;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_VHT_2;
+#else
 		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_EXT_2;
+#endif
 		if (i == NL80211_IFTYPE_AP)
 			mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 		mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+				  IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU;
+#else
 				  IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
+#endif
 		if (i == NL80211_IFTYPE_STATION)
 			mac_cap_info[5] = IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
 		phy_cap_info[0] = IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G |
@@ -2018,12 +2026,24 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP2_STBC_TX_UNDER_80MHZ |
 				  IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ |
 				  IEEE80211_HE_PHY_CAP2_DOPPLER_TX;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		phy_cap_info[3] = IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
 		phy_cap_info[3] = IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM;
+#endif
 		if (i == NL80211_IFTYPE_STATION)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
+#endif
 					   IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_2;
 		if (i == NL80211_IFTYPE_AP)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
+#endif
 		phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
 				  IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
 		phy_cap_info[5] = no_ng16 ? 0 :
@@ -2031,9 +2051,17 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
 		phy_cap_info[6] = IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
 				  IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+				  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB |
+#else
 				  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
+#endif
 				  IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_AR |
+#else
 		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
+#endif
 				  IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
 				  IEEE80211_HE_PHY_CAP7_MAX_NC_1;
 		phy_cap_info[8] = IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
@@ -2373,8 +2401,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 	}
 
 	hw->wiphy->reg_notifier = rtw89_regd_notifier;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	hw->wiphy->sar_capa = &rtw89_sar_capa;
-
+#endif
 	ret = ieee80211_register_hw(hw);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to register hw\n");

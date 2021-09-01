@@ -5,6 +5,7 @@
 #include "debug.h"
 #include "sar.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 static int rtw89_query_sar_config_common(struct rtw89_dev *rtwdev, s32 *cfg)
 {
 	struct rtw89_sar_cfg_common *rtwsar = &rtwdev->sar.cfg_common;
@@ -188,3 +189,4 @@ int rtw89_ops_set_sar_specs(struct ieee80211_hw *hw,
 
 	return rtw89_apply_sar_common(rtwdev, &sar_common);
 }
+#endif

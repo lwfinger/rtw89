@@ -978,7 +978,11 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	s8 lmt = 0, sar;
+#else
+	s8 lmt = 0;
+#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -1106,7 +1110,11 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, ch);
 	u8 band = rtwdev->hal.current_band_type;
 	u8 regd = rtw89_regd_get(rtwdev, band);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	s8 lmt_ru = 0, sar;
+#else
+	s8 lmt_ru = 0;
+#endif
 
 	switch (band) {
 	case RTW89_BAND_2G:
@@ -1126,7 +1134,7 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 
 	return min(lmt_ru, sar);
 #else
-	return lmt;
+	return lmt_ru;
 #endif
 }
 

@@ -1,8 +1,8 @@
-rtw89 v5
+rtw89 v6
 ===========
 ### A repo for the newest Realtek rtlwifi codes.
 
-This branch has v5 of the code, which is latest from Realtek.
+This branch has v6 of the code, which is latest from Realtek.
 
 This code will build on any kernel 5.4 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.

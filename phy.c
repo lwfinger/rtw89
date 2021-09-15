@@ -993,9 +993,12 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	}
 
 	lmt = _phy_txpwr_rf_to_mac(rtwdev, lmt);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	sar = rtw89_query_sar(rtwdev);
-
 	return min(lmt, sar);
+#else
+	return lmt;
+#endif
 }
 
 #define __fill_txpwr_limit_nonbf_bf(ptr, bw, ntx, rs, ch)		\
@@ -1118,9 +1121,13 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 	}
 
 	lmt_ru = _phy_txpwr_rf_to_mac(rtwdev, lmt_ru);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	sar = rtw89_query_sar(rtwdev);
 
 	return min(lmt_ru, sar);
+#else
+	return lmt;
+#endif
 }
 
 static void

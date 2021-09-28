@@ -394,7 +394,8 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	addr_cam = &rtwvif->addr_cam;
 	sec_cam = addr_cam->sec_entries[key_idx];
-
+	if (!sec_cam || !sec_cam->sec_cam_idx)
+		return -EINVAL;
 	/* detach sec cam from addr cam */
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;

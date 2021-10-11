@@ -387,8 +387,9 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	addr_cam = &rtwvif->addr_cam;
 	sec_cam = addr_cam->sec_entries[key_idx];
-	if (!sec_cam || !sec_cam->sec_cam_idx)
+	if (!sec_cam)
 		return -EINVAL;
+
 	/* detach sec cam from addr cam */
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;
@@ -571,15 +572,9 @@ int rtw89_cam_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
 				  struct rtw89_vif *rtwvif, u8 *cmd)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
-#endif
 	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
-#else
-	u8 bss_color = 0;
-#endif
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);
 	FWCMD_SET_ADDR_BSSID_OFFSET(cmd, bssid_cam->offset);

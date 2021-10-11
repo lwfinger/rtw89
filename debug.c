@@ -560,13 +560,10 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 	seq_puts(m, "[Regulatory] ");
 	__print_regd(m, rtwdev);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	seq_puts(m, "[SAR]\n");
 	rtw89_print_sar(m, rtwdev);
 
 	seq_puts(m, "\n[TX power byrate]\n");
-	rtw89_print_sar(m, rtwdev);
-#endif
 	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);
 	if (ret)
 		goto err;

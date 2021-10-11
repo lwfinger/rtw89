@@ -786,9 +786,7 @@ struct rtw89_btc_fbtc_cysta_cpu {
 	u32 skip_cnt;
 	u32 exception;
 	u32 except_cnt;
-#if (FCXCYSTA_VER > 1)
 	u16 tslot_cycle[BTC_CYCLE_SLOT_MAX];
-#endif
 };
 
 static void rtw89_btc_fbtc_cysta_to_cpu(const struct rtw89_btc_fbtc_cysta *src,
@@ -826,9 +824,7 @@ static void rtw89_btc_fbtc_cysta_to_cpu(const struct rtw89_btc_fbtc_cysta *src,
 	__CPY_LE32(skip_cnt);
 	__CPY_LE32(exception);
 	__CPY_LE32(except_cnt);
-#if (FCXCYSTA_VER > 1)
 	__CPY_LE16S(tslot_cycle);
-#endif
 
 #undef __CPY_U8
 #undef __CPY_LE16
@@ -1511,15 +1507,13 @@ static void _set_wl_rx_gain(struct rtw89_dev *rtwdev, u32 level)
 	rtw89_debug(rtwdev, RTW89_DBG_BTC,
 		    "[BTC], %s(): level = %d\n",
 		    __func__, level);
-
-	rtw89_btc_wl_rx_gain(rtwdev, level);
 }
 
 static void _set_bt_tx_power(struct rtw89_dev *rtwdev, u8 level)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_bt_info *bt = &btc->cx.bt;
-	u8 buf = 0;
+	u8 buf;
 
 	if (bt->rf_para.tx_pwr_freerun == level)
 		return;
@@ -1690,11 +1684,7 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 
 	switch (bw) {
 	case RTW89_CHANNEL_WIDTH_20:
-#ifdef BTC_NON_SHARED_ANT_FREERUN
-		bw = 48;
-#else
 		bw = 20 + chip->afh_guard_ch * 2;
-#endif
 		break;
 	case RTW89_CHANNEL_WIDTH_40:
 		bw = 40 + chip->afh_guard_ch * 2;

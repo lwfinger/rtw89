@@ -348,15 +348,8 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
 		ext_key = true;
 		break;
-	case WLAN_CIPHER_SUITE_TKIP:
-	case WLAN_CIPHER_SUITE_AES_CMAC:
-	case WLAN_CIPHER_SUITE_BIP_CMAC_256:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_128:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_256:
-		/* suppress error messages */
-		return -EOPNOTSUPP;
 	default:
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 	}
 
 	key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;

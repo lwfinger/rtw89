@@ -87,6 +87,7 @@ extern const struct rtw89_rfk_tbl rtw8852a_tssi_pak_defs_b_5g_3_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_pak_defs_b_5g_4_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_enable_defs_a_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_enable_defs_b_tbl;
+extern const struct rtw89_rfk_tbl rtw8852a_tssi_enable_defs_ab_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_disable_defs_tbl;
 extern const struct rtw89_rfk_tbl rtw8852a_tssi_tracking_defs_tbl;
 

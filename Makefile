@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 SHELL := /bin/sh
 KVER  ?= $(shell uname -r)
 KSRC := /lib/modules/$(KVER)/build
@@ -24,8 +25,8 @@ EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGFS
 
-obj-m += rtw89core.o
-rtw89core-y +=  core.o \
+obj-m += rtw89_core.o
+rtw89_core-y += core.o \
 		debug.o \
 		mac80211.o \
 		mac.o \
@@ -43,8 +44,8 @@ rtw89core-y +=  core.o \
 		sar.o \
 		ser.o
 
-obj-m += rtw89pci.o
-rtw89pci-y := pci.o
+obj-m += rtw89_pci.o
+rtw89_pci-y := pci.o
 
 ccflags-y += -D__CHECK_ENDIAN__
 
@@ -86,7 +87,7 @@ clean:
 	@rm -fr modules.order
 
 sign:
-	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89core.ko
-	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89pci.ko
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89_core.ko
+	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89_pci.ko
 
 sign-install: all sign install

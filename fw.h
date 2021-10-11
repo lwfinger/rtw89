@@ -157,95 +157,95 @@ struct rtw89_h2creg_sch_tx_en {
 } __packed;
 
 #define RTW89_SET_FWCMD_RA_IS_DIS(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(0))
 #define RTW89_SET_FWCMD_RA_MODE(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(5, 1))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(5, 1))
 #define RTW89_SET_FWCMD_RA_BW_CAP(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(7, 6))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(7, 6))
 #define RTW89_SET_FWCMD_RA_MACID(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(15, 8))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(15, 8))
 #define RTW89_SET_FWCMD_RA_DCM(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(16))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(16))
 #define RTW89_SET_FWCMD_RA_ER(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(17))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(17))
 #define RTW89_SET_FWCMD_RA_INIT_RATE_LV(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(19, 18))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(19, 18))
 #define RTW89_SET_FWCMD_RA_UPD_ALL(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(20))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(20))
 #define RTW89_SET_FWCMD_RA_SGI(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(21))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(21))
 #define RTW89_SET_FWCMD_RA_LDPC(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(22))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(22))
 #define RTW89_SET_FWCMD_RA_STBC(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(23))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(23))
 #define RTW89_SET_FWCMD_RA_SS_NUM(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(26, 24))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(26, 24))
 #define RTW89_SET_FWCMD_RA_GILTF(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(29, 27))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(29, 27))
 #define RTW89_SET_FWCMD_RA_UPD_BW_NSS_MASK(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(30))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(30))
 #define RTW89_SET_FWCMD_RA_UPD_MASK(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(31))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(31))
 #define RTW89_SET_FWCMD_RA_MASK_0(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(7, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_RA_MASK_1(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(15, 8))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(15, 8))
 #define RTW89_SET_FWCMD_RA_MASK_2(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(23, 16))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(23, 16))
 #define RTW89_SET_FWCMD_RA_MASK_3(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(31, 24))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(31, 24))
 #define RTW89_SET_FWCMD_RA_MASK_4(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x02, GENMASK(7, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x02, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_RA_BFEE_CSI_CTL(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x02, BIT(31))
+	le32p_replace_bits((__le32 *)(cmd) + 0x02, val, BIT(31))
 #define RTW89_SET_FWCMD_RA_BAND_NUM(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(7, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_RA_RA_CSI_RATE_EN(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, BIT(8))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, BIT(8))
 #define RTW89_SET_FWCMD_RA_FIXED_CSI_RATE_EN(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, BIT(9))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, BIT(9))
 #define RTW89_SET_FWCMD_RA_CR_TBL_SEL(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, BIT(10))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, BIT(10))
 #define RTW89_SET_FWCMD_RA_FIXED_CSI_MCS_SS_IDX(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(23, 16))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(23, 16))
 #define RTW89_SET_FWCMD_RA_FIXED_CSI_MODE(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(25, 24))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(25, 24))
 #define RTW89_SET_FWCMD_RA_FIXED_CSI_GI_LTF(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(28, 26))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(28, 26))
 #define RTW89_SET_FWCMD_RA_FIXED_CSI_BW(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(31, 29))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(31, 29))
 
 #define RTW89_SET_FWCMD_SEC_IDX(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(7, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_SEC_OFFSET(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(15, 8))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(15, 8))
 #define RTW89_SET_FWCMD_SEC_LEN(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(23, 16))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(23, 16))
 #define RTW89_SET_FWCMD_SEC_TYPE(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(3, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(3, 0))
 #define RTW89_SET_FWCMD_SEC_EXT_KEY(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, BIT(4))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, BIT(4))
 #define RTW89_SET_FWCMD_SEC_SPP_MODE(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, BIT(5))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, BIT(5))
 #define RTW89_SET_FWCMD_SEC_KEY0(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x02, GENMASK(31, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x02, val, GENMASK(31, 0))
 #define RTW89_SET_FWCMD_SEC_KEY1(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x03, GENMASK(31, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x03, val, GENMASK(31, 0))
 #define RTW89_SET_FWCMD_SEC_KEY2(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x04, GENMASK(31, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x04, val, GENMASK(31, 0))
 #define RTW89_SET_FWCMD_SEC_KEY3(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x05, GENMASK(31, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x05, val, GENMASK(31, 0))
 
 #define RTW89_SET_EDCA_SEL(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(1, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(1, 0))
 #define RTW89_SET_EDCA_BAND(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(3))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(3))
 #define RTW89_SET_EDCA_WMM(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, BIT(4))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, BIT(4))
 #define RTW89_SET_EDCA_AC(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x00, GENMASK(6, 5))
+	le32p_replace_bits((__le32 *)(cmd) + 0x00, val, GENMASK(6, 5))
 #define RTW89_SET_EDCA_PARAM(cmd, val) \
-	RTW89_SET_FWCMD(cmd, val, 0x01, GENMASK(31, 0))
+	le32p_replace_bits((__le32 *)(cmd) + 0x01, val, GENMASK(31, 0))
 #define FW_EDCA_PARAM_TXOPLMT_MSK GENMASK(26, 16)
 #define FW_EDCA_PARAM_CWMAX_MSK GENMASK(15, 12)
 #define FW_EDCA_PARAM_CWMIN_MSK GENMASK(11, 8)
@@ -1053,117 +1053,117 @@ enum rtw89_btc_cxdrvinfo {
 };
 
 #define RTW89_SET_FWCMD_CXHDR_TYPE(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 0, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 0, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXHDR_LEN(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 1, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 1, val, GENMASK(7, 0))
 
 #define RTW89_SET_FWCMD_CXINIT_ANT_TYPE(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 2, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 2, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_ANT_NUM(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 3, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 3, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_ANT_ISO(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 4, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 4, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_ANT_POS(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 5, BIT(0))
+	u8p_replace_bits((u8 *)(cmd) + 5, val, BIT(0))
 #define RTW89_SET_FWCMD_CXINIT_ANT_DIVERSITY(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 5, BIT(1))
+	u8p_replace_bits((u8 *)(cmd) + 5, val, BIT(1))
 #define RTW89_SET_FWCMD_CXINIT_MOD_RFE(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 6, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_MOD_CV(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 7, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 7, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_MOD_BT_SOLO(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(0))
+	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(0))
 #define RTW89_SET_FWCMD_CXINIT_MOD_BT_POS(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(1))
+	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(1))
 #define RTW89_SET_FWCMD_CXINIT_MOD_SW_TYPE(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 8, BIT(2))
+	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(2))
 #define RTW89_SET_FWCMD_CXINIT_WL_GCH(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 10, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 10, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXINIT_WL_ONLY(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(0))
+	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(0))
 #define RTW89_SET_FWCMD_CXINIT_WL_INITOK(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(1))
+	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(1))
 #define RTW89_SET_FWCMD_CXINIT_DBCC_EN(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(2))
+	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(2))
 #define RTW89_SET_FWCMD_CXINIT_CX_OTHER(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(3))
+	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(3))
 #define RTW89_SET_FWCMD_CXINIT_BT_ONLY(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 11, BIT(4))
+	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(4))
 
 #define RTW89_SET_FWCMD_CXROLE_CONNECT_CNT(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 2, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 2, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXROLE_LINK_MODE(cmd, val) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 3, GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + 3, val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_NONE(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(0))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(0))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_STA(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(1))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(1))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_AP(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(2))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(2))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_VAP(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(3))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(3))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(4))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(4))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC_MASTER(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(5))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(5))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_MESH(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(6))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(6))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_MONITOR(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(7))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(7))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_DEV(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(8))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(8))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GC(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(9))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(9))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GO(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(10))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(10))
 #define RTW89_SET_FWCMD_CXROLE_ROLE_NAN(cmd, val) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 4, BIT(11))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(11))
 #define RTW89_SET_FWCMD_CXROLE_ACT_CONNECTED(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(0))
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_PID(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), GENMASK(3, 1))
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(3, 1))
 #define RTW89_SET_FWCMD_CXROLE_ACT_PHY(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(4))
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(4))
 #define RTW89_SET_FWCMD_CXROLE_ACT_NOA(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), BIT(5))
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(5))
 #define RTW89_SET_FWCMD_CXROLE_ACT_BAND(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 6 + 12 * (n), GENMASK(7, 6))
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(7, 6))
 #define RTW89_SET_FWCMD_CXROLE_ACT_CLIENT_PS(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 7 + 12 * (n), BIT(0))
+	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, BIT(0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_BW(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 7 + 12 * (n), GENMASK(7, 1))
+	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, GENMASK(7, 1))
 #define RTW89_SET_FWCMD_CXROLE_ACT_ROLE(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 8 + 12 * (n), GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + (8 + 12 * (n)), val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_CH(cmd, val, n) \
-	RTW89_SET_FWCMD_UA8(cmd, val, 9 + 12 * (n), GENMASK(7, 0))
+	u8p_replace_bits((u8 *)(cmd) + (9 + 12 * (n)), val, GENMASK(7, 0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_TX_LVL(cmd, val, n) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 10 + 12 * (n), GENMASK(15, 0))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (10 + 12 * (n))), val, GENMASK(15, 0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_RX_LVL(cmd, val, n) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 12 + 12 * (n), GENMASK(15, 0))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (12 + 12 * (n))), val, GENMASK(15, 0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_TX_RATE(cmd, val, n) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 14 + 12 * (n), GENMASK(15, 0))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (14 + 12 * (n))), val, GENMASK(15, 0))
 #define RTW89_SET_FWCMD_CXROLE_ACT_RX_RATE(cmd, val, n) \
-	RTW89_SET_FWCMD_UA16(cmd, val, 16 + 12 * (n), GENMASK(15, 0))
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (16 + 12 * (n))), val, GENMASK(15, 0))
 
 #define RTW89_SET_FWCMD_CXCTRL_MANUAL(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(0))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, BIT(0))
 #define RTW89_SET_FWCMD_CXCTRL_IGNORE_BT(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(1))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, BIT(1))
 #define RTW89_SET_FWCMD_CXCTRL_ALWAYS_FREERUN(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, BIT(2))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, BIT(2))
 #define RTW89_SET_FWCMD_CXCTRL_TRACE_STEP(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(18, 3))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(18, 3))
 
 #define RTW89_SET_FWCMD_CXRFK_STATE(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(1, 0))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(1, 0))
 #define RTW89_SET_FWCMD_CXRFK_PATH_MAP(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(5, 2))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(5, 2))
 #define RTW89_SET_FWCMD_CXRFK_PHY_MAP(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(7, 6))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(7, 6))
 #define RTW89_SET_FWCMD_CXRFK_BAND(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(9, 8))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(9, 8))
 #define RTW89_SET_FWCMD_CXRFK_TYPE(cmd, val) \
-	RTW89_SET_FWCMD_UA32(cmd, val, 2, GENMASK(17, 10))
+	le32p_replace_bits((__le32 *)((u8 *)(cmd) + 2), val, GENMASK(17, 10))
 
 #define RTW89_C2H_HEADER_LEN 8
 
@@ -1212,8 +1212,12 @@ enum rtw89_btc_cxdrvinfo {
 #define RTW89_GET_PHY_C2H_RA_RPT_BW(c2h) \
 	le32_get_bits(*((__le32 *)(c2h) + 3), GENMASK(14, 13))
 
+/* VHT, HE, HT-old: [6:4]: NSS, [3:0]: MCS
+ * HT-new: [6:5]: NA, [4:0]: MCS
+ */
 #define RTW89_RA_RATE_MASK_NSS GENMASK(6, 4)
 #define RTW89_RA_RATE_MASK_MCS GENMASK(3, 0)
+#define RTW89_RA_RATE_MASK_HT_MCS GENMASK(4, 0)
 #define RTW89_MK_HT_RATE(nss, mcs) (FIELD_PREP(GENMASK(4, 3), nss) | \
 				    FIELD_PREP(GENMASK(2, 0), mcs))
 
@@ -1356,6 +1360,8 @@ int rtw89_fw_h2c_raw_with_hdr(struct rtw89_dev *rtwdev,
 			      u8 h2c_class, u8 h2c_func, u8 *buf, u16 len,
 			      bool rack, bool dack);
 int rtw89_fw_h2c_raw(struct rtw89_dev *rtwdev, const u8 *buf, u16 len);
+void rtw89_fw_send_all_early_h2c(struct rtw89_dev *rtwdev);
+void rtw89_fw_free_all_early_h2c(struct rtw89_dev *rtwdev);
 int rtw89_fw_h2c_general_pkt(struct rtw89_dev *rtwdev, u8 macid);
 int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
 			struct ieee80211_ampdu_params *params);
@@ -1368,27 +1374,5 @@ int rtw89_fw_msg_reg(struct rtw89_dev *rtwdev,
 		     struct rtw89_mac_c2h_info *c2h_info);
 int rtw89_fw_h2c_fw_log(struct rtw89_dev *rtwdev, bool enable);
 void rtw89_fw_st_dbg_dump(struct rtw89_dev *rtwdev);
-
-static __always_inline void RTW89_SET_FWCMD(u8 *cmd, u32 val, u8 offset, u32 mask)
-{
-	u32 *cmd32 = (u32 *)cmd;
-
-	le32p_replace_bits((__le32 *)(cmd32 + offset), val, mask);
-}
-
-static __always_inline void RTW89_SET_FWCMD_UA8(u8 *cmd, u8 val, u8 offset, u32 mask)
-{
-	u8p_replace_bits(cmd + offset, val, mask);
-}
-
-static __always_inline void RTW89_SET_FWCMD_UA16(u8 *cmd, u16 val, u8 offset, u32 mask)
-{
-	le16p_replace_bits((__le16 *)(cmd + offset), val, mask);
-}
-
-static __always_inline void RTW89_SET_FWCMD_UA32(u8 *cmd, u32 val, u8 offset, u32 mask)
-{
-	le32p_replace_bits((__le32 *)(cmd + offset), val, mask);
-}
 
 #endif

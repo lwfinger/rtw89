@@ -3799,3 +3799,113 @@ void rtw8852a_tssi_track(struct rtw89_dev *rtwdev)
 {
 	_tssi_track(rtwdev);
 }
+
+static
+void _rtw8852a_tssi_avg_scan(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
+{
+	if (!rtwdev->is_tssi_mode[RF_PATH_A] && !rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	/* disable */
+	rtw89_rfk_parser(rtwdev, &rtw8852a_tssi_disable_defs_tbl);
+
+	rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_AVG, B_P0_TSSI_AVG, 0x0);
+	rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_MV_AVG, B_P0_TSSI_MV_AVG, 0x0);
+
+	rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_AVG, B_P1_TSSI_AVG, 0x0);
+	rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_MV_AVG, B_P1_TSSI_MV_AVG, 0x0);
+
+	/* enable */
+	rtw89_rfk_parser(rtwdev, &rtw8852a_tssi_enable_defs_ab_tbl);
+}
+
+static
+void _rtw8852a_tssi_set_avg(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy)
+{
+	if (!rtwdev->is_tssi_mode[RF_PATH_A] && !rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	/* disable */
+	rtw89_rfk_parser(rtwdev, &rtw8852a_tssi_disable_defs_tbl);
+
+	rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_AVG, B_P0_TSSI_AVG, 0x4);
+	rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_MV_AVG, B_P0_TSSI_MV_AVG, 0x2);
+
+	rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_AVG, B_P1_TSSI_AVG, 0x4);
+	rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_MV_AVG, B_P1_TSSI_MV_AVG, 0x2);
+
+	/* enable */
+	rtw89_rfk_parser(rtwdev, &rtw8852a_tssi_enable_defs_ab_tbl);
+}
+
+static void rtw8852a_tssi_set_avg(struct rtw89_dev *rtwdev,
+				  enum rtw89_phy_idx phy, bool enable)
+{
+	if (!rtwdev->is_tssi_mode[RF_PATH_A] && !rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	if (enable) {
+		/* SCAN_START */
+		_rtw8852a_tssi_avg_scan(rtwdev, phy);
+	} else {
+		/* SCAN_END */
+		_rtw8852a_tssi_set_avg(rtwdev, phy);
+	}
+}
+
+static void rtw8852a_tssi_default_txagc(struct rtw89_dev *rtwdev,
+					enum rtw89_phy_idx phy, bool enable)
+{
+	struct rtw89_tssi_info *tssi_info = &rtwdev->tssi;
+	u8 i;
+
+	if (!rtwdev->is_tssi_mode[RF_PATH_A] && !rtwdev->is_tssi_mode[RF_PATH_B])
+		return;
+
+	if (enable) {
+		if (rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB, B_TXAGC_BB_OFT) != 0xc000 &&
+		    rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB, B_TXAGC_BB_OFT) != 0x0) {
+			for (i = 0; i < 6; i++) {
+				tssi_info->default_txagc_offset[RF_PATH_A] =
+					rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB,
+							      B_TXAGC_BB);
+				if (tssi_info->default_txagc_offset[RF_PATH_A])
+					break;
+			}
+		}
+
+		if (rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1, B_TXAGC_BB_S1_OFT) != 0xc000 &&
+		    rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1, B_TXAGC_BB_S1_OFT) != 0x0) {
+			for (i = 0; i < 6; i++) {
+				tssi_info->default_txagc_offset[RF_PATH_B] =
+					rtw89_phy_read32_mask(rtwdev, R_TXAGC_BB_S1,
+							      B_TXAGC_BB_S1);
+				if (tssi_info->default_txagc_offset[RF_PATH_B])
+					break;
+			}
+		}
+	} else {
+		rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_TRK, B_P0_TSSI_OFT,
+				       tssi_info->default_txagc_offset[RF_PATH_A]);
+		rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_TRK, B_P1_TSSI_OFT,
+				       tssi_info->default_txagc_offset[RF_PATH_B]);
+
+		rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_TRK, B_P0_TSSI_OFT_EN, 0x0);
+		rtw89_phy_write32_mask(rtwdev, R_P0_TSSI_TRK, B_P0_TSSI_OFT_EN, 0x1);
+
+		rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_TRK, B_P1_TSSI_OFT_EN, 0x0);
+		rtw89_phy_write32_mask(rtwdev, R_P1_TSSI_TRK, B_P1_TSSI_OFT_EN, 0x1);
+	}
+}
+
+void rtw8852a_wifi_scan_notify(struct rtw89_dev *rtwdev,
+			       bool scan_start, enum rtw89_phy_idx phy_idx)
+{
+	if (scan_start) {
+		rtw8852a_tssi_default_txagc(rtwdev, phy_idx, true);
+		rtw8852a_tssi_set_avg(rtwdev, phy_idx, true);
+	} else {
+		rtw8852a_tssi_default_txagc(rtwdev, phy_idx, false);
+		rtw8852a_tssi_set_avg(rtwdev, phy_idx, false);
+	}
+}

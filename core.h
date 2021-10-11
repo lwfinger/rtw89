@@ -5,7 +5,6 @@
 #ifndef __RTW89_CORE_H__
 #define __RTW89_CORE_H__
 
-#include <linux/version.h>
 #include <linux/average.h>
 #include <linux/bitfield.h>
 #include <linux/firmware.h>
@@ -686,6 +685,7 @@ struct rtw89_tx_desc_info {
 	u8 sec_type;
 	u8 sec_cam_idx;
 	u16 data_rate;
+	u16 data_retry_lowest_rate;
 	bool fw_dl;
 	u16 seq;
 	bool a_ctrl_bsr;
@@ -1722,7 +1722,7 @@ struct rtw89_btc {
 	struct work_struct eapol_notify_work;
 	struct work_struct arp_notify_work;
 	struct work_struct dhcp_notify_work;
-	struct work_struct wl_sta_notify_work;
+	struct work_struct icmp_notify_work;
 
 	u32 bt_req_len;
 
@@ -1906,6 +1906,13 @@ struct rtw89_efuse {
 	char country_code[2];
 };
 
+struct rtw89_phy_rate_pattern {
+	u64 ra_mask;
+	u16 rate;
+	u8 ra_mode;
+	bool enable;
+};
+
 struct rtw89_vif {
 	struct list_head list;
 	u8 mac_id;
@@ -1941,6 +1948,7 @@ struct rtw89_vif {
 	struct rtw89_bssid_cam_entry bssid_cam;
 	struct ieee80211_tx_queue_params tx_params[IEEE80211_NUM_ACS];
 	struct rtw89_traffic_stats stats;
+	struct rtw89_phy_rate_pattern rate_pattern;
 };
 
 enum rtw89_lv1_rcvy_step {
@@ -1955,7 +1963,6 @@ struct rtw89_hci_ops {
 	void (*reset)(struct rtw89_dev *rtwdev);
 	int (*start)(struct rtw89_dev *rtwdev);
 	void (*stop)(struct rtw89_dev *rtwdev);
-	void (*link_ps)(struct rtw89_dev *rtwdev, bool enter);
 	void (*recalc_int_mit)(struct rtw89_dev *rtwdev);
 
 	u8 (*read8)(struct rtw89_dev *rtwdev, u32 addr);
@@ -2000,6 +2007,7 @@ struct rtw89_chip_ops {
 	void (*rfk_init)(struct rtw89_dev *rtwdev);
 	void (*rfk_channel)(struct rtw89_dev *rtwdev);
 	void (*rfk_band_changed)(struct rtw89_dev *rtwdev);
+	void (*rfk_scan)(struct rtw89_dev *rtwdev, bool start);
 	void (*rfk_track)(struct rtw89_dev *rtwdev);
 	void (*power_trim)(struct rtw89_dev *rtwdev);
 	void (*set_txpwr)(struct rtw89_dev *rtwdev);
@@ -2094,17 +2102,17 @@ struct rtw89_hfc_param {
 	bool en;
 	bool h2c_en;
 	u8 mode;
-	struct rtw89_hfc_ch_cfg *ch_cfg;
+	const struct rtw89_hfc_ch_cfg *ch_cfg;
 	struct rtw89_hfc_ch_info ch_info[RTW89_DMA_CH_NUM];
-	struct rtw89_hfc_pub_cfg *pub_cfg;
+	struct rtw89_hfc_pub_cfg pub_cfg;
 	struct rtw89_hfc_pub_info pub_info;
-	struct rtw89_hfc_prec_cfg *prec_cfg;
+	struct rtw89_hfc_prec_cfg prec_cfg;
 };
 
 struct rtw89_hfc_param_ini {
-	struct rtw89_hfc_ch_cfg *ch_cfg;
-	struct rtw89_hfc_pub_cfg *pub_cfg;
-	struct rtw89_hfc_prec_cfg *prec_cfg;
+	const struct rtw89_hfc_ch_cfg *ch_cfg;
+	const struct rtw89_hfc_pub_cfg *pub_cfg;
+	const struct rtw89_hfc_prec_cfg *prec_cfg;
 	u8 mode;
 };
 
@@ -2137,12 +2145,12 @@ struct rtw89_ple_quota {
 
 struct rtw89_dle_mem {
 	enum rtw89_qta_mode mode;
-	struct rtw89_dle_size *wde_size;
-	struct rtw89_dle_size *ple_size;
-	struct rtw89_wde_quota *wde_min_qt;
-	struct rtw89_wde_quota *wde_max_qt;
-	struct rtw89_ple_quota *ple_min_qt;
-	struct rtw89_ple_quota *ple_max_qt;
+	const struct rtw89_dle_size *wde_size;
+	const struct rtw89_dle_size *ple_size;
+	const struct rtw89_wde_quota *wde_min_qt;
+	const struct rtw89_wde_quota *wde_max_qt;
+	const struct rtw89_ple_quota *ple_min_qt;
+	const struct rtw89_ple_quota *ple_max_qt;
 };
 
 struct rtw89_reg_def {
@@ -2189,8 +2197,8 @@ struct rtw89_chip_info {
 	u32 fifo_size;
 	u16 max_amsdu_limit;
 	bool dis_2g_40m_ul_ofdma;
-	struct rtw89_hfc_param_ini *hfc_param_ini;
-	struct rtw89_dle_mem *dle_mem;
+	const struct rtw89_hfc_param_ini *hfc_param_ini;
+	const struct rtw89_dle_mem *dle_mem;
 	u32 rf_base_addr[2];
 	u8 rf_path_num;
 	u8 tx_nss;
@@ -2297,6 +2305,11 @@ struct rtw89_fw_suit {
 	u8 cmd_ver;
 };
 
+#define RTW89_FW_VER_CODE(major, minor, sub, idx)	\
+	(((major) << 24) | ((minor) << 16) | ((sub) << 8) | (idx))
+#define RTW89_FW_SUIT_VER_CODE(s)	\
+	RTW89_FW_VER_CODE((s)->major_ver, (s)->minor_ver, (s)->sub_ver, (s)->sub_idex)
+
 struct rtw89_fw_info {
 	const struct firmware *firmware;
 	struct rtw89_dev *rtwdev;
@@ -2306,6 +2319,7 @@ struct rtw89_fw_info {
 	struct rtw89_fw_suit normal;
 	struct rtw89_fw_suit wowlan;
 	bool fw_log_enable;
+	bool old_ht_ra_format;
 };
 
 struct rtw89_cam_info {
@@ -2760,6 +2774,12 @@ struct rtw89_ppdu_sts_info {
 	u8 curr_rx_ppdu_cnt[RTW89_PHY_MAX];
 };
 
+struct rtw89_early_h2c {
+	struct list_head list;
+	u8 *h2c;
+	u16 h2c_len;
+};
+
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
 	struct device *dev;
@@ -2791,6 +2811,8 @@ struct rtw89_dev {
 
 	struct sk_buff_head c2h_queue;
 	struct work_struct c2h_work;
+
+	struct list_head early_h2c_list;
 
 	struct rtw89_ser ser;
 
@@ -2863,11 +2885,6 @@ static inline void rtw89_hci_stop(struct rtw89_dev *rtwdev)
 static inline int rtw89_hci_deinit(struct rtw89_dev *rtwdev)
 {
 	return rtwdev->hci.ops->deinit(rtwdev);
-}
-
-static inline void rtw89_hci_link_ps(struct rtw89_dev *rtwdev, bool enter)
-{
-	rtwdev->hci.ops->link_ps(rtwdev, enter);
 }
 
 static inline void rtw89_hci_recalc_int_mit(struct rtw89_dev *rtwdev)
@@ -3164,6 +3181,14 @@ static inline void rtw89_chip_rfk_band_changed(struct rtw89_dev *rtwdev)
 
 	if (chip->ops->rfk_band_changed)
 		chip->ops->rfk_band_changed(rtwdev);
+}
+
+static inline void rtw89_chip_rfk_scan(struct rtw89_dev *rtwdev, bool start)
+{
+	const struct rtw89_chip_info *chip = rtwdev->chip;
+
+	if (chip->ops->rfk_scan)
+		chip->ops->rfk_scan(rtwdev, start);
 }
 
 static inline void rtw89_chip_rfk_track(struct rtw89_dev *rtwdev)

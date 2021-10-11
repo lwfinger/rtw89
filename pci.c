@@ -2552,6 +2552,11 @@ static void rtw89_pci_clkreq_set(struct rtw89_dev *rtwdev, bool enable)
 	if (rtw89_pci_disable_clkreq)
 		return;
 
+	ret = rtw89_dbi_write8(rtwdev, RTW89_PCIE_CLK_CTRL,
+			       PCIE_CLKDLY_HW_30US);
+	if (ret)
+		rtw89_err(rtwdev, "failed to set CLKREQ Delay\n");
+
 	if (enable)
 		ret = rtw89_dbi_write8_set(rtwdev, RTW89_PCIE_L1_CTRL,
 					   RTW89_PCIE_BIT_CLK);
@@ -2565,10 +2570,23 @@ static void rtw89_pci_clkreq_set(struct rtw89_dev *rtwdev, bool enable)
 
 static void rtw89_pci_aspm_set(struct rtw89_dev *rtwdev, bool enable)
 {
+	u8 value = 0;
 	int ret;
 
 	if (rtw89_pci_disable_aspm_l1)
 		return;
+
+	ret = rtw89_dbi_read8(rtwdev, RTW89_PCIE_ASPM_CTRL, &value);
+	if (ret)
+		rtw89_err(rtwdev, "failed to read ASPM Delay\n");
+
+	value &= ~(RTW89_L1DLY_MASK | RTW89_L0DLY_MASK);
+	value |= FIELD_PREP(RTW89_L1DLY_MASK, PCIE_L1DLY_16US) |
+		 FIELD_PREP(RTW89_L0DLY_MASK, PCIE_L0SDLY_4US);
+
+	ret = rtw89_dbi_write8(rtwdev, RTW89_PCIE_ASPM_CTRL, value);
+	if (ret)
+		rtw89_err(rtwdev, "failed to read ASPM Delay\n");
 
 	if (enable)
 		ret = rtw89_dbi_write8_set(rtwdev, RTW89_PCIE_L1_CTRL,
@@ -2579,24 +2597,6 @@ static void rtw89_pci_aspm_set(struct rtw89_dev *rtwdev, bool enable)
 	if (ret)
 		rtw89_err(rtwdev, "failed to %s ASPM L1, ret=%d",
 			  enable ? "set" : "unset", ret);
-}
-
-static void rtw89_pci_link_ps(struct rtw89_dev *rtwdev, bool enter)
-{
-	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
-
-	/* Like CLKREQ, ASPM is also implemented by two HW modules, and can
-	 * only be enabled when host supports it.
-	 *
-	 * And ASPM mechanism should be enabled when driver/firmware enters
-	 * power save mode, without having heavy traffic. Because we've
-	 * experienced some inter-operability issues that the link tends
-	 * to enter L1 state on the fly even when driver is having high
-	 * throughput. This is probably because the ASPM behavior slightly
-	 * varies from different SOC.
-	 */
-	if (rtwpci->link_ctrl & PCI_EXP_LNKCTL_ASPM_L1)
-		rtw89_pci_aspm_set(rtwdev, enter);
 }
 
 static void rtw89_pci_recalc_int_mit(struct rtw89_dev *rtwdev)
@@ -2648,7 +2648,8 @@ static void rtw89_pci_link_cfg(struct rtw89_dev *rtwdev)
 	if (link_ctrl & PCI_EXP_LNKCTL_CLKREQ_EN)
 		rtw89_pci_clkreq_set(rtwdev, true);
 
-	rtwpci->link_ctrl = link_ctrl;
+	if (link_ctrl & PCI_EXP_LNKCTL_ASPM_L1)
+		rtw89_pci_aspm_set(rtwdev, true);
 }
 
 static void rtw89_pci_l1ss_set(struct rtw89_dev *rtwdev, bool enable)
@@ -2912,7 +2913,6 @@ static const struct rtw89_hci_ops rtw89_pci_ops = {
 	.reset		= rtw89_pci_ops_reset,
 	.start		= rtw89_pci_ops_start,
 	.stop		= rtw89_pci_ops_stop,
-	.link_ps	= rtw89_pci_link_ps,
 	.recalc_int_mit = rtw89_pci_recalc_int_mit,
 
 	.read8		= rtw89_pci_ops_read8,

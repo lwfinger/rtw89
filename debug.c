@@ -2095,29 +2095,108 @@ rtw89_debug_priv_mac_dbg_port_dump_get(struct seq_file *m, void *v)
 	return 0;
 };
 
+static u8 *rtw89_hex2bin_user(struct rtw89_dev *rtwdev,
+			      const char __user *user_buf, size_t count)
+{
+	char *buf;
+	u8 *bin;
+	int num;
+	int err = 0;
+
+	buf = memdup_user(user_buf, count);
+	if (IS_ERR(buf))
+		return buf;
+
+	num = count / 2;
+	bin = kmalloc(num, GFP_KERNEL);
+	if (!bin) {
+		err = -EFAULT;
+		goto out;
+	}
+
+	if (hex2bin(bin, buf, num)) {
+		rtw89_info(rtwdev, "valid format: H1H2H3...\n");
+		kfree(bin);
+		err = -EINVAL;
+	}
+
+out:
+	kfree(buf);
+
+	return err ? ERR_PTR(err) : bin;
+}
+
 static ssize_t rtw89_debug_priv_send_h2c_set(struct file *filp,
 					     const char __user *user_buf,
 					     size_t count, loff_t *loff)
 {
 	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[256];
-	size_t buf_size;
-	u8 h2c[128];
-	int num;
+	u8 *h2c;
+	u16 h2c_len = count / 2;
 
-	buf_size = min(count, sizeof(buf) - 1);
-	if (copy_from_user(buf, user_buf, buf_size))
+	h2c = rtw89_hex2bin_user(rtwdev, user_buf, count);
+	if (IS_ERR(h2c))
 		return -EFAULT;
 
-	num = buf_size / 2;
-	if (hex2bin(h2c, buf, num)) {
-		rtw89_info(rtwdev, "invalid format: H1H2H3...\n");
-		return -EINVAL;
+	rtw89_fw_h2c_raw(rtwdev, h2c, h2c_len);
+
+	kfree(h2c);
+
+	return count;
+}
+
+static int
+rtw89_debug_priv_early_h2c_get(struct seq_file *m, void *v)
+{
+	struct rtw89_debugfs_priv *debugfs_priv = m->private;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	struct rtw89_early_h2c *early_h2c;
+	int seq = 0;
+
+	mutex_lock(&rtwdev->mutex);
+	list_for_each_entry(early_h2c, &rtwdev->early_h2c_list, list)
+		seq_printf(m, "%d: %*ph\n", ++seq, early_h2c->h2c_len, early_h2c->h2c);
+	mutex_unlock(&rtwdev->mutex);
+
+	return 0;
+}
+
+static ssize_t
+rtw89_debug_priv_early_h2c_set(struct file *filp, const char __user *user_buf,
+			       size_t count, loff_t *loff)
+{
+	struct seq_file *m = (struct seq_file *)filp->private_data;
+	struct rtw89_debugfs_priv *debugfs_priv = m->private;
+	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+	struct rtw89_early_h2c *early_h2c;
+	u8 *h2c;
+	u16 h2c_len = count / 2;
+
+	h2c = rtw89_hex2bin_user(rtwdev, user_buf, count);
+	if (IS_ERR(h2c))
+		return -EFAULT;
+
+	if (h2c_len >= 2 && h2c[0] == 0x00 && h2c[1] == 0x00) {
+		kfree(h2c);
+		rtw89_fw_free_all_early_h2c(rtwdev);
+		goto out;
 	}
 
-	rtw89_fw_h2c_raw(rtwdev, h2c, num);
+	early_h2c = kmalloc(sizeof(*early_h2c), GFP_KERNEL);
+	if (!early_h2c) {
+		kfree(h2c);
+		return -EFAULT;
+	}
 
+	early_h2c->h2c = h2c;
+	early_h2c->h2c_len = h2c_len;
+
+	mutex_lock(&rtwdev->mutex);
+	list_add_tail(&early_h2c->list, &rtwdev->early_h2c_list);
+	mutex_unlock(&rtwdev->mutex);
+
+out:
 	return count;
 }
 
@@ -2328,6 +2407,11 @@ static struct rtw89_debugfs_priv rtw89_debug_priv_send_h2c = {
 	.cb_write = rtw89_debug_priv_send_h2c_set,
 };
 
+static struct rtw89_debugfs_priv rtw89_debug_priv_early_h2c = {
+	.cb_read = rtw89_debug_priv_early_h2c_get,
+	.cb_write = rtw89_debug_priv_early_h2c_set,
+};
+
 static struct rtw89_debugfs_priv rtw89_debug_priv_btc_info = {
 	.cb_read = rtw89_debug_priv_btc_info_get,
 };
@@ -2377,6 +2461,7 @@ void rtw89_debugfs_init(struct rtw89_dev *rtwdev)
 	rtw89_debugfs_add_rw(mac_mem_dump);
 	rtw89_debugfs_add_rw(mac_dbg_port_dump);
 	rtw89_debugfs_add_w(send_h2c);
+	rtw89_debugfs_add_rw(early_h2c);
 	rtw89_debugfs_add_r(btc_info);
 	rtw89_debugfs_add_w(btc_manual);
 	rtw89_debugfs_add_w(fw_log_manual);

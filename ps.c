@@ -90,7 +90,6 @@ void rtw89_enter_lps(struct rtw89_dev *rtwdev, u8 mac_id)
 
 	__rtw89_enter_lps(rtwdev, mac_id);
 	__rtw89_enter_ps_mode(rtwdev);
-	rtw89_hci_link_ps(rtwdev, true);
 }
 
 static void rtw89_leave_lps_vif(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
@@ -111,7 +110,6 @@ void rtw89_leave_lps(struct rtw89_dev *rtwdev)
 	if (!test_and_clear_bit(RTW89_FLAG_LEISURE_PS, rtwdev->flags))
 		return;
 
-	rtw89_hci_link_ps(rtwdev, false);
 	rtw89_for_each_rtwvif(rtwdev, rtwvif)
 		rtw89_leave_lps_vif(rtwdev, rtwvif);
 }
@@ -126,7 +124,6 @@ void rtw89_enter_ips(struct rtw89_dev *rtwdev)
 		rtw89_mac_vif_deinit(rtwdev, rtwvif);
 
 	rtw89_core_stop(rtwdev);
-	rtw89_hci_link_ps(rtwdev, true);
 }
 
 void rtw89_leave_ips(struct rtw89_dev *rtwdev)
@@ -134,7 +131,6 @@ void rtw89_leave_ips(struct rtw89_dev *rtwdev)
 	struct rtw89_vif *rtwvif;
 	int ret;
 
-	rtw89_hci_link_ps(rtwdev, false);
 	ret = rtw89_core_start(rtwdev);
 	if (ret)
 		rtw89_err(rtwdev, "failed to leave idle state\n");

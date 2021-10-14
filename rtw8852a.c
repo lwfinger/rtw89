@@ -11,7 +11,7 @@
 #include "rtw8852a_table.h"
 #include "txrx.h"
 
-static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie[] = {
+static const struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie[] = {
 	{128, 1896, grp_0}, /* ACH 0 */
 	{128, 1896, grp_0}, /* ACH 1 */
 	{128, 1896, grp_0}, /* ACH 2 */
@@ -27,21 +27,21 @@ static struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_pcie[] = {
 	{40, 0, 0} /* FWCMDQ */
 };
 
-static struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie = {
+static const struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_pcie = {
 	1896, /* Group 0 */
 	1896, /* Group 1 */
 	3792, /* Public Max */
 	0 /* WP threshold */
 };
 
-static struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
+static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	[RTW89_QTA_SCC] = {rtw8852a_hfc_chcfg_pcie, &rtw8852a_hfc_pubcfg_pcie,
 			   &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
 	[RTW89_QTA_DLFW] = {NULL, NULL, &rtw_hfc_preccfg_pcie, RTW89_HCIFC_POH},
 	[RTW89_QTA_INVALID] = {NULL},
 };
 
-static struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
+static const struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
 	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &wde_size0, &ple_size0, &wde_qt0,
 			    &wde_qt0, &ple_qt4, &ple_qt5},
 	[RTW89_QTA_DLFW] = {RTW89_QTA_DLFW, &wde_size4, &ple_size4,
@@ -1200,6 +1200,11 @@ static void rtw8852a_rfk_band_changed(struct rtw89_dev *rtwdev)
 	rtw8852a_tssi_scan(rtwdev, RTW89_PHY_0);
 }
 
+static void rtw8852a_rfk_scan(struct rtw89_dev *rtwdev, bool start)
+{
+	rtw8852a_wifi_scan_notify(rtwdev, start, RTW89_PHY_0);
+}
+
 static void rtw8852a_rfk_track(struct rtw89_dev *rtwdev)
 {
 	rtw8852a_dpk_track(rtwdev);
@@ -1949,6 +1954,7 @@ static const struct rtw89_chip_ops rtw8852a_chip_ops = {
 	.rfk_init		= rtw8852a_rfk_init,
 	.rfk_channel		= rtw8852a_rfk_channel,
 	.rfk_band_changed	= rtw8852a_rfk_band_changed,
+	.rfk_scan		= rtw8852a_rfk_scan,
 	.rfk_track		= rtw8852a_rfk_track,
 	.power_trim		= rtw8852a_power_trim,
 	.set_txpwr		= rtw8852a_set_txpwr,

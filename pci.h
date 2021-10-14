@@ -334,6 +334,9 @@
 #define RTW89_PCI_MULTITAG		8
 
 /* PCIE CFG register */
+#define RTW89_PCIE_ASPM_CTRL		0x070F
+#define RTW89_L1DLY_MASK		GENMASK(5, 3)
+#define RTW89_L0DLY_MASK		GENMASK(2, 0)
 #define RTW89_PCIE_TIMER_CTRL		0x0718
 #define RTW89_PCIE_BIT_L1SUB		BIT(5)
 #define RTW89_PCIE_L1_CTRL		0x0719
@@ -358,13 +361,30 @@ enum mac_ax_func_sw {
 	MAC_AX_FUNC_EN,
 };
 
+enum rtw89_pcie_l0sdly {
+	PCIE_L0SDLY_1US = 0,
+	PCIE_L0SDLY_2US = 1,
+	PCIE_L0SDLY_3US = 2,
+	PCIE_L0SDLY_4US = 3,
+	PCIE_L0SDLY_5US = 4,
+	PCIE_L0SDLY_6US = 5,
+	PCIE_L0SDLY_7US = 6,
+};
+
+enum rtw89_pcie_l1dly {
+	PCIE_L1DLY_16US = 4,
+	PCIE_L1DLY_32US = 5,
+	PCIE_L1DLY_64US = 6,
+	PCIE_L1DLY_HW_INFI = 7,
+};
+
 enum rtw89_pcie_clkdly_hw {
 	PCIE_CLKDLY_HW_0 = 0,
 	PCIE_CLKDLY_HW_30US = 0x1,
 	PCIE_CLKDLY_HW_50US = 0x2,
 	PCIE_CLKDLY_HW_100US = 0x3,
 	PCIE_CLKDLY_HW_150US = 0x4,
-	PCIE_CLKDLY_HW_200US = 0x5
+	PCIE_CLKDLY_HW_200US = 0x5,
 };
 
 struct rtw89_pci_bd_ram {
@@ -522,7 +542,6 @@ struct rtw89_pci {
 
 	u32 halt_c2h_intrs;
 	u32 intrs[2];
-	u16 link_ctrl;
 	void __iomem *mmap;
 };
 

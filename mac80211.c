@@ -2,6 +2,7 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include <linux/version.h>
 #include "cam.h"
 #include "coex.h"
 #include "debug.h"
@@ -579,6 +580,7 @@ static int rtw89_ops_set_bitrate_mask(struct ieee80211_hw *hw,
 	struct rtw89_dev *rtwdev = hw->priv;
 
 	mutex_lock(&rtwdev->mutex);
+	rtw89_phy_rate_pattern_vif(rtwdev, vif, mask);
 	rtw89_ra_mask_info_update(rtwdev, vif, mask);
 	mutex_unlock(&rtwdev->mutex);
 
@@ -625,6 +627,7 @@ static void rtw89_ops_sw_scan_start(struct ieee80211_hw *hw,
 	rtwdev->scanning = true;
 	rtw89_leave_lps(rtwdev);
 	rtw89_btc_ntfy_scan_start(rtwdev, RTW89_PHY_0, hal->current_band_type);
+	rtw89_chip_rfk_scan(rtwdev, true);
 	rtw89_hci_recalc_int_mit(rtwdev);
 	mutex_unlock(&rtwdev->mutex);
 }
@@ -635,6 +638,7 @@ static void rtw89_ops_sw_scan_complete(struct ieee80211_hw *hw,
 	struct rtw89_dev *rtwdev = hw->priv;
 
 	mutex_lock(&rtwdev->mutex);
+	rtw89_chip_rfk_scan(rtwdev, false);
 	rtw89_btc_ntfy_scan_finish(rtwdev, RTW89_PHY_0);
 	rtwdev->scanning = false;
 	rtwdev->dig.bypass_dig = true;

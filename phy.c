@@ -2,12 +2,14 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include <linux/version.h>
 #include "debug.h"
 #include "fw.h"
 #include "phy.h"
 #include "ps.h"
 #include "reg.h"
 #include "sar.h"
+#include "coex.h"
 
 static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 			     const struct rtw89_ra_report *report)
@@ -189,6 +191,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
 	struct rtw89_vif *rtwvif = rtwsta->rtwvif;
+	struct rtw89_phy_rate_pattern *rate_pattern = &rtwvif->rate_pattern;
 	struct rtw89_ra_info *ra = &rtwsta->ra;
 	const u64 *high_rate_masks = rtw89_ra_mask_ht_rates;
 	u8 rssi = ewma_rssi_read(&rtwsta->avg_rssi);
@@ -293,6 +296,12 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	    IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM)
 		ra->dcm_cap = 1;
 
+	if (rate_pattern->enable) {
+		ra_mask = rtw89_phy_ra_mask_cfg(rtwdev, rtwsta);
+		ra_mask &= rate_pattern->ra_mask;
+		mode = rate_pattern->ra_mode;
+	}
+
 	ra->bw_cap = bw_mode;
 	ra->mode_ctrl = mode;
 	ra->macid = rtwsta->mac_id;
@@ -331,6 +340,114 @@ void rtw89_phy_ra_updata_sta(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta
 		    ra->giltf);
 
 	rtw89_fw_h2c_ra(rtwdev, ra, false);
+}
+
+static bool __check_rate_pattern(struct rtw89_phy_rate_pattern *next,
+				 u16 rate_base, u64 ra_mask, u8 ra_mode,
+				 u32 rate_ctrl, u32 ctrl_skip, bool force)
+{
+	u8 n, c;
+
+	if (rate_ctrl == ctrl_skip)
+		return true;
+
+	n = hweight32(rate_ctrl);
+	if (n == 0)
+		return true;
+
+	if (force && n != 1)
+		return false;
+
+	if (next->enable)
+		return false;
+
+	c = __fls(rate_ctrl);
+	next->rate = rate_base + c;
+	next->ra_mode = ra_mode;
+	next->ra_mask = ra_mask;
+	next->enable = true;
+
+	return true;
+}
+
+void rtw89_phy_rate_pattern_vif(struct rtw89_dev *rtwdev,
+				struct ieee80211_vif *vif,
+				const struct cfg80211_bitrate_mask *mask)
+{
+	struct ieee80211_supported_band *sband;
+	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
+	struct rtw89_phy_rate_pattern next_pattern = {0};
+	static const u16 hw_rate_he[] = {RTW89_HW_RATE_HE_NSS1_MCS0,
+					 RTW89_HW_RATE_HE_NSS2_MCS0,
+					 RTW89_HW_RATE_HE_NSS3_MCS0,
+					 RTW89_HW_RATE_HE_NSS4_MCS0};
+	static const u16 hw_rate_vht[] = {RTW89_HW_RATE_VHT_NSS1_MCS0,
+					  RTW89_HW_RATE_VHT_NSS2_MCS0,
+					  RTW89_HW_RATE_VHT_NSS3_MCS0,
+					  RTW89_HW_RATE_VHT_NSS4_MCS0};
+	static const u16 hw_rate_ht[] = {RTW89_HW_RATE_MCS0,
+					 RTW89_HW_RATE_MCS8,
+					 RTW89_HW_RATE_MCS16,
+					 RTW89_HW_RATE_MCS24};
+	u8 band = rtwdev->hal.current_band_type;
+	u8 tx_nss = rtwdev->hal.tx_nss;
+	u8 i;
+
+	for (i = 0; i < tx_nss; i++)
+		if (!__check_rate_pattern(&next_pattern, hw_rate_he[i],
+					  RA_MASK_HE_RATES, RTW89_RA_MODE_HE,
+					  mask->control[band].he_mcs[i],
+					  0, true))
+			goto out;
+
+	for (i = 0; i < tx_nss; i++)
+		if (!__check_rate_pattern(&next_pattern, hw_rate_vht[i],
+					  RA_MASK_VHT_RATES, RTW89_RA_MODE_VHT,
+					  mask->control[band].vht_mcs[i],
+					  0, true))
+			goto out;
+
+	for (i = 0; i < tx_nss; i++)
+		if (!__check_rate_pattern(&next_pattern, hw_rate_ht[i],
+					  RA_MASK_HT_RATES, RTW89_RA_MODE_HT,
+					  mask->control[band].ht_mcs[i],
+					  0, true))
+			goto out;
+
+	/* lagacy cannot be empty for nl80211_parse_tx_bitrate_mask, and
+	 * require at least one basic rate for ieee80211_set_bitrate_mask,
+	 * so the decision just depends on if all bitrates are set or not.
+	 */
+	sband = rtwdev->hw->wiphy->bands[band];
+	if (band == RTW89_BAND_2G) {
+		if (!__check_rate_pattern(&next_pattern, RTW89_HW_RATE_CCK1,
+					  RA_MASK_CCK_RATES | RA_MASK_OFDM_RATES,
+					  RTW89_RA_MODE_CCK | RTW89_RA_MODE_OFDM,
+					  mask->control[band].legacy,
+					  BIT(sband->n_bitrates) - 1, false))
+			goto out;
+	} else {
+		if (!__check_rate_pattern(&next_pattern, RTW89_HW_RATE_OFDM6,
+					  RA_MASK_OFDM_RATES, RTW89_RA_MODE_OFDM,
+					  mask->control[band].legacy,
+					  BIT(sband->n_bitrates) - 1, false))
+			goto out;
+	}
+
+	if (!next_pattern.enable)
+		goto out;
+
+	rtwvif->rate_pattern = next_pattern;
+	rtw89_debug(rtwdev, RTW89_DBG_RA,
+		    "configure pattern: rate 0x%x, mask 0x%llx, mode 0x%x\n",
+		    next_pattern.rate,
+		    next_pattern.ra_mask,
+		    next_pattern.ra_mode);
+	return;
+
+out:
+	rtwvif->rate_pattern.enable = false;
+	rtw89_debug(rtwdev, RTW89_DBG_RA, "unset rate pattern\n");
 }
 
 static void rtw89_phy_ra_updata_sta_iter(void *data, struct ieee80211_sta *sta)
@@ -999,6 +1116,7 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 	lmt = _phy_txpwr_rf_to_mac(rtwdev, lmt);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	sar = rtw89_query_sar(rtwdev);
+
 	return min(lmt, sar);
 #else
 	return lmt;
@@ -1254,8 +1372,11 @@ static void rtw89_phy_c2h_ra_rpt_iter(void *data, struct ieee80211_sta *sta)
 		break;
 	case RTW89_RA_RPT_MODE_HT:
 		ra_report->txrate.flags |= RATE_INFO_FLAGS_MCS;
-		rate = RTW89_MK_HT_RATE(FIELD_GET(RTW89_RA_RATE_MASK_NSS, rate),
-					FIELD_GET(RTW89_RA_RATE_MASK_MCS, rate));
+		if (rtwdev->fw.old_ht_ra_format)
+			rate = RTW89_MK_HT_RATE(FIELD_GET(RTW89_RA_RATE_MASK_NSS, rate),
+						FIELD_GET(RTW89_RA_RATE_MASK_MCS, rate));
+		else
+			rate = FIELD_GET(RTW89_RA_RATE_MASK_HT_MCS, rate);
 		ra_report->txrate.mcs = rate;
 		if (giltf)
 			ra_report->txrate.flags |= RATE_INFO_FLAGS_SHORT_GI;
@@ -1306,8 +1427,9 @@ rtw89_phy_c2h_ra_rpt(struct rtw89_dev *rtwdev, struct sk_buff *c2h, u32 len)
 					  &ra_data);
 }
 
-static void (*rtw89_phy_c2h_ra_handler[])(struct rtw89_dev *rtwdev,
-					    struct sk_buff *c2h, u32 len) = {
+static
+void (* const rtw89_phy_c2h_ra_handler[])(struct rtw89_dev *rtwdev,
+					  struct sk_buff *c2h, u32 len) = {
 	[RTW89_PHY_C2H_FUNC_STS_RPT] = rtw89_phy_c2h_ra_rpt,
 	[RTW89_PHY_C2H_FUNC_MU_GPTBL_RPT] = NULL,
 	[RTW89_PHY_C2H_FUNC_TXSTS] = NULL,
@@ -1534,7 +1656,6 @@ static s32 rtw89_phy_multi_sta_cfo_calc(struct rtw89_dev *rtwdev)
 	u8 active_entry_cnt = 0;
 	u8 sta_cnt = 0;
 	u32 tp_all = 0;
-	u64 active_entry = 0;
 	u8 i;
 	u8 cfo_tol = 0;
 
@@ -1557,7 +1678,6 @@ static s32 rtw89_phy_multi_sta_cfo_calc(struct rtw89_dev *rtwdev)
 		for (i = 0; i < CFO_TRACK_MAX_USER; i++) {
 			if (cfo->cfo_cnt[i] == 0)
 				continue;
-			active_entry |= BIT_ULL(i);
 			cfo->cfo_avg[i] = phy_div(cfo->cfo_tail[i],
 						  (s32)cfo->cfo_cnt[i]);
 			cfo_khz_all += cfo->cfo_avg[i];
@@ -1777,6 +1897,7 @@ static void rtw89_phy_stat_thermal_update(struct rtw89_dev *rtwdev)
 struct rtw89_phy_iter_rssi_data {
 	struct rtw89_dev *rtwdev;
 	struct rtw89_phy_ch_info *ch_info;
+	bool rssi_changed;
 };
 
 static void rtw89_phy_stat_rssi_update_iter(void *data,
@@ -1785,7 +1906,6 @@ static void rtw89_phy_stat_rssi_update_iter(void *data,
 	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
 	struct rtw89_phy_iter_rssi_data *rssi_data =
 					(struct rtw89_phy_iter_rssi_data *)data;
-	struct rtw89_dev *rtwdev = rssi_data->rtwdev;
 	struct rtw89_phy_ch_info *ch_info = rssi_data->ch_info;
 	unsigned long rssi_curr;
 
@@ -1800,13 +1920,13 @@ static void rtw89_phy_stat_rssi_update_iter(void *data,
 		rtwsta->prev_rssi = rssi_curr;
 	} else if (abs((int)rtwsta->prev_rssi - (int)rssi_curr) > (3 << RSSI_FACTOR)) {
 		rtwsta->prev_rssi = rssi_curr;
-		ieee80211_queue_work(rtwdev->hw, &rtwdev->btc.wl_sta_notify_work);
+		rssi_data->rssi_changed = true;
 	}
 }
 
 static void rtw89_phy_stat_rssi_update(struct rtw89_dev *rtwdev)
 {
-	struct rtw89_phy_iter_rssi_data rssi_data;
+	struct rtw89_phy_iter_rssi_data rssi_data = {0};
 
 	rssi_data.rtwdev = rtwdev;
 	rssi_data.ch_info = &rtwdev->ch_info;
@@ -1814,6 +1934,8 @@ static void rtw89_phy_stat_rssi_update(struct rtw89_dev *rtwdev)
 	ieee80211_iterate_stations_atomic(rtwdev->hw,
 					  rtw89_phy_stat_rssi_update_iter,
 					  &rssi_data);
+	if (rssi_data.rssi_changed)
+		rtw89_btc_ntfy_wl_sta(rtwdev);
 }
 
 static void rtw89_phy_stat_init(struct rtw89_dev *rtwdev)

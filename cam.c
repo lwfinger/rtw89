@@ -348,15 +348,8 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
 		ext_key = true;
 		break;
-	case WLAN_CIPHER_SUITE_TKIP:
-	case WLAN_CIPHER_SUITE_AES_CMAC:
-	case WLAN_CIPHER_SUITE_BIP_CMAC_256:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_128:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_256:
-		/* suppress error messages */
-		return -EOPNOTSUPP;
 	default:
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 	}
 
 	key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
@@ -394,8 +387,9 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	addr_cam = &rtwvif->addr_cam;
 	sec_cam = addr_cam->sec_entries[key_idx];
-	if (!sec_cam || !sec_cam->sec_cam_idx)
+	if (!sec_cam)
 		return -EINVAL;
+
 	/* detach sec cam from addr cam */
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;
@@ -585,7 +579,7 @@ int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
 #else
-	u8 bss_color = 0;
+	u8 bss_color = 0
 #endif
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);

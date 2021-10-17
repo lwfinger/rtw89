@@ -579,7 +579,7 @@ int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
 #else
-	u8 bss_color = 0
+	u8 bss_color = 0;
 #endif
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);

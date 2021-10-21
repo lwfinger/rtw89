@@ -2106,7 +2106,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 #endif
 		if (i == NL80211_IFTYPE_STATION)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
-			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA |
 #else
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
 #endif

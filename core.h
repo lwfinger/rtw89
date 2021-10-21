@@ -3425,6 +3425,7 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 /* see Documentation/timers/timers-howto.rst for the thresholds */
 static inline void fsleep(unsigned long usecs)
 {
@@ -3435,6 +3436,7 @@ static inline void fsleep(unsigned long usecs)
 	else
 		msleep(DIV_ROUND_UP(usecs, 1000));
 }
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)

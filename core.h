@@ -3412,6 +3412,7 @@ static inline void fsleep(unsigned long usecs)
 	else
 		msleep(DIV_ROUND_UP(usecs, 1000));
 }
+
 #endif
 #endif
 

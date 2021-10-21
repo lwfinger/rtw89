@@ -157,7 +157,7 @@ static u64 rtw89_phy_ra_mask_cfg(struct rtw89_dev *rtwdev, struct rtw89_sta *rtw
 	}
 
 	if (sta->he_cap.has_he) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[0],
 					    RA_MASK_HE_1SS_RATES);
 		cfg_mask |= u64_encode_bits(mask->control[band].he_mcs[1],
@@ -379,10 +379,12 @@ void rtw89_phy_rate_pattern_vif(struct rtw89_dev *rtwdev,
 	struct ieee80211_supported_band *sband;
 	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	struct rtw89_phy_rate_pattern next_pattern = {0};
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	static const u16 hw_rate_he[] = {RTW89_HW_RATE_HE_NSS1_MCS0,
 					 RTW89_HW_RATE_HE_NSS2_MCS0,
 					 RTW89_HW_RATE_HE_NSS3_MCS0,
 					 RTW89_HW_RATE_HE_NSS4_MCS0};
+#endif
 	static const u16 hw_rate_vht[] = {RTW89_HW_RATE_VHT_NSS1_MCS0,
 					  RTW89_HW_RATE_VHT_NSS2_MCS0,
 					  RTW89_HW_RATE_VHT_NSS3_MCS0,
@@ -395,12 +397,14 @@ void rtw89_phy_rate_pattern_vif(struct rtw89_dev *rtwdev,
 	u8 tx_nss = rtwdev->hal.tx_nss;
 	u8 i;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	for (i = 0; i < tx_nss; i++)
 		if (!__check_rate_pattern(&next_pattern, hw_rate_he[i],
 					  RA_MASK_HE_RATES, RTW89_RA_MODE_HE,
 					  mask->control[band].he_mcs[i],
 					  0, true))
 			goto out;
+#endif
 
 	for (i = 0; i < tx_nss; i++)
 		if (!__check_rate_pattern(&next_pattern, hw_rate_vht[i],

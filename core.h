@@ -3444,6 +3444,21 @@ static inline void fsleep(unsigned long usecs)
 #endif
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && !defined(SUSE)
+static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
+                                                      struct ieee80211_txq *txq)
+{
+        struct sk_buff *skb;
+
+        local_bh_disable();
+        skb = ieee80211_tx_dequeue(hw, txq);
+        local_bh_enable();
+
+        return skb;
+}
+#endif
+
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
 /**
  * read_poll_timeout_atomic - Periodically poll an address until a condition is

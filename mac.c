@@ -140,6 +140,7 @@ static int dle_dfi_qempty(struct rtw89_dev *rtwdev,
 	ret = dle_dfi_ctrl(rtwdev, &ctrl);
 	if (ret) {
 		rtw89_warn(rtwdev, "[ERR]dle_dfi_ctrl %d\n", ret);
+		qempty->qempty = FIELD_GET(B_AX_DLE_QEMPTY_GRP, ctrl.out_data);
 		return ret;
 	}
 

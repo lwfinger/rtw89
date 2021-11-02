@@ -57,6 +57,11 @@ enum htc_om_channel_width {
 #define RTW89_HTC_MASK_HTC_OM_DL_MU_MIMO_RR BIT(16)
 #define RTW89_HTC_MASK_HTC_OM_UL_MU_DATA_DIS BIT(17)
 
+#if !defined(fallthrough)
+#define fallthrough do { \
+	} while(0)
+#endif
+
 enum rtw89_subband {
 	RTW89_CH_2G = 0,
 	RTW89_CH_5G_BAND_1 = 1,

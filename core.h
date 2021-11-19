@@ -3433,7 +3433,7 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 #define SUSE 1
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && (SUSE != 0)
+#if !defined(fsleep)
 
 /* see Documentation/timers/timers-howto.rst for the thresholds */
 static inline void fsleep(unsigned long usecs)
@@ -3448,7 +3448,7 @@ static inline void fsleep(unsigned long usecs)
 #endif
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && !defined(SUSE)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && (SUSE != 0)
 static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
                                                       struct ieee80211_txq *txq)
 {

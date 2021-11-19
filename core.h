@@ -3425,11 +3425,15 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
+#if !defined(CONFIG_SUSE_VERSION)
+#define CONFIG_SUSE_VERSION 0
+#define SUSE 0
+#endif
 #if CONFIG_SUSE_VERSION && CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
-#define SUSE
+#define SUSE 1
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && !defined(SUSE)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && (SUSE != 0)
 
 /* see Documentation/timers/timers-howto.rst for the thresholds */
 static inline void fsleep(unsigned long usecs)

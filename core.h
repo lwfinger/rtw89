@@ -3427,10 +3427,11 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 
 #if !defined(CONFIG_SUSE_VERSION)
 #define CONFIG_SUSE_VERSION 0
-#define SUSE 0
 #endif
 #if CONFIG_SUSE_VERSION && CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
 #define SUSE 1
+#else
+#define SUSE 0
 #endif
 
 #if !defined(fsleep)

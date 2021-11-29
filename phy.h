@@ -35,21 +35,24 @@
 #define RA_MASK_HT_2SS_RATES	GENMASK_ULL(31, 24)
 #define RA_MASK_HT_3SS_RATES	GENMASK_ULL(43, 36)
 #define RA_MASK_HT_4SS_RATES	GENMASK_ULL(55, 48)
+#define RA_MASK_HT_RATES	GENMASK_ULL(55, 12)
 #define RA_MASK_VHT_1SS_RATES	GENMASK_ULL(21, 12)
 #define RA_MASK_VHT_2SS_RATES	GENMASK_ULL(33, 24)
 #define RA_MASK_VHT_3SS_RATES	GENMASK_ULL(45, 36)
 #define RA_MASK_VHT_4SS_RATES	GENMASK_ULL(57, 48)
+#define RA_MASK_VHT_RATES	GENMASK_ULL(57, 12)
 #define RA_MASK_HE_1SS_RATES	GENMASK_ULL(23, 12)
 #define RA_MASK_HE_2SS_RATES	GENMASK_ULL(35, 24)
 #define RA_MASK_HE_3SS_RATES	GENMASK_ULL(47, 36)
 #define RA_MASK_HE_4SS_RATES	GENMASK_ULL(59, 48)
+#define RA_MASK_HE_RATES	GENMASK_ULL(59, 12)
 
-#define CFO_TRK_ENABLE_TH (5 << 2)
+#define CFO_TRK_ENABLE_TH (2 << 2)
 #define CFO_TRK_STOP_TH_4 (30 << 2)
 #define CFO_TRK_STOP_TH_3 (20 << 2)
 #define CFO_TRK_STOP_TH_2 (10 << 2)
 #define CFO_TRK_STOP_TH_1 (00 << 2)
-#define CFO_TRK_STOP_TH (5 << 2)
+#define CFO_TRK_STOP_TH (2 << 2)
 #define CFO_SW_COMP_FINE_TUNE (2 << 2)
 #define CFO_PERIOD_CNT 15
 #define CFO_TP_UPPER 100
@@ -288,6 +291,9 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev,
 void rtw89_phy_ra_assoc(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta);
 void rtw89_phy_ra_update(struct rtw89_dev *rtwdev);
 void rtw89_phy_ra_updata_sta(struct rtw89_dev *rtwdev, struct ieee80211_sta *sta);
+void rtw89_phy_rate_pattern_vif(struct rtw89_dev *rtwdev,
+				struct ieee80211_vif *vif,
+				const struct cfg80211_bitrate_mask *mask);
 void rtw89_phy_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 			  u32 len, u8 class, u8 func);
 void rtw89_phy_cfo_track(struct rtw89_dev *rtwdev);

@@ -39,8 +39,23 @@ extern const struct rtw89_chip_info rtw8852a_chip_info;
 #define RTW89_HTC_MASK_VARIANT GENMASK(1, 0)
 #define RTW89_HTC_VARIANT_HE 3
 #define RTW89_HTC_MASK_CTL_ID GENMASK(5, 2)
+#define RTW89_HTC_VARIANT_HE_CID_OM 1
 #define RTW89_HTC_VARIANT_HE_CID_CAS 6
 #define RTW89_HTC_MASK_CTL_INFO GENMASK(31, 6)
+
+#define RTW89_HTC_MASK_HTC_OM_RX_NSS GENMASK(8, 6)
+enum htc_om_channel_width {
+	HTC_OM_CHANNEL_WIDTH_20 = 0,
+	HTC_OM_CHANNEL_WIDTH_40 = 1,
+	HTC_OM_CHANNEL_WIDTH_80 = 2,
+	HTC_OM_CHANNEL_WIDTH_160_OR_80_80 = 3,
+};
+#define RTW89_HTC_MASK_HTC_OM_CH_WIDTH GENMASK(10, 9)
+#define RTW89_HTC_MASK_HTC_OM_UL_MU_DIS BIT(11)
+#define RTW89_HTC_MASK_HTC_OM_TX_NSTS GENMASK(14, 12)
+#define RTW89_HTC_MASK_HTC_OM_ER_SU_DIS BIT(15)
+#define RTW89_HTC_MASK_HTC_OM_DL_MU_MIMO_RR BIT(16)
+#define RTW89_HTC_MASK_HTC_OM_UL_MU_DATA_DIS BIT(17)
 
 enum rtw89_subband {
 	RTW89_CH_2G = 0,
@@ -397,12 +412,13 @@ enum rtw89_regulation_type {
 	RTW89_NA	= 4,
 	RTW89_IC	= 5,
 	RTW89_KCC	= 6,
-	RTW89_NCC	= 7,
-	RTW89_CHILE	= 8,
-	RTW89_ACMA	= 9,
-	RTW89_MEXICO	= 10,
+	RTW89_ACMA	= 7,
+	RTW89_NCC	= 8,
+	RTW89_MEXICO	= 9,
+	RTW89_CHILE	= 10,
 	RTW89_UKRAINE	= 11,
 	RTW89_CN	= 12,
+	RTW89_QATAR	= 13,
 	RTW89_REGD_NUM,
 };
 
@@ -671,6 +687,7 @@ struct rtw89_tx_desc_info {
 	u8 sec_type;
 	u8 sec_cam_idx;
 	u16 data_rate;
+	u16 data_retry_lowest_rate;
 	bool fw_dl;
 	u16 seq;
 	bool a_ctrl_bsr;
@@ -1439,9 +1456,7 @@ struct rtw89_btc_fbtc_cysta { /* statistics for cycles */
 	__le32 skip_cnt;
 	__le32 exception;
 	__le32 except_cnt;
-#if (FCXCYSTA_VER > 1)
 	__le16 tslot_cycle[BTC_CYCLE_SLOT_MAX];
-#endif
 } __packed;
 
 #define FCXNULLSTA_VER 1
@@ -1527,7 +1542,8 @@ struct rtw89_btc_dm {
 	u32 bt_only: 1;
 	u32 wl_btg_rx: 1;
 	u32 trx_para_level: 8;
-	u32 rsvd: 4;
+	u32 wl_stb_chg: 1;
+	u32 rsvd: 3;
 
 	u16 slot_dur[CXST_MAX];
 
@@ -1706,7 +1722,7 @@ struct rtw89_btc {
 	struct work_struct eapol_notify_work;
 	struct work_struct arp_notify_work;
 	struct work_struct dhcp_notify_work;
-	struct work_struct wl_sta_notify_work;
+	struct work_struct icmp_notify_work;
 
 	u32 bt_req_len;
 
@@ -1826,6 +1842,7 @@ struct rtw89_sta {
 	struct rtw89_ampdu_params ampdu_params[IEEE80211_NUM_TIDS];
 	struct ieee80211_rx_status rx_status;
 	u16 rx_hw_rate;
+	__le32 htc_template;
 
 	bool use_cfg_mask;
 	struct cfg80211_bitrate_mask mask;
@@ -1889,6 +1906,13 @@ struct rtw89_efuse {
 	char country_code[2];
 };
 
+struct rtw89_phy_rate_pattern {
+	u64 ra_mask;
+	u16 rate;
+	u8 ra_mode;
+	bool enable;
+};
+
 struct rtw89_vif {
 	struct list_head list;
 	u8 mac_id;
@@ -1924,6 +1948,7 @@ struct rtw89_vif {
 	struct rtw89_bssid_cam_entry bssid_cam;
 	struct ieee80211_tx_queue_params tx_params[IEEE80211_NUM_ACS];
 	struct rtw89_traffic_stats stats;
+	struct rtw89_phy_rate_pattern rate_pattern;
 };
 
 enum rtw89_lv1_rcvy_step {
@@ -1938,7 +1963,7 @@ struct rtw89_hci_ops {
 	void (*reset)(struct rtw89_dev *rtwdev);
 	int (*start)(struct rtw89_dev *rtwdev);
 	void (*stop)(struct rtw89_dev *rtwdev);
-	void (*link_ps)(struct rtw89_dev *rtwdev, bool enter);
+	void (*recalc_int_mit)(struct rtw89_dev *rtwdev);
 
 	u8 (*read8)(struct rtw89_dev *rtwdev, u32 addr);
 	u16 (*read16)(struct rtw89_dev *rtwdev, u32 addr);
@@ -1982,6 +2007,7 @@ struct rtw89_chip_ops {
 	void (*rfk_init)(struct rtw89_dev *rtwdev);
 	void (*rfk_channel)(struct rtw89_dev *rtwdev);
 	void (*rfk_band_changed)(struct rtw89_dev *rtwdev);
+	void (*rfk_scan)(struct rtw89_dev *rtwdev, bool start);
 	void (*rfk_track)(struct rtw89_dev *rtwdev);
 	void (*power_trim)(struct rtw89_dev *rtwdev);
 	void (*set_txpwr)(struct rtw89_dev *rtwdev);
@@ -2003,6 +2029,7 @@ struct rtw89_chip_ops {
 	s8 (*btc_get_bt_rssi)(struct rtw89_dev *rtwdev, s8 val);
 	void (*btc_bt_aci_imp)(struct rtw89_dev *rtwdev);
 	void (*btc_update_bt_cnt)(struct rtw89_dev *rtwdev);
+	void (*btc_wl_s1_standby)(struct rtw89_dev *rtwdev, bool state);
 };
 
 enum rtw89_dma_ch {
@@ -2024,15 +2051,7 @@ enum rtw89_dma_ch {
 
 enum rtw89_qta_mode {
 	RTW89_QTA_SCC,
-	RTW89_QTA_DBCC,
-	RTW89_QTA_SCC_WD128,
-	RTW89_QTA_DBCC_WD128,
-	RTW89_QTA_SCC_STF,
-	RTW89_QTA_DBCC_STF,
-	RTW89_QTA_SU_TP,
 	RTW89_QTA_DLFW,
-	RTW89_QTA_BCN_TEST,
-	RTW89_QTA_LAMODE,
 
 	/* keep last */
 	RTW89_QTA_INVALID,
@@ -2083,17 +2102,17 @@ struct rtw89_hfc_param {
 	bool en;
 	bool h2c_en;
 	u8 mode;
-	struct rtw89_hfc_ch_cfg *ch_cfg;
+	const struct rtw89_hfc_ch_cfg *ch_cfg;
 	struct rtw89_hfc_ch_info ch_info[RTW89_DMA_CH_NUM];
-	struct rtw89_hfc_pub_cfg *pub_cfg;
+	struct rtw89_hfc_pub_cfg pub_cfg;
 	struct rtw89_hfc_pub_info pub_info;
-	struct rtw89_hfc_prec_cfg *prec_cfg;
+	struct rtw89_hfc_prec_cfg prec_cfg;
 };
 
 struct rtw89_hfc_param_ini {
-	struct rtw89_hfc_ch_cfg *ch_cfg;
-	struct rtw89_hfc_pub_cfg *pub_cfg;
-	struct rtw89_hfc_prec_cfg *prec_cfg;
+	const struct rtw89_hfc_ch_cfg *ch_cfg;
+	const struct rtw89_hfc_pub_cfg *pub_cfg;
+	const struct rtw89_hfc_prec_cfg *prec_cfg;
 	u8 mode;
 };
 
@@ -2126,12 +2145,12 @@ struct rtw89_ple_quota {
 
 struct rtw89_dle_mem {
 	enum rtw89_qta_mode mode;
-	struct rtw89_dle_size *wde_size;
-	struct rtw89_dle_size *ple_size;
-	struct rtw89_wde_quota *wde_min_qt;
-	struct rtw89_wde_quota *wde_max_qt;
-	struct rtw89_ple_quota *ple_min_qt;
-	struct rtw89_ple_quota *ple_max_qt;
+	const struct rtw89_dle_size *wde_size;
+	const struct rtw89_dle_size *ple_size;
+	const struct rtw89_wde_quota *wde_min_qt;
+	const struct rtw89_wde_quota *wde_max_qt;
+	const struct rtw89_ple_quota *ple_min_qt;
+	const struct rtw89_ple_quota *ple_max_qt;
 };
 
 struct rtw89_reg_def {
@@ -2176,10 +2195,10 @@ struct rtw89_chip_info {
 	const struct rtw89_chip_ops *ops;
 	const char *fw_name;
 	u32 fifo_size;
-	u32 dle_lamode_size;
 	u16 max_amsdu_limit;
-	struct rtw89_hfc_param_ini *hfc_param_ini;
-	struct rtw89_dle_mem *dle_mem;
+	bool dis_2g_40m_ul_ofdma;
+	const struct rtw89_hfc_param_ini *hfc_param_ini;
+	const struct rtw89_dle_mem *dle_mem;
 	u32 rf_base_addr[2];
 	u8 rf_path_num;
 	u8 tx_nss;
@@ -2223,6 +2242,9 @@ struct rtw89_chip_info {
 	u8 mailbox;
 
 	u8 afh_guard_ch;
+	const u8 *wl_rssi_thres;
+	const u8 *bt_rssi_thres;
+	u8 rssi_tol;
 
 	u8 mon_reg_num;
 	const struct rtw89_btc_fbtc_mreg *mon_reg;
@@ -2283,6 +2305,11 @@ struct rtw89_fw_suit {
 	u8 cmd_ver;
 };
 
+#define RTW89_FW_VER_CODE(major, minor, sub, idx)	\
+	(((major) << 24) | ((minor) << 16) | ((sub) << 8) | (idx))
+#define RTW89_FW_SUIT_VER_CODE(s)	\
+	RTW89_FW_VER_CODE((s)->major_ver, (s)->minor_ver, (s)->sub_ver, (s)->sub_idex)
+
 struct rtw89_fw_info {
 	const struct firmware *firmware;
 	struct rtw89_dev *rtwdev;
@@ -2292,6 +2319,7 @@ struct rtw89_fw_info {
 	struct rtw89_fw_suit normal;
 	struct rtw89_fw_suit wowlan;
 	bool fw_log_enable;
+	bool old_ht_ra_format;
 };
 
 struct rtw89_cam_info {
@@ -2501,6 +2529,7 @@ struct rtw89_dig_info {
 	s8 tia_gain_g[TIA_GAIN_NUM];
 	s8 *tia_gain;
 	bool is_linked_pre;
+	bool bypass_dig;
 };
 
 enum rtw89_multi_cfo_mode {
@@ -2745,6 +2774,12 @@ struct rtw89_ppdu_sts_info {
 	u8 curr_rx_ppdu_cnt[RTW89_PHY_MAX];
 };
 
+struct rtw89_early_h2c {
+	struct list_head list;
+	u8 *h2c;
+	u16 h2c_len;
+};
+
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
 	struct device *dev;
@@ -2760,6 +2795,7 @@ struct rtw89_dev {
 
 	/* ensures exclusive access from mac80211 callbacks */
 	struct mutex mutex;
+	struct list_head rtwvifs_list;
 	/* used to protect rf read write */
 	struct mutex rf_mutex;
 	struct workqueue_struct *txq_wq;
@@ -2775,6 +2811,8 @@ struct rtw89_dev {
 
 	struct sk_buff_head c2h_queue;
 	struct work_struct c2h_work;
+
+	struct list_head early_h2c_list;
 
 	struct rtw89_ser ser;
 
@@ -2800,6 +2838,8 @@ struct rtw89_dev {
 	struct rtw89_phy_ch_info ch_info;
 	struct delayed_work track_work;
 	struct delayed_work coex_act1_work;
+	struct delayed_work coex_bt_devinfo_work;
+	struct delayed_work coex_rfk_chk_work;
 	struct delayed_work cfo_track_work;
 	struct rtw89_ppdu_sts_info ppdu_sts;
 	u8 total_sta_assoc;
@@ -2847,9 +2887,9 @@ static inline int rtw89_hci_deinit(struct rtw89_dev *rtwdev)
 	return rtwdev->hci.ops->deinit(rtwdev);
 }
 
-static inline void rtw89_hci_link_ps(struct rtw89_dev *rtwdev, bool enter)
+static inline void rtw89_hci_recalc_int_mit(struct rtw89_dev *rtwdev)
 {
-	rtwdev->hci.ops->link_ps(rtwdev, enter);
+	rtwdev->hci.ops->recalc_int_mit(rtwdev);
 }
 
 static inline u32 rtw89_hci_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
@@ -2956,81 +2996,55 @@ rtw89_write32_clr(struct rtw89_dev *rtwdev, u32 addr, u32 bit)
 static inline u32
 rtw89_read32_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	u32 shift = __ffs(mask);
-	u32 orig;
-	u32 ret;
-
-	orig = rtw89_read32(rtwdev, addr);
-	ret = (orig & mask) >> shift;
-
-	return ret;
+	return field_get(mask, rtw89_read32(rtwdev, addr));
 }
 
 static inline u16
 rtw89_read16_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	u32 shift = __ffs(mask);
-	u32 orig;
-	u32 ret;
-
-	orig = rtw89_read16(rtwdev, addr);
-	ret = (orig & mask) >> shift;
-
-	return ret;
+	return field_get(mask, rtw89_read16(rtwdev, addr));
 }
 
 static inline u8
 rtw89_read8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	u32 shift = __ffs(mask);
-	u32 orig;
-	u32 ret;
-
-	orig = rtw89_read8(rtwdev, addr);
-	ret = (orig & mask) >> shift;
-
-	return ret;
+	return field_get(mask, rtw89_read8(rtwdev, addr));
 }
 
 static inline void
 rtw89_write32_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u32 data)
 {
-	u32 shift = __ffs(mask);
 	u32 orig;
 	u32 set;
 
 	WARN(addr & 0x3, "should be 4-byte aligned, addr = 0x%08x\n", addr);
 
 	orig = rtw89_read32(rtwdev, addr);
-	set = (orig & ~mask) | ((data << shift) & mask);
+	set = (orig & ~mask) | field_prep(mask, data);
 	rtw89_write32(rtwdev, addr, set);
 }
 
 static inline void
 rtw89_write16_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u16 data)
 {
-	u32 shift;
 	u16 orig, set;
 
 	mask &= 0xffff;
-	shift = __ffs(mask);
 
 	orig = rtw89_read16(rtwdev, addr);
-	set = (orig & ~mask) | ((data << shift) & mask);
+	set = (orig & ~mask) | field_prep(mask, data);
 	rtw89_write16(rtwdev, addr, set);
 }
 
 static inline void
 rtw89_write8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 data)
 {
-	u32 shift;
 	u8 orig, set;
 
 	mask &= 0xff;
-	shift = __ffs(mask);
 
 	orig = rtw89_read8(rtwdev, addr);
-	set = (orig & ~mask) | ((data << shift) & mask);
+	set = (orig & ~mask) | field_prep(mask, data);
 	rtw89_write8(rtwdev, addr, set);
 }
 
@@ -3141,6 +3155,14 @@ static inline void rtw89_chip_rfk_band_changed(struct rtw89_dev *rtwdev)
 
 	if (chip->ops->rfk_band_changed)
 		chip->ops->rfk_band_changed(rtwdev);
+}
+
+static inline void rtw89_chip_rfk_scan(struct rtw89_dev *rtwdev, bool start)
+{
+	const struct rtw89_chip_info *chip = rtwdev->chip;
+
+	if (chip->ops->rfk_scan)
+		chip->ops->rfk_scan(rtwdev, start);
 }
 
 static inline void rtw89_chip_rfk_track(struct rtw89_dev *rtwdev)
@@ -3301,7 +3323,6 @@ void rtw89_core_napi_start(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_stop(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_init(struct rtw89_dev *rtwdev);
 void rtw89_core_napi_deinit(struct rtw89_dev *rtwdev);
-int rtw89_core_power_on(struct rtw89_dev *rtwdev);
 int rtw89_core_sta_add(struct rtw89_dev *rtwdev,
 		       struct ieee80211_vif *vif,
 		       struct ieee80211_sta *sta);
@@ -3379,7 +3400,17 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+#if !defined(CONFIG_SUSE_VERSION)
+#define CONFIG_SUSE_VERSION 0
+#endif
+#if CONFIG_SUSE_VERSION && CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
+#define SUSE 1
+#else
+#define SUSE 0
+#endif
+
+#if !defined(fsleep)
+
 /* see Documentation/timers/timers-howto.rst for the thresholds */
 static inline void fsleep(unsigned long usecs)
 {
@@ -3391,8 +3422,23 @@ static inline void fsleep(unsigned long usecs)
 		msleep(DIV_ROUND_UP(usecs, 1000));
 }
 #endif
-
 #endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && (SUSE != 0)
+static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
+                                                      struct ieee80211_txq *txq)
+{
+        struct sk_buff *skb;
+
+        local_bh_disable();
+        skb = ieee80211_tx_dequeue(hw, txq);
+        local_bh_enable();
+
+        return skb;
+}
+#endif
+
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
 /**
  * read_poll_timeout_atomic - Periodically poll an address until a condition is

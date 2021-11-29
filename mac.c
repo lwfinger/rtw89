@@ -2,6 +2,7 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include <linux/version.h>
 #include "cam.h"
 #include "debug.h"
 #include "fw.h"
@@ -77,15 +78,15 @@ int dle_dfi_ctrl(struct rtw89_dev *rtwdev, struct rtw89_mac_dle_dfi_ctrl *ctrl)
 	case DLE_CTRL_TYPE_WDE:
 		ctrl_reg = R_AX_WDE_DBG_FUN_INTF_CTL;
 		data_reg = R_AX_WDE_DBG_FUN_INTF_DATA;
-		ctrl_data = FIELD_PREP(B_AX_WDE_DFI_TRGSEL, ctrl->target) |
-			    FIELD_PREP(B_AX_WDE_DFI_ADDR, ctrl->addr) |
+		ctrl_data = FIELD_PREP(B_AX_WDE_DFI_TRGSEL_MASK, ctrl->target) |
+			    FIELD_PREP(B_AX_WDE_DFI_ADDR_MASK, ctrl->addr) |
 			    B_AX_WDE_DFI_ACTIVE;
 		break;
 	case DLE_CTRL_TYPE_PLE:
 		ctrl_reg = R_AX_PLE_DBG_FUN_INTF_CTL;
 		data_reg = R_AX_PLE_DBG_FUN_INTF_DATA;
-		ctrl_data = FIELD_PREP(B_AX_PLE_DFI_TRGSEL, ctrl->target) |
-			    FIELD_PREP(B_AX_PLE_DFI_ADDR, ctrl->addr) |
+		ctrl_data = FIELD_PREP(B_AX_PLE_DFI_TRGSEL_MASK, ctrl->target) |
+			    FIELD_PREP(B_AX_PLE_DFI_ADDR_MASK, ctrl->addr) |
 			    B_AX_PLE_DFI_ACTIVE;
 		break;
 	default:
@@ -139,6 +140,7 @@ static int dle_dfi_qempty(struct rtw89_dev *rtwdev,
 	ret = dle_dfi_ctrl(rtwdev, &ctrl);
 	if (ret) {
 		rtw89_warn(rtwdev, "[ERR]dle_dfi_ctrl %d\n", ret);
+		qempty->qempty = FIELD_GET(B_AX_DLE_QEMPTY_GRP, ctrl.out_data);
 		return ret;
 	}
 
@@ -402,8 +404,8 @@ static void rtw89_mac_dump_err_status(struct rtw89_dev *rtwdev,
 	}
 
 	if (cmac_err & B_AX_PHYINTF_ERR_IND) {
-		rtw89_info(rtwdev, "R_AX_PHYINFO_ERR_IMR=0x%04x\n",
-			   rtw89_read16(rtwdev, R_AX_PHYINFO_ERR_IMR));
+		rtw89_info(rtwdev, "R_AX_PHYINFO_ERR_IMR=0x%08x\n",
+			   rtw89_read32(rtwdev, R_AX_PHYINFO_ERR_IMR));
 	}
 
 	if (cmac_err & B_AX_TXPWR_CTRL_ERR_IND) {
@@ -481,16 +483,8 @@ int rtw89_mac_set_err_status(struct rtw89_dev *rtwdev, u32 err)
 }
 EXPORT_SYMBOL(rtw89_mac_set_err_status);
 
-struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie = {
+const struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie = {
 	2, 40, 0, 0, 1, 0, 0, 0
-};
-
-struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie_wd128 = {
-	2, 40, 0, 0, 1, 0, 0, 0
-};
-
-struct rtw89_hfc_prec_cfg rtw_hfc_preccfg_pcie_stf = {
-	1, 40, 64, 64, 1, 0, 1, 1
 };
 
 static int hfc_reset_param(struct rtw89_dev *rtwdev)
@@ -509,12 +503,12 @@ static int hfc_reset_param(struct rtw89_dev *rtwdev)
 	}
 
 	if (param_ini.pub_cfg)
-		param->pub_cfg = param_ini.pub_cfg;
+		param->pub_cfg = *param_ini.pub_cfg;
 
 	if (param_ini.prec_cfg) {
-		param->prec_cfg = param_ini.prec_cfg;
+		param->prec_cfg = *param_ini.prec_cfg;
 		rtwdev->hal.sw_amsdu_max_size =
-				param->prec_cfg->wp_ch07_prec * HFC_PAGE_UNIT;
+				param->prec_cfg.wp_ch07_prec * HFC_PAGE_UNIT;
 	}
 
 	if (param_ini.ch_cfg)
@@ -530,9 +524,9 @@ static int hfc_reset_param(struct rtw89_dev *rtwdev)
 static int hfc_ch_cfg_chk(struct rtw89_dev *rtwdev, u8 ch)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_ch_cfg *ch_cfg = param->ch_cfg;
-	struct rtw89_hfc_pub_cfg *pub_cfg = param->pub_cfg;
-	struct rtw89_hfc_prec_cfg *prec_cfg = param->prec_cfg;
+	const struct rtw89_hfc_ch_cfg *ch_cfg = param->ch_cfg;
+	const struct rtw89_hfc_pub_cfg *pub_cfg = &param->pub_cfg;
+	const struct rtw89_hfc_prec_cfg *prec_cfg = &param->prec_cfg;
 
 	if (ch >= RTW89_DMA_CH_NUM)
 		return -EINVAL;
@@ -549,7 +543,7 @@ static int hfc_ch_cfg_chk(struct rtw89_dev *rtwdev, u8 ch)
 static int hfc_pub_info_chk(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_pub_cfg *cfg = param->pub_cfg;
+	const struct rtw89_hfc_pub_cfg *cfg = &param->pub_cfg;
 	struct rtw89_hfc_pub_info *info = &param->pub_info;
 
 	if (info->g0_used + info->g1_used + info->pub_aval != cfg->pub_max) {
@@ -565,10 +559,10 @@ static int hfc_pub_info_chk(struct rtw89_dev *rtwdev)
 static int hfc_pub_cfg_chk(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_pub_cfg *pub_cfg = param->pub_cfg;
+	const struct rtw89_hfc_pub_cfg *pub_cfg = &param->pub_cfg;
 
 	if (pub_cfg->grp0 + pub_cfg->grp1 != pub_cfg->pub_max)
-		return 0;
+		return -EFAULT;
 
 	return 0;
 }
@@ -576,7 +570,7 @@ static int hfc_pub_cfg_chk(struct rtw89_dev *rtwdev)
 static int hfc_ch_ctrl(struct rtw89_dev *rtwdev, u8 ch)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_ch_cfg *cfg = param->ch_cfg;
+	const struct rtw89_hfc_ch_cfg *cfg = param->ch_cfg;
 	int ret = 0;
 	u32 val = 0;
 
@@ -603,7 +597,7 @@ static int hfc_upd_ch_info(struct rtw89_dev *rtwdev, u8 ch)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
 	struct rtw89_hfc_ch_info *info = param->ch_info;
-	struct rtw89_hfc_ch_cfg *cfg = param->ch_cfg;
+	const struct rtw89_hfc_ch_cfg *cfg = param->ch_cfg;
 	u32 val;
 	u32 ret;
 
@@ -626,7 +620,7 @@ static int hfc_upd_ch_info(struct rtw89_dev *rtwdev, u8 ch)
 
 static int hfc_pub_ctrl(struct rtw89_dev *rtwdev)
 {
-	struct rtw89_hfc_pub_cfg *cfg = rtwdev->mac.hfc_param.pub_cfg;
+	const struct rtw89_hfc_pub_cfg *cfg = &rtwdev->mac.hfc_param.pub_cfg;
 	u32 val;
 	int ret;
 
@@ -651,8 +645,8 @@ static int hfc_pub_ctrl(struct rtw89_dev *rtwdev)
 static int hfc_upd_mix_info(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_pub_cfg *pub_cfg = param->pub_cfg;
-	struct rtw89_hfc_prec_cfg *prec_cfg = param->prec_cfg;
+	struct rtw89_hfc_pub_cfg *pub_cfg = &param->pub_cfg;
+	struct rtw89_hfc_prec_cfg *prec_cfg = &param->prec_cfg;
 	struct rtw89_hfc_pub_info *info = &param->pub_info;
 	u32 val;
 	int ret;
@@ -715,7 +709,7 @@ static int hfc_upd_mix_info(struct rtw89_dev *rtwdev)
 static void hfc_h2c_cfg(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_prec_cfg *prec_cfg = param->prec_cfg;
+	const struct rtw89_hfc_prec_cfg *prec_cfg = &param->prec_cfg;
 	u32 val;
 
 	val = u32_encode_bits(prec_cfg->h2c_prec, B_AX_PREC_PAGE_CH12_MASK);
@@ -729,8 +723,8 @@ static void hfc_h2c_cfg(struct rtw89_dev *rtwdev)
 static void hfc_mix_cfg(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = &rtwdev->mac.hfc_param;
-	struct rtw89_hfc_pub_cfg *pub_cfg = param->pub_cfg;
-	struct rtw89_hfc_prec_cfg *prec_cfg = param->prec_cfg;
+	const struct rtw89_hfc_pub_cfg *pub_cfg = &param->pub_cfg;
+	const struct rtw89_hfc_prec_cfg *prec_cfg = &param->prec_cfg;
 	u32 val;
 
 	val = u32_encode_bits(prec_cfg->ch011_prec, B_AX_PREC_PAGE_CH011_MASK) |
@@ -888,22 +882,14 @@ static int rtw89_mac_sub_pwr_seq(struct rtw89_dev *rtwdev, u8 cv_msk,
 static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 			     const struct rtw89_pwr_cfg * const *cfg_seq)
 {
-	u32 idx = 0;
-	const struct rtw89_pwr_cfg *cfg;
 	int ret;
 
-	do {
-		cfg = cfg_seq[idx];
-		if (!cfg)
-			break;
-
+	for (; *cfg_seq; cfg_seq++) {
 		ret = rtw89_mac_sub_pwr_seq(rtwdev, BIT(rtwdev->hal.cv),
-					    PWR_INTF_MSK_PCIE, cfg);
+					    PWR_INTF_MSK_PCIE, *cfg_seq);
 		if (ret)
 			return -EBUSY;
-
-		idx++;
-	} while (1);
+	}
 
 	return 0;
 }
@@ -965,7 +951,7 @@ static int rtw89_mac_check_cpwm_state(struct rtw89_dev *rtwdev,
 	else
 		request_deep_mode = false;
 
-	if (rtw89_read32_mask(rtwdev, R_AX_LDM, B_AX_LDM_32K_EN))
+	if (rtw89_read32_mask(rtwdev, R_AX_LDM, B_AX_EN_32K))
 		in_deep_mode = true;
 	else
 		in_deep_mode = false;
@@ -1030,9 +1016,9 @@ static int rtw89_mac_power_switch(struct rtw89_dev *rtwdev, bool on)
 		cfg_seq = chip->pwr_off_seq;
 
 	if (test_bit(RTW89_FLAG_FW_RDY, rtwdev->flags))
-		rtw89_leave_ps_mode(rtwdev);
+		__rtw89_leave_ps_mode(rtwdev);
 
-	val = rtw89_read8(rtwdev, 0x3F1) & 0x3;
+	val = rtw89_read32_mask(rtwdev, R_AX_IC_PWR_STATE, B_AX_WLMAC_PWR_STE_MASK);
 	if (on && val == PWR_ACT) {
 		rtw89_err(rtwdev, "MAC has already powered on\n");
 		return -EBUSY;
@@ -1054,19 +1040,6 @@ static int rtw89_mac_power_switch(struct rtw89_dev *rtwdev, bool on)
 
 	return 0;
 #undef PWR_ACT
-}
-
-int rtw89_mac_pwr_on(struct rtw89_dev *rtwdev)
-{
-	int ret;
-
-	ret = rtw89_mac_power_switch(rtwdev, true);
-	if (ret) {
-		rtw89_warn(rtwdev, "power on fail\n");
-		return ret;
-	}
-
-	return 0;
 }
 
 void rtw89_mac_pwr_off(struct rtw89_dev *rtwdev)
@@ -1122,7 +1095,6 @@ static int cmac_func_en(struct rtw89_dev *rtwdev, u8 mac_idx, bool en)
 static int dmac_func_en(struct rtw89_dev *rtwdev)
 {
 	u32 val32;
-	u32 ret = 0;
 
 	val32 = (B_AX_MAC_FUNC_EN | B_AX_DMAC_FUNC_EN | B_AX_MAC_SEC_EN |
 		 B_AX_DISPATCHER_EN | B_AX_DLE_CPUIO_EN | B_AX_PKT_IN_EN |
@@ -1136,7 +1108,7 @@ static int dmac_func_en(struct rtw89_dev *rtwdev)
 		 B_AX_WD_RLS_CLK_EN);
 	rtw89_write32(rtwdev, R_AX_DMAC_CLK_EN, val32);
 
-	return ret;
+	return 0;
 }
 
 static int chip_func_en(struct rtw89_dev *rtwdev)
@@ -1166,265 +1138,55 @@ static int rtw89_mac_sys_init(struct rtw89_dev *rtwdev)
 }
 
 /* PCIE 64 */
-struct rtw89_dle_size wde_size0 = {
+const struct rtw89_dle_size wde_size0 = {
 	RTW89_WDE_PG_64, 4095, 1,
 };
 
-/* SDIO, PCIE STF, USB */
-struct rtw89_dle_size wde_size1 = {
-	RTW89_WDE_PG_64, 768, 0,
-};
-
-/* PCIE 128 */
-struct rtw89_dle_size wde_size2 = {
-	RTW89_WDE_PG_128, 2016, 32,
-};
-
-/* PCIE SU TP */
-struct rtw89_dle_size wde_size3 = {
-	RTW89_WDE_PG_64, 496, 3600,
-};
-
 /* DLFW */
-struct rtw89_dle_size wde_size4 = {
+const struct rtw89_dle_size wde_size4 = {
 	RTW89_WDE_PG_64, 0, 4096,
 };
 
-/* PCIE BCN TEST */
-struct rtw89_dle_size wde_size5 = {
-	RTW89_WDE_PG_64, 3904, 64,
-};
-
-/* PCIE 64 */
-struct rtw89_dle_size wde_size6 = {
-	RTW89_WDE_PG_64, 1024, 0,
-};
-
-/* PCIE 128 */
-struct rtw89_dle_size wde_size7 = {
-	RTW89_WDE_PG_128, 960, 0,
-};
-
-/* PCIE STF, USB */
-struct rtw89_dle_size wde_size8 = {
-	RTW89_WDE_PG_64, 256, 0,
-};
-
-/* DLFW */
-struct rtw89_dle_size wde_size9 = {
-	RTW89_WDE_PG_64, 0, 1024,
-};
-
-/* LA-PCIE */
-struct rtw89_dle_size wde_size10 = {
-	RTW89_WDE_PG_64, 1408, 0,
-};
-
 /* PCIE */
-struct rtw89_dle_size ple_size0 = {
+const struct rtw89_dle_size ple_size0 = {
 	RTW89_PLE_PG_128, 1520, 16,
 };
 
-/* PCIE STF */
-struct rtw89_dle_size ple_size2 = {
-	RTW89_PLE_PG_128, 3200, 0,
-};
-
-/* PCIE SU TP */
-struct rtw89_dle_size ple_size3 = {
-	RTW89_PLE_PG_128, 330, 1206,
-};
-
 /* DLFW */
-struct rtw89_dle_size ple_size4 = {
+const struct rtw89_dle_size ple_size4 = {
 	RTW89_PLE_PG_128, 64, 1472,
 };
 
-/* PCIE BCN TEST */
-struct rtw89_dle_size ple_size5 = {
-	RTW89_PLE_PG_128, 1520, 80,
-};
-
 /* PCIE 64 */
-struct rtw89_dle_size ple_size6 = {
-	RTW89_PLE_PG_128, 1008, 16,
-};
-
-/* PCIE STF, USB */
-struct rtw89_dle_size ple_size7 = {
-	RTW89_PLE_PG_128, 1408, 0,
-};
-
-/* DLFW */
-struct rtw89_dle_size ple_size8 = {
-	RTW89_PLE_PG_128, 64, 960,
-};
-
-/* PCIE 128 */
-struct rtw89_dle_size ple_size9 = {
-	RTW89_PLE_PG_128, 576, 0,
-};
-
-/* LA-PCIE */
-struct rtw89_dle_size ple_size10 = {
-	RTW89_PLE_PG_128, 832, 0,
-};
-
-/* PCIE 64 */
-struct rtw89_wde_quota wde_qt0 = {
+const struct rtw89_wde_quota wde_qt0 = {
 	3792, 196, 0, 107,
 };
 
-/* SDIO, PCIE STF, USB */
-struct rtw89_wde_quota wde_qt1 = {
-	512, 196, 0, 60,
-};
-
-/* PCIE 128 */
-struct rtw89_wde_quota wde_qt2 = {
-	1896, 98, 0, 22,
-};
-
-/* PCIE SU TP */
-struct rtw89_wde_quota wde_qt3 = {
-	256, 196, 0, 44,
-};
-
 /* DLFW */
-struct rtw89_wde_quota wde_qt4 = {
+const struct rtw89_wde_quota wde_qt4 = {
 	0, 0, 0, 0,
 };
 
-/* PCIE BCN TEST */
-struct rtw89_wde_quota wde_qt5 = {
-	3666, 196, 0, 44,
-};
-
-/* PCIE 64 */
-struct rtw89_wde_quota wde_qt6 = {
-	968, 48, 0, 8,
-};
-
-/* PCIE 128 */
-struct rtw89_wde_quota wde_qt7 = {
-	896, 56, 0, 8,
-};
-
-/* PCIE STF, USB */
-struct rtw89_wde_quota wde_qt8 = {
-	236, 16, 0, 4,
-};
-
-/* LA-PCIE */
-struct rtw89_wde_quota wde_qt9 = {
-	1392, 8, 0, 8,
-};
-
-/* PCIE DBCC */
-struct rtw89_ple_quota ple_qt0 = {
-	264, 66, 16, 20, 26, 13, 356, 89, 32, 40, 8,
-};
-
-/* PCIE DBCC */
-struct rtw89_ple_quota ple_qt1 = {
-	264, 66, 32, 20, 64, 13, 946, 679, 64, 128, 320,
-};
-
 /* PCIE SCC */
-struct rtw89_ple_quota ple_qt4 = {
+const struct rtw89_ple_quota ple_qt4 = {
 	264, 0, 16, 20, 26, 13, 356, 0, 32, 40, 8,
 };
 
 /* PCIE SCC */
-struct rtw89_ple_quota ple_qt5 = {
+const struct rtw89_ple_quota ple_qt5 = {
 	264, 0, 32, 20, 64, 13, 1101, 0, 64, 128, 120,
 };
 
-/* PCIE STF SCC */
-struct rtw89_ple_quota ple_qt8 = {
-	1536, 0, 16, 20, 13, 13, 356, 0, 32, 40, 8,
-};
-
-/* PCIE STF SCC */
-struct rtw89_ple_quota ple_qt9 = {
-	2702, 0, 32, 20, 64, 13, 1522, 0, 64, 128, 320,
-};
-
-/* PCIE STF DBCC */
-struct rtw89_ple_quota ple_qt10 = {
-	2272, 0, 16, 20, 26, 13, 356, 89, 32, 40, 8
-};
-
-/* PCIE STF DBCC */
-struct rtw89_ple_quota ple_qt11 = {
-	2600, 0, 32, 20, 64, 13, 684, 417, 64, 128, 320
-};
-
-/* PCIE SU TP */
-struct rtw89_ple_quota ple_qt12 = {
-	50, 50, 16, 20, 26, 26, 25, 25, 32, 40, 20
-};
-
 /* DLFW */
-struct rtw89_ple_quota ple_qt13 = {
+const struct rtw89_ple_quota ple_qt13 = {
 	0, 0, 16, 48, 0, 0, 0, 0, 0, 0, 0
 };
 
-/* PCIE BCN TEST */
-struct rtw89_ple_quota ple_qt14 = {
-	588, 147, 16, 20, 26, 26, 356, 89, 32, 40, 80,
-};
-
-/* PCIE BCN TEST */
-struct rtw89_ple_quota ple_qt15 = {
-	688, 247, 116, 20, 64, 126, 456, 189, 64, 128, 80,
-};
-
-/* USB DBCC */
-struct rtw89_ple_quota ple_qt16 = {
-	2048, 0, 16, 48, 26, 26, 360, 90, 32, 40, 1,
-};
-
-/* PCIE 64 */
-struct rtw89_ple_quota ple_qt18 = {
-	66, 0, 16, 20, 13, 13, 178, 0, 32, 14, 8,
-};
-
-/* PCIE 64 */
-struct rtw89_ple_quota ple_qt19 = {
-	66, 0, 32, 20, 661, 13, 826, 0, 680, 14, 64,
-};
-
-/* PCIE STF */
-struct rtw89_ple_quota ple_qt20 = {
-	962, 0, 16, 20, 80, 13, 178, 0, 32, 14, 8,
-};
-
-/* PCIE STF */
-struct rtw89_ple_quota ple_qt21 = {
-	1047, 0, 32, 20, 165, 13, 263, 0, 117, 14, 64,
-};
-
-/* PCIE 128 */
-struct rtw89_ple_quota ple_qt22 = {
-	269, 0, 18, 20, 15, 28, 180, 0, 34, 14, 8,
-};
-
-/* LA-PCIE MIN*/
-struct rtw89_ple_quota ple_qt23 = {
-	156, 39, 16, 20, 26, 26, 356, 89, 32, 40, 1,
-};
-
-/* LA-PCIE MAX*/
-struct rtw89_ple_quota ple_qt24 = {
-	187, 70, 47, 20, 64, 57, 387, 120, 64, 128, 1,
-};
-
-static struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
-					     enum rtw89_qta_mode mode)
+static const struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
+						   enum rtw89_qta_mode mode)
 {
 	struct rtw89_mac_info *mac = &rtwdev->mac;
-	struct rtw89_dle_mem *cfg;
+	const struct rtw89_dle_mem *cfg;
 
 	cfg = &rtwdev->chip->dle_mem[mode];
 	if (!cfg)
@@ -1444,8 +1206,8 @@ static struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 	return cfg;
 }
 
-static inline u32 dle_used_size(struct rtw89_dle_size *wde,
-				struct rtw89_dle_size *ple)
+static inline u32 dle_used_size(const struct rtw89_dle_size *wde,
+				const struct rtw89_dle_size *ple)
 {
 	return wde->pge_size * (wde->lnk_pge_num + wde->unlnk_pge_num) +
 	       ple->pge_size * (ple->lnk_pge_num + ple->unlnk_pge_num);
@@ -1471,9 +1233,9 @@ static void dle_clk_en(struct rtw89_dev *rtwdev, bool enable)
 				  B_AX_DLE_WDE_CLK_EN | B_AX_DLE_PLE_CLK_EN);
 }
 
-static int dle_mix_cfg(struct rtw89_dev *rtwdev, struct rtw89_dle_mem *cfg)
+static int dle_mix_cfg(struct rtw89_dev *rtwdev, const struct rtw89_dle_mem *cfg)
 {
-	struct rtw89_dle_size *size_cfg;
+	const struct rtw89_dle_size *size_cfg;
 	u32 val;
 	u8 bound = 0;
 
@@ -1528,32 +1290,38 @@ static int dle_mix_cfg(struct rtw89_dev *rtwdev, struct rtw89_dle_mem *cfg)
 	return 0;
 }
 
-#define SET_QUOTA(_x, _module, _idx)					\
+#define INVALID_QT_WCPU U16_MAX
+#define SET_QUOTA_VAL(_min_x, _max_x, _module, _idx)			\
 	do {								\
-		val = (min_cfg->_x &					\
+		val = ((_min_x) &					\
 		       B_AX_ ## _module ## _MIN_SIZE_MASK) |		\
-		      ((max_cfg->_x << 16) &				\
+		      (((_max_x) << 16) &				\
 		       B_AX_ ## _module ## _MAX_SIZE_MASK);		\
 		rtw89_write32(rtwdev,					\
 			      R_AX_ ## _module ## _QTA ## _idx ## _CFG,	\
 			      val);					\
 	} while (0)
+#define SET_QUOTA(_x, _module, _idx)					\
+	SET_QUOTA_VAL(min_cfg->_x, max_cfg->_x, _module, _idx)
 
 static void wde_quota_cfg(struct rtw89_dev *rtwdev,
-			  struct rtw89_wde_quota *min_cfg,
-			  struct rtw89_wde_quota *max_cfg)
+			  const struct rtw89_wde_quota *min_cfg,
+			  const struct rtw89_wde_quota *max_cfg,
+			  u16 ext_wde_min_qt_wcpu)
 {
+	u16 min_qt_wcpu = ext_wde_min_qt_wcpu != INVALID_QT_WCPU ?
+			  ext_wde_min_qt_wcpu : min_cfg->wcpu;
 	u32 val;
 
 	SET_QUOTA(hif, WDE, 0);
-	SET_QUOTA(wcpu, WDE, 1);
+	SET_QUOTA_VAL(min_qt_wcpu, max_cfg->wcpu, WDE, 1);
 	SET_QUOTA(pkt_in, WDE, 3);
 	SET_QUOTA(cpu_io, WDE, 4);
 }
 
 static void ple_quota_cfg(struct rtw89_dev *rtwdev,
-			  struct rtw89_ple_quota *min_cfg,
-			  struct rtw89_ple_quota *max_cfg)
+			  const struct rtw89_ple_quota *min_cfg,
+			  const struct rtw89_ple_quota *max_cfg)
 {
 	u32 val;
 
@@ -1572,24 +1340,19 @@ static void ple_quota_cfg(struct rtw89_dev *rtwdev,
 
 #undef SET_QUOTA
 
-static void dle_quota_cfg(struct rtw89_dev *rtwdev, struct rtw89_dle_mem *cfg)
+static void dle_quota_cfg(struct rtw89_dev *rtwdev,
+			  const struct rtw89_dle_mem *cfg,
+			  u16 ext_wde_min_qt_wcpu)
 {
-	wde_quota_cfg(rtwdev, cfg->wde_min_qt, cfg->wde_max_qt);
+	wde_quota_cfg(rtwdev, cfg->wde_min_qt, cfg->wde_max_qt, ext_wde_min_qt_wcpu);
 	ple_quota_cfg(rtwdev, cfg->ple_min_qt, cfg->ple_max_qt);
-}
-
-static u32 dle_rsvd_size(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
-{
-	if (mode != RTW89_QTA_LAMODE)
-		return 0;
-
-	return rtwdev->chip->dle_lamode_size;
 }
 
 static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
 		    enum rtw89_qta_mode ext_mode)
 {
-	struct rtw89_dle_mem *cfg, *ext_cfg;
+	const struct rtw89_dle_mem *cfg, *ext_cfg;
+	u16 ext_wde_min_qt_wcpu = INVALID_QT_WCPU;
 	int ret = 0;
 	u32 ini;
 
@@ -1612,11 +1375,10 @@ static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
 			ret = -EINVAL;
 			goto error;
 		}
-		cfg->wde_min_qt->wcpu = ext_cfg->wde_min_qt->wcpu;
+		ext_wde_min_qt_wcpu = ext_cfg->wde_min_qt->wcpu;
 	}
 
-	if (dle_used_size(cfg->wde_size, cfg->ple_size) !=
-	    (rtwdev->chip->fifo_size - dle_rsvd_size(rtwdev, mode))) {
+	if (dle_used_size(cfg->wde_size, cfg->ple_size) != rtwdev->chip->fifo_size) {
 		rtw89_err(rtwdev, "[ERR]wd/dle mem cfg\n");
 		ret = -EINVAL;
 		goto error;
@@ -1630,7 +1392,7 @@ static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
 		rtw89_err(rtwdev, "[ERR] dle mix cfg\n");
 		goto error;
 	}
-	dle_quota_cfg(rtwdev, cfg);
+	dle_quota_cfg(rtwdev, cfg, ext_wde_min_qt_wcpu);
 
 	dle_func_en(rtwdev, true);
 
@@ -1896,7 +1658,7 @@ static int rx_fltr_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 	}
 	mac_ftlr = rtwdev->hal.rx_fltr;
 	plcp_ftlr = B_AX_CCK_CRC_CHK | B_AX_CCK_SIG_CHK |
-		    B_AX_LSIG_PARITY_CHK | B_AX_SIGA_CRC_CHK |
+		    B_AX_LSIG_PARITY_CHK_EN | B_AX_SIGA_CRC_CHK |
 		    B_AX_VHT_SU_SIGB_CRC_CHK | B_AX_VHT_MU_SIGB_CRC_CHK |
 		    B_AX_HE_SIGB_CRC_CHK;
 	rtw89_write32(rtwdev, rtw89_mac_reg_by_idx(R_AX_RX_FLTR_OPT, mac_idx),
@@ -1905,6 +1667,40 @@ static int rx_fltr_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 		      plcp_ftlr);
 
 	return 0;
+}
+
+static void _patch_dis_resp_chk(struct rtw89_dev *rtwdev, u8 mac_idx)
+{
+	u32 reg, val32;
+	u32 b_rsp_chk_nav, b_rsp_chk_cca;
+
+	b_rsp_chk_nav = B_AX_RSP_CHK_TXNAV | B_AX_RSP_CHK_INTRA_NAV |
+			B_AX_RSP_CHK_BASIC_NAV;
+	b_rsp_chk_cca = B_AX_RSP_CHK_SEC_CCA_80 | B_AX_RSP_CHK_SEC_CCA_40 |
+			B_AX_RSP_CHK_SEC_CCA_20 | B_AX_RSP_CHK_BTCCA |
+			B_AX_RSP_CHK_EDCCA | B_AX_RSP_CHK_CCA;
+
+	switch (rtwdev->chip->chip_id) {
+	case RTL8852A:
+	case RTL8852B:
+		reg = rtw89_mac_reg_by_idx(R_AX_RSP_CHK_SIG, mac_idx);
+		val32 = rtw89_read32(rtwdev, reg) & ~b_rsp_chk_nav;
+		rtw89_write32(rtwdev, reg, val32);
+
+		reg = rtw89_mac_reg_by_idx(R_AX_TRXPTCL_RESP_0, mac_idx);
+		val32 = rtw89_read32(rtwdev, reg) & ~b_rsp_chk_cca;
+		rtw89_write32(rtwdev, reg, val32);
+		break;
+	default:
+		reg = rtw89_mac_reg_by_idx(R_AX_RSP_CHK_SIG, mac_idx);
+		val32 = rtw89_read32(rtwdev, reg) | b_rsp_chk_nav;
+		rtw89_write32(rtwdev, reg, val32);
+
+		reg = rtw89_mac_reg_by_idx(R_AX_TRXPTCL_RESP_0, mac_idx);
+		val32 = rtw89_read32(rtwdev, reg) | b_rsp_chk_cca;
+		rtw89_write32(rtwdev, reg, val32);
+		break;
+	}
 }
 
 static int cca_ctrl_init(struct rtw89_dev *rtwdev, u8 mac_idx)
@@ -1921,25 +1717,19 @@ static int cca_ctrl_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 	val |= (B_AX_TB_CHK_BASIC_NAV | B_AX_TB_CHK_BTCCA |
 		B_AX_TB_CHK_EDCCA | B_AX_TB_CHK_CCA_P20 |
 		B_AX_SIFS_CHK_BTCCA | B_AX_SIFS_CHK_CCA_P20 |
-		B_AX_CTN_CHK_TXNAV | B_AX_CTN_CHK_INTRA_NAV |
+		B_AX_CTN_CHK_INTRA_NAV |
 		B_AX_CTN_CHK_BASIC_NAV | B_AX_CTN_CHK_BTCCA |
 		B_AX_CTN_CHK_EDCCA | B_AX_CTN_CHK_CCA_S80 |
 		B_AX_CTN_CHK_CCA_S40 | B_AX_CTN_CHK_CCA_S20 |
-		B_AX_CTN_CHK_CCA_P20);
+		B_AX_CTN_CHK_CCA_P20 | B_AX_SIFS_CHK_EDCCA);
 	val &= ~(B_AX_TB_CHK_TX_NAV | B_AX_TB_CHK_CCA_S80 |
 		 B_AX_TB_CHK_CCA_S40 | B_AX_TB_CHK_CCA_S20 |
 		 B_AX_SIFS_CHK_CCA_S80 | B_AX_SIFS_CHK_CCA_S40 |
-		 B_AX_SIFS_CHK_CCA_S20 | B_AX_SIFS_CHK_EDCCA);
+		 B_AX_SIFS_CHK_CCA_S20 | B_AX_CTN_CHK_TXNAV);
+
 	rtw89_write32(rtwdev, reg, val);
 
-	reg = rtw89_mac_reg_by_idx(R_AX_RSP_CHK_SIG, mac_idx);
-	val = rtw89_read32(rtwdev, reg);
-	val |= (B_AX_RSP_CHK_TX_NAV | B_AX_RSP_CHK_INTRA_NAV |
-		B_AX_RSP_CHK_BASIC_NAV | B_AX_RSP_CHK_SEC_CCA_80 |
-		B_AX_RSP_CHK_SEC_CCA_40 | B_AX_RSP_CHK_SEC_CCA_20 |
-		B_AX_RSP_CHK_BTCCA | B_AX_RSP_CHK_EDCCA |
-		B_AX_RSP_CHK_CCA);
-	rtw89_write32(rtwdev, reg, val);
+	_patch_dis_resp_chk(rtwdev, mac_idx);
 
 	return 0;
 }
@@ -2084,7 +1874,7 @@ static int cmac_com_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 
 static bool is_qta_dbcc(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 {
-	struct rtw89_dle_mem *cfg;
+	const struct rtw89_dle_mem *cfg;
 
 	cfg = get_dle_mem_cfg(rtwdev, mode);
 	if (!cfg) {
@@ -2093,11 +1883,6 @@ static bool is_qta_dbcc(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 	}
 
 	return (cfg->ple_min_qt->cma1_dma && cfg->ple_max_qt->cma1_dma);
-}
-
-static bool is_qta_poh(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
-{
-	return !(mode == RTW89_QTA_SCC_STF || mode == RTW89_QTA_DBCC_STF);
 }
 
 static int ptcl_init(struct rtw89_dev *rtwdev, u8 mac_idx)
@@ -2109,10 +1894,7 @@ static int ptcl_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 	if (ret)
 		return ret;
 
-	if (rtwdev->hci.type != RTW89_HCI_TYPE_PCIE)
-		goto end;
-
-	if (is_qta_poh(rtwdev, rtwdev->mac.qta_mode)) {
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE) {
 		reg = rtw89_mac_reg_by_idx(R_AX_SIFS_SETTING, mac_idx);
 		val = rtw89_read32(rtwdev, reg);
 		val = u32_replace_bits(val, S_AX_CTS2S_TH_1K,
@@ -2127,7 +1909,6 @@ static int ptcl_init(struct rtw89_dev *rtwdev, u8 mac_idx)
 		rtw89_write32(rtwdev, reg, val);
 	}
 
-end:
 	reg = rtw89_mac_reg_by_idx(R_AX_SIFS_SETTING, mac_idx);
 	val = rtw89_read32(rtwdev, reg);
 	val = u32_replace_bits(val, S_AX_CTS2S_TH_SEC_256B, B_AX_HW_CTS2SELF_PKT_LEN_TH_TWW_MASK);
@@ -2357,17 +2138,17 @@ static u16 rtw89_mac_dle_buf_req(struct rtw89_dev *rtwdev, u16 buf_len,
 
 	reg = wd ? R_AX_WD_BUF_REQ : R_AX_PL_BUF_REQ;
 	val = buf_len;
-	val |= B_AX_BUF_REQ_EXEC;
+	val |= B_AX_WD_BUF_REQ_EXEC;
 	rtw89_write32(rtwdev, reg, val);
 
 	reg = wd ? R_AX_WD_BUF_STATUS : R_AX_PL_BUF_STATUS;
 
-	ret = read_poll_timeout(rtw89_read32, val, val & B_AX_BUF_STAT_DONE,
+	ret = read_poll_timeout(rtw89_read32, val, val & B_AX_WD_BUF_STAT_DONE,
 				1, 2000, false, rtwdev, reg);
 	if (ret)
 		return 0xffff;
 
-	return FIELD_GET(B_AX_BUF_STAT_PKTID_MASK, val);
+	return FIELD_GET(B_AX_WD_BUF_STAT_PKTID_MASK, val);
 }
 
 static int rtw89_mac_set_cpuio(struct rtw89_dev *rtwdev,
@@ -2382,9 +2163,9 @@ static int rtw89_mac_set_cpuio(struct rtw89_dev *rtwdev,
 	reg = wd ? R_AX_WD_CPUQ_OP_2 : R_AX_PL_CPUQ_OP_2;
 	val = 0;
 	val = u32_replace_bits(val, ctrl_para->start_pktid,
-			       B_AX_CPUQ_OP_STRT_PKTID_MASK);
+			       B_AX_WD_CPUQ_OP_STRT_PKTID_MASK);
 	val = u32_replace_bits(val, ctrl_para->end_pktid,
-			       B_AX_CPUQ_OP_END_PKTID_MASK);
+			       B_AX_WD_CPUQ_OP_END_PKTID_MASK);
 	rtw89_write32(rtwdev, reg, val);
 
 	reg = wd ? R_AX_WD_CPUQ_OP_1 : R_AX_PL_CPUQ_OP_1;
@@ -2407,26 +2188,26 @@ static int rtw89_mac_set_cpuio(struct rtw89_dev *rtwdev,
 			       B_AX_CPUQ_OP_MACID_MASK);
 	val = u32_replace_bits(val, ctrl_para->pkt_num,
 			       B_AX_CPUQ_OP_PKTNUM_MASK);
-	val |= B_AX_CPUQ_OP_EXEC;
+	val |= B_AX_WD_CPUQ_OP_EXEC;
 	rtw89_write32(rtwdev, reg, val);
 
 	reg = wd ? R_AX_WD_CPUQ_OP_STATUS : R_AX_PL_CPUQ_OP_STATUS;
 
-	ret = read_poll_timeout(rtw89_read32, val, val & B_AX_CPUQ_OP_STAT_DONE,
+	ret = read_poll_timeout(rtw89_read32, val, val & B_AX_WD_CPUQ_OP_STAT_DONE,
 				1, 2000, false, rtwdev, reg);
 	if (ret)
 		return ret;
 
 	if (cmd_type == CPUIO_OP_CMD_GET_1ST_PID ||
 	    cmd_type == CPUIO_OP_CMD_GET_NEXT_PID)
-		ctrl_para->pktid = FIELD_GET(B_AX_CPUQ_OP_PKTID_MASK, val);
+		ctrl_para->pktid = FIELD_GET(B_AX_WD_CPUQ_OP_PKTID_MASK, val);
 
 	return 0;
 }
 
 static int dle_quota_change(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 {
-	struct rtw89_dle_mem *cfg;
+	const struct rtw89_dle_mem *cfg;
 	struct rtw89_cpuio_ctrl ctrl_para = {0};
 	u16 pkt_id;
 	int ret;
@@ -2437,13 +2218,12 @@ static int dle_quota_change(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 		return -EINVAL;
 	}
 
-	if (dle_used_size(cfg->wde_size, cfg->ple_size) !=
-	    (rtwdev->chip->fifo_size - dle_rsvd_size(rtwdev, mode))) {
+	if (dle_used_size(cfg->wde_size, cfg->ple_size) != rtwdev->chip->fifo_size) {
 		rtw89_err(rtwdev, "[ERR]wd/dle mem cfg\n");
 		return -EINVAL;
 	}
 
-	dle_quota_cfg(rtwdev, cfg);
+	dle_quota_cfg(rtwdev, cfg, INVALID_QT_WCPU);
 
 	pkt_id = rtw89_mac_dle_buf_req(rtwdev, 0x20, true);
 	if (pkt_id == 0xffff) {
@@ -2563,7 +2343,7 @@ static int band1_enable(struct rtw89_dev *rtwdev)
 	}
 
 	rtw89_write32_set(rtwdev, R_AX_SYS_ISO_CTRL_EXTEND,
-			  B_AX_R_SYM_FEN_WLPHYFUN_1 | B_AX_R_SYM_FEN_WLPHYGLB_1);
+			  B_AX_R_SYM_FEN_WLBBFUN_1 | B_AX_R_SYM_FEN_WLBBGLB_1);
 
 	return 0;
 }
@@ -2618,8 +2398,8 @@ static int rtw89_mac_enable_imr(struct rtw89_dev *rtwdev, u8 mac_idx,
 		rtw89_write32(rtwdev, reg, val);
 
 		reg = rtw89_mac_reg_by_idx(R_AX_PHYINFO_ERR_IMR, mac_idx);
-		rtw89_write16_set(rtwdev, reg,
-				  B_AXC_PHY_TXON_TIMEOUT_INT_EN |
+		rtw89_write32_set(rtwdev, reg,
+				  B_AX_PHY_TXON_TIMEOUT_INT_EN |
 				  B_AX_CCK_CCA_TIMEOUT_INT_EN |
 				  B_AX_OFDM_CCA_TIMEOUT_INT_EN |
 				  B_AX_DATA_ON_TIMEOUT_INT_EN |
@@ -2669,8 +2449,7 @@ static int rtw89_mac_dbcc_enable(struct rtw89_dev *rtwdev, bool enable)
 
 static int set_host_rpr(struct rtw89_dev *rtwdev)
 {
-	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE &&
-	    is_qta_poh(rtwdev, rtwdev->mac.qta_mode)) {
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE) {
 		rtw89_write32_mask(rtwdev, R_AX_WDRLS_CFG,
 				   B_AX_WDRLS_MODE_MASK, RTW89_RPR_MODE_POH);
 		rtw89_write32_set(rtwdev, R_AX_RLSRPT0_CFG0,
@@ -2878,8 +2657,6 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 		goto fail;
 
 	rtw89_mac_enable_bb_rf(rtwdev);
-	if (ret)
-		goto fail;
 
 	ret = rtw89_mac_sys_init(rtwdev);
 	if (ret)
@@ -2895,6 +2672,7 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			goto fail;
 	}
 
+	rtw89_fw_send_all_early_h2c(rtwdev);
 	rtw89_fw_h2c_set_ofld_cfg(rtwdev);
 
 	return ret;
@@ -3174,7 +2952,7 @@ static void rtw89_mac_port_cfg_hiq_drop(struct rtw89_dev *rtwdev,
 
 	reg = rtw89_mac_reg_by_idx(R_AX_MBSSID_DROP_0, rtwvif->mac_idx);
 	val = rtw89_read32(rtwdev, reg);
-	val &= ~FIELD_PREP(B_AX_PORT_DROP_4_0_MSK, BIT(port));
+	val &= ~FIELD_PREP(B_AX_PORT_DROP_4_0_MASK, BIT(port));
 	if (port == 0)
 		val &= ~BIT(0);
 	rtw89_write32(rtwdev, reg, val);
@@ -3197,7 +2975,6 @@ static void rtw89_mac_port_cfg_bcn_early(struct rtw89_dev *rtwdev,
 				BCN_ERLY_DEF);
 }
 
-static
 int rtw89_mac_vif_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
 	int ret;
@@ -3232,7 +3009,6 @@ int rtw89_mac_vif_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	return 0;
 }
 
-static
 int rtw89_mac_vif_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
 	int ret;
@@ -3248,22 +3024,6 @@ int rtw89_mac_vif_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 		return ret;
 
 	return 0;
-}
-
-void rtw89_restore_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
-{
-	struct rtw89_dev *rtwdev = data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
-
-	rtw89_mac_vif_init(rtwdev, rtwvif);
-}
-
-void rtw89_remove_vif_cfg_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
-{
-	struct rtw89_dev *rtwdev = data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
-
-	rtw89_mac_vif_deinit(rtwdev, rtwvif);
 }
 
 int rtw89_mac_port_update(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
@@ -3362,7 +3122,8 @@ rtw89_mac_c2h_log(struct rtw89_dev *rtwdev, struct sk_buff *c2h, u32 len)
 		   RTW89_GET_C2H_LOG_SRT_PRT(c2h->data));
 }
 
-static void (*rtw89_mac_c2h_ofld_handler[])(struct rtw89_dev *rtwdev,
+static
+void (* const rtw89_mac_c2h_ofld_handler[])(struct rtw89_dev *rtwdev,
 					    struct sk_buff *c2h, u32 len) = {
 	[RTW89_MAC_C2H_FUNC_EFUSE_DUMP] = NULL,
 	[RTW89_MAC_C2H_FUNC_READ_RSP] = NULL,
@@ -3371,7 +3132,8 @@ static void (*rtw89_mac_c2h_ofld_handler[])(struct rtw89_dev *rtwdev,
 	[RTW89_MAC_C2H_FUNC_MACID_PAUSE] = rtw89_mac_c2h_macid_pause,
 };
 
-static void (*rtw89_mac_c2h_info_handler[])(struct rtw89_dev *rtwdev,
+static
+void (* const rtw89_mac_c2h_info_handler[])(struct rtw89_dev *rtwdev,
 					    struct sk_buff *c2h, u32 len) = {
 	[RTW89_MAC_C2H_FUNC_REC_ACK] = rtw89_mac_c2h_rec_ack,
 	[RTW89_MAC_C2H_FUNC_DONE_ACK] = rtw89_mac_c2h_done_ack,
@@ -3411,7 +3173,7 @@ bool rtw89_mac_get_txpwr_cr(struct rtw89_dev *rtwdev,
 			    enum rtw89_phy_idx phy_idx,
 			    u32 reg_base, u32 *cr)
 {
-	struct rtw89_dle_mem *dle_mem = rtwdev->chip->dle_mem;
+	const struct rtw89_dle_mem *dle_mem = rtwdev->chip->dle_mem;
 	enum rtw89_qta_mode mode = dle_mem->mode;
 	u32 addr = rtw89_mac_reg_by_idx(reg_base, phy_idx);
 
@@ -3422,7 +3184,7 @@ bool rtw89_mac_get_txpwr_cr(struct rtw89_dev *rtwdev,
 	}
 
 	if (addr >= CMAC1_START_ADDR && addr <= CMAC1_END_ADDR)
-		if (mode == RTW89_QTA_SCC || mode == RTW89_QTA_SCC_STF) {
+		if (mode == RTW89_QTA_SCC) {
 			rtw89_err(rtwdev,
 				  "[TXPWR] addr=0x%x but hw not enable\n",
 				  addr);
@@ -3513,23 +3275,12 @@ int rtw89_mac_coex_init(struct rtw89_dev *rtwdev, const struct rtw89_mac_ax_coex
 	u32 val32;
 	int ret;
 
-	val = rtw89_read8(rtwdev, R_AX_GPIO_MUXCFG);
-	rtw89_write8(rtwdev, R_AX_GPIO_MUXCFG, val | B_AX_ENBT);
-
-	val = rtw89_read8(rtwdev, R_AX_BTC_FUNC_EN);
-	rtw89_write8(rtwdev, R_AX_BTC_FUNC_EN, val | B_AX_PTA_WL_TX_EN);
-
-	val = rtw89_read8(rtwdev, R_AX_BT_COEX_CFG_2 + 1);
-	rtw89_write8(rtwdev, R_AX_BT_COEX_CFG_2 + 1, val | BIT(0));
-
-	val = rtw89_read8(rtwdev, R_AX_CSR_MODE);
-	rtw89_write8(rtwdev, R_AX_CSR_MODE, val | B_AX_STATIS_BT_EN | B_AX_WL_ACT_MSK);
-
-	val = rtw89_read8(rtwdev, R_AX_CSR_MODE + 2);
-	rtw89_write8(rtwdev, R_AX_CSR_MODE + 2, val | BIT(0));
-
-	val = rtw89_read8(rtwdev, R_AX_TRXPTCL_RESP_0 + 3);
-	rtw89_write8(rtwdev, R_AX_TRXPTCL_RESP_0 + 3, val & ~BIT(1));
+	rtw89_write8_set(rtwdev, R_AX_GPIO_MUXCFG, B_AX_ENBT);
+	rtw89_write8_set(rtwdev, R_AX_BTC_FUNC_EN, B_AX_PTA_WL_TX_EN);
+	rtw89_write8_set(rtwdev, R_AX_BT_COEX_CFG_2 + 1, B_AX_GNT_BT_POLARITY >> 8);
+	rtw89_write8_set(rtwdev, R_AX_CSR_MODE, B_AX_STATIS_BT_EN | B_AX_WL_ACT_MSK);
+	rtw89_write8_set(rtwdev, R_AX_CSR_MODE + 2, B_AX_BT_CNT_RST >> 16);
+	rtw89_write8_clr(rtwdev, R_AX_TRXPTCL_RESP_0 + 3, B_AX_RSP_CHK_BTCCA >> 24);
 
 	val16 = rtw89_read16(rtwdev, R_AX_CCA_CFG_0);
 	val16 = (val16 | B_AX_BTCCA_EN) & ~B_AX_BTCCA_BRK_TXOP_EN;
@@ -3666,18 +3417,6 @@ int rtw89_mac_cfg_plt(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt)
 	return 0;
 }
 
-u16 rtw89_mac_get_plt(struct rtw89_dev *rtwdev, u8 band)
-{
-	u32 reg;
-	u16 cnt;
-
-	reg = rtw89_mac_reg_by_idx(R_AX_BT_PLT, band);
-	cnt = rtw89_read32_mask(rtwdev, reg, B_AX_BT_PLT_PKT_CNT_MASK);
-	rtw89_write16_set(rtwdev, reg, B_AX_BT_PLT_RST);
-
-	return cnt;
-}
-
 void rtw89_mac_cfg_sb(struct rtw89_dev *rtwdev, u32 val)
 {
 	u32 fw_sb;
@@ -3694,6 +3433,7 @@ void rtw89_mac_cfg_sb(struct rtw89_dev *rtwdev, u32 val)
 	      FIELD_PREP(B_MAC_AX_SB_DRV_MASK, val) |
 	      FIELD_PREP(B_MAC_AX_SB_FW_MASK, fw_sb);
 	rtw89_write32(rtwdev, R_AX_SCOREBOARD, val);
+	fsleep(1000); /* avoid BT FW loss information */
 }
 
 u32 rtw89_mac_get_sb(struct rtw89_dev *rtwdev)
@@ -3715,7 +3455,7 @@ bool rtw89_mac_get_ctrl_path(struct rtw89_dev *rtwdev)
 {
 	u8 val = rtw89_read8(rtwdev, R_AX_SYS_SDIO_CTRL + 3);
 
-	return FIELD_GET(B_AX_PTA_MUX_CTRL_PATH >> 24, val);
+	return FIELD_GET(B_AX_LTE_MUX_CTRL_PATH >> 24, val);
 }
 
 static void rtw89_mac_bfee_ctrl(struct rtw89_dev *rtwdev, u8 mac_idx, bool en)
@@ -3958,36 +3698,18 @@ void rtw89_mac_bf_monitor_calc(struct rtw89_dev *rtwdev,
 		clear_bit(RTW89_FLAG_BFEE_MON, rtwdev->flags);
 }
 
-struct rtw89_mac_bfee_ctrl_iter_data {
-	struct rtw89_dev *rtwdev;
-	bool en;
-};
-
-static void rtw89_mac_bfee_ctrl_iter(void *data, u8 *mac,
-				     struct ieee80211_vif *vif)
-{
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
-	struct rtw89_mac_bfee_ctrl_iter_data *iter_data =
-				(struct rtw89_mac_bfee_ctrl_iter_data *)data;
-	struct rtw89_dev *rtwdev = iter_data->rtwdev;
-	bool en = iter_data->en;
-
-	rtw89_mac_bfee_ctrl(rtwdev, rtwvif->mac_idx, en);
-}
-
 void _rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_traffic_stats *stats = &rtwdev->stats;
-	struct rtw89_mac_bfee_ctrl_iter_data iter_data;
-	bool en = stats->tx_tfc_lv > stats->rx_tfc_lv ? false : true;
+	struct rtw89_vif *rtwvif;
+	bool en = stats->tx_tfc_lv <= stats->rx_tfc_lv;
 	bool old = test_bit(RTW89_FLAG_BFEE_EN, rtwdev->flags);
 
 	if (en == old)
 		return;
 
-	iter_data.rtwdev = rtwdev;
-	iter_data.en = en;
-	rtw89_iterate_vifs(rtwdev, rtw89_mac_bfee_ctrl_iter, &iter_data, false);
+	rtw89_for_each_rtwvif(rtwdev, rtwvif)
+		rtw89_mac_bfee_ctrl(rtwdev, rtwvif->mac_idx, en);
 }
 
 static int

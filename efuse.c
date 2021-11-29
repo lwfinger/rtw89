@@ -113,7 +113,7 @@ int rtw89_parse_efuse_map(struct rtw89_dev *rtwdev)
 	u8 *log_map = NULL;
 	int ret;
 
-	if (rtw89_read16(rtwdev, R_AX_SYS_EEPROM_CTRL) & B_AX_AUTOLOAD_SUS)
+	if (rtw89_read16(rtwdev, R_AX_SYS_WL_EFUSE_CTRL) & B_AX_AUTOLOAD_SUS)
 		rtwdev->efuse.valid = true;
 	else
 		rtw89_warn(rtwdev, "failed to check efuse autoload\n");

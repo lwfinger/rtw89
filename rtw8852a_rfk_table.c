@@ -962,6 +962,17 @@ static const struct rtw89_reg5_def rtw8852a_tssi_disable_defs[] = {
 
 DECLARE_RFK_TBL(rtw8852a_tssi_disable_defs);
 
+static const struct rtw89_reg5_def rtw8852a_tssi_enable_defs_ab[] = {
+	DECL_RFK_WM(0x5820, 0x80000000, 0x0),
+	DECL_RFK_WM(0x5820, 0x80000000, 0x1),
+	DECL_RFK_WM(0x5818, 0x18000000, 0x3),
+	DECL_RFK_WM(0x7820, 0x80000000, 0x0),
+	DECL_RFK_WM(0x7820, 0x80000000, 0x1),
+	DECL_RFK_WM(0x7818, 0x18000000, 0x3),
+};
+
+DECLARE_RFK_TBL(rtw8852a_tssi_enable_defs_ab);
+
 static const struct rtw89_reg5_def rtw8852a_tssi_tracking_defs[] = {
 	DECL_RFK_WM(0x5800, 0x10000000, 0x00000000),
 	DECL_RFK_WM(0x58f0, 0x00080000, 0x00000000),

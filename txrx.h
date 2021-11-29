@@ -23,84 +23,56 @@
 #define GET_DATA_RATE_NSS(r)		FIELD_GET(DATA_RATE_VHT_HE_NSS_MASK, r)
 
 /* TX WD BODY DWORD 0 */
-#define RTW89_SET_TXWD_BODY_WP_OFFSET(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, GENMASK(31, 24))
-#define RTW89_SET_TXWD_BODY_MORE_DATA(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, BIT(23))
-#define RTW89_SET_TXWD_BODY_WD_INFO_EN(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, BIT(22))
-#define RTW89_SET_TXWD_BODY_FW_DL(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, BIT(20))
-#define RTW89_SET_TXWD_BODY_CHANNEL_DMA(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, GENMASK(19, 16))
-#define RTW89_SET_TXWD_BODY_HDR_LLC_LEN(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, GENMASK(15, 11))
-#define RTW89_SET_TXWD_BODY_WD_PAGE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, BIT(7))
-#define RTW89_SET_TXWD_BODY_HW_AMSDU(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x00, BIT(5))
+#define RTW89_TXWD_BODY0_WP_OFFSET GENMASK(31, 24)
+#define RTW89_TXWD_BODY0_MORE_DATA BIT(23)
+#define RTW89_TXWD_BODY0_WD_INFO_EN BIT(22)
+#define RTW89_TXWD_BODY0_FW_DL BIT(20)
+#define RTW89_TXWD_BODY0_CHANNEL_DMA GENMASK(19, 16)
+#define RTW89_TXWD_BODY0_HDR_LLC_LEN GENMASK(15, 11)
+#define RTW89_TXWD_BODY0_WD_PAGE BIT(7)
+#define RTW89_TXWD_BODY0_HW_AMSDU BIT(5)
 
 /* TX WD BODY DWORD 1 */
-#define RTW89_SET_TXWD_BODY_PAYLOAD_ID(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x01, GENMASK(31, 16))
+#define RTW89_TXWD_BODY1_PAYLOAD_ID GENMASK(31, 16)
 
 /* TX WD BODY DWORD 2 */
-#define RTW89_SET_TXWD_BODY_MACID(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x02, GENMASK(30, 24))
-#define RTW89_SET_TXWD_BODY_TID_INDICATE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x02, BIT(23))
-#define RTW89_SET_TXWD_BODY_QSEL(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x02, GENMASK(22, 17))
-#define RTW89_SET_TXWD_BODY_TXPKT_SIZE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x02, GENMASK(13, 0))
+#define RTW89_TXWD_BODY2_MACID GENMASK(30, 24)
+#define RTW89_TXWD_BODY2_TID_INDICATE BIT(23)
+#define RTW89_TXWD_BODY2_QSEL GENMASK(22, 17)
+#define RTW89_TXWD_BODY2_TXPKT_SIZE GENMASK(13, 0)
 
 /* TX WD BODY DWORD 3 */
-#define RTW89_SET_TXWD_BODY_BK(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x03, BIT(13))
-#define RTW89_SET_TXWD_BODY_AGG_EN(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x03, BIT(12))
-#define RTW89_SET_TXWD_BODY_SW_SEQ(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x03, GENMASK(11, 0))
+#define RTW89_TXWD_BODY3_BK BIT(13)
+#define RTW89_TXWD_BODY3_AGG_EN BIT(12)
+#define RTW89_TXWD_BODY3_SW_SEQ GENMASK(11, 0)
 
 /* TX WD BODY DWORD 4 */
 
 /* TX WD BODY DWORD 5 */
 
 /* TX WD INFO DWORD 0 */
-#define RTW89_SET_TXWD_INFO_USE_RATE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x6, BIT(30))
-#define RTW89_SET_TXWD_INFO_DATA_BW(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x6, GENMASK(29, 28))
-#define RTW89_SET_TXWD_INFO_GI_LTF(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x6, GENMASK(27, 25))
-#define RTW89_SET_TXWD_INFO_DATA_RATE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x6, GENMASK(24, 16))
-#define RTW89_SET_TXWD_INFO_DISDATAFB(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x6, BIT(10))
+#define RTW89_TXWD_INFO0_USE_RATE BIT(30)
+#define RTW89_TXWD_INFO0_DATA_BW GENMASK(29, 28)
+#define RTW89_TXWD_INFO0_GI_LTF GENMASK(27, 25)
+#define RTW89_TXWD_INFO0_DATA_RATE GENMASK(24, 16)
+#define RTW89_TXWD_INFO0_DISDATAFB BIT(10)
 
 /* TX WD INFO DWORD 1 */
-#define RTW89_SET_TXWD_INFO_A_CTRL_BSR(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x7, BIT(14))
-#define RTW89_SET_TXWD_INFO_MAX_AGGNUM(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x7, GENMASK(7, 0))
+#define RTW89_TXWD_INFO1_DATA_RTY_LOWEST_RATE GENMASK(24, 16)
+#define RTW89_TXWD_INFO1_A_CTRL_BSR BIT(14)
+#define RTW89_TXWD_INFO1_MAX_AGGNUM GENMASK(7, 0)
 
 /* TX WD INFO DWORD 2 */
-#define RTW89_SET_TXWD_INFO_AMPDU_DENSITY(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x8, GENMASK(20, 18))
-#define RTW89_SET_TXWD_INFO_SEC_TYPE(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x8, GENMASK(12, 9))
-#define RTW89_SET_TXWD_INFO_SEC_HW_ENC(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x8, BIT(8))
-#define RTW89_SET_TXWD_INFO_SEC_CAM_IDX(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0x8, GENMASK(7, 0))
+#define RTW89_TXWD_INFO2_AMPDU_DENSITY GENMASK(20, 18)
+#define RTW89_TXWD_INFO2_SEC_TYPE GENMASK(12, 9)
+#define RTW89_TXWD_INFO2_SEC_HW_ENC BIT(8)
+#define RTW89_TXWD_INFO2_SEC_CAM_IDX GENMASK(7, 0)
 
 /* TX WD INFO DWORD 3 */
 
 /* TX WD INFO DWORD 4 */
-#define RTW89_SET_TXWD_INFO_RTS_EN(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0xA, BIT(27))
-#define RTW89_SET_TXWD_INFO_HW_RTS_EN(txdesc, val) \
-	RTW89_SET_TXWD(txdesc, val, 0xA, BIT(31))
+#define RTW89_TXWD_INFO4_RTS_EN BIT(27)
+#define RTW89_TXWD_INFO4_HW_RTS_EN BIT(31)
 
 /* TX WD INFO DWORD 5 */
 
@@ -168,52 +140,52 @@
 	le32_get_bits((rxdesc)->dword5, GENMASK(7, 0))
 
 #define RTW89_GET_RXINFO_USR_NUM(rpt) \
-	le32_get_bits(*((__le32 *)rpt), GENMASK(3, 0))
+	le32_get_bits(*((const __le32 *)rpt), GENMASK(3, 0))
 #define RTW89_GET_RXINFO_FW_DEFINE(rpt) \
-	le32_get_bits(*((__le32 *)rpt), GENMASK(15, 8))
+	le32_get_bits(*((const __le32 *)rpt), GENMASK(15, 8))
 #define RTW89_GET_RXINFO_LSIG_LEN(rpt) \
-	le32_get_bits(*((__le32 *)rpt), GENMASK(27, 16))
+	le32_get_bits(*((const __le32 *)rpt), GENMASK(27, 16))
 #define RTW89_GET_RXINFO_IS_TO_SELF(rpt) \
-	le32_get_bits(*((__le32 *)rpt), BIT(28))
+	le32_get_bits(*((const __le32 *)rpt), BIT(28))
 #define RTW89_GET_RXINFO_RX_CNT_VLD(rpt) \
-	le32_get_bits(*((__le32 *)rpt), BIT(29))
+	le32_get_bits(*((const __le32 *)rpt), BIT(29))
 #define RTW89_GET_RXINFO_LONG_RXD(rpt) \
-	le32_get_bits(*((__le32 *)rpt), GENMASK(31, 30))
+	le32_get_bits(*((const __le32 *)rpt), GENMASK(31, 30))
 #define RTW89_GET_RXINFO_SERVICE(rpt) \
-	le32_get_bits(*((__le32 *)(rpt) + 1), GENMASK(15, 0))
+	le32_get_bits(*((const __le32 *)(rpt) + 1), GENMASK(15, 0))
 #define RTW89_GET_RXINFO_PLCP_LEN(rpt) \
-	le32_get_bits(*((__le32 *)(rpt) + 1), GENMASK(23, 16))
+	le32_get_bits(*((const __le32 *)(rpt) + 1), GENMASK(23, 16))
 #define RTW89_GET_RXINFO_MAC_ID_VALID(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), BIT(0))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), BIT(0))
 #define RTW89_GET_RXINFO_DATA(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), BIT(1))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), BIT(1))
 #define RTW89_GET_RXINFO_CTRL(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), BIT(2))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), BIT(2))
 #define RTW89_GET_RXINFO_MGMT(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), BIT(3))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), BIT(3))
 #define RTW89_GET_RXINFO_BCM(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), BIT(4))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), BIT(4))
 #define RTW89_GET_RXINFO_MACID(rpt, usr) \
-	le32_get_bits(*((__le32 *)(rpt) + (usr) + 2), GENMASK(15, 8))
+	le32_get_bits(*((const __le32 *)(rpt) + (usr) + 2), GENMASK(15, 8))
 
 #define RTW89_GET_PHY_STS_RSSI_A(sts) \
-	le32_get_bits(*((__le32 *)(sts) + 1), GENMASK(7, 0))
+	le32_get_bits(*((const __le32 *)(sts) + 1), GENMASK(7, 0))
 #define RTW89_GET_PHY_STS_RSSI_B(sts) \
-	le32_get_bits(*((__le32 *)(sts) + 1), GENMASK(15, 8))
+	le32_get_bits(*((const __le32 *)(sts) + 1), GENMASK(15, 8))
 #define RTW89_GET_PHY_STS_RSSI_C(sts) \
-	le32_get_bits(*((__le32 *)(sts) + 1), GENMASK(23, 16))
+	le32_get_bits(*((const __le32 *)(sts) + 1), GENMASK(23, 16))
 #define RTW89_GET_PHY_STS_RSSI_D(sts) \
-	le32_get_bits(*((__le32 *)(sts) + 1), GENMASK(31, 24))
+	le32_get_bits(*((const __le32 *)(sts) + 1), GENMASK(31, 24))
 #define RTW89_GET_PHY_STS_LEN(sts) \
-	le32_get_bits(*((__le32 *)sts), GENMASK(15, 8))
+	le32_get_bits(*((const __le32 *)sts), GENMASK(15, 8))
 #define RTW89_GET_PHY_STS_RSSI_AVG(sts) \
-	le32_get_bits(*((__le32 *)sts), GENMASK(31, 24))
+	le32_get_bits(*((const __le32 *)sts), GENMASK(31, 24))
 #define RTW89_GET_PHY_STS_IE_TYPE(ie) \
-	le32_get_bits(*((__le32 *)ie), GENMASK(4, 0))
+	le32_get_bits(*((const __le32 *)ie), GENMASK(4, 0))
 #define RTW89_GET_PHY_STS_IE_LEN(ie) \
-	le32_get_bits(*((__le32 *)ie), GENMASK(11, 5))
+	le32_get_bits(*((const __le32 *)ie), GENMASK(11, 5))
 #define RTW89_GET_PHY_STS_IE0_CFO(ie) \
-	le32_get_bits(*((__le32 *)(ie) + 1), GENMASK(31, 20))
+	le32_get_bits(*((const __le32 *)(ie) + 1), GENMASK(31, 20))
 
 enum rtw89_tx_channel {
 	RTW89_TXCH_ACH0	= 0,
@@ -381,13 +353,6 @@ static inline u8 rtw89_core_get_tid_indicate(struct rtw89_dev *rtwdev, u8 tid)
 	case 6:
 		return 0;
 	}
-}
-
-static __always_inline void RTW89_SET_TXWD(u8 *txdesc, u32 val, u8 offset, u32 mask)
-{
-	u32 *txd32 = (u32 *)txdesc;
-
-	le32p_replace_bits((__le32 *)(txd32 + offset), val, mask);
 }
 
 #endif

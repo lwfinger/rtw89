@@ -77,7 +77,7 @@ static int rtw89_cam_send_sec_key_cmd(struct rtw89_dev *rtwdev,
 		return 0;
 
 	ext_skb = rtw89_cam_get_sec_key_cmd(rtwdev, sec_cam, true);
-	if (!skb) {
+	if (!ext_skb) {
 		rtw89_err(rtwdev, "failed to get ext sec key command\n");
 		return -ENOMEM;
 	}
@@ -348,15 +348,8 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		key->flags |= IEEE80211_KEY_FLAG_SW_MGMT_TX;
 		ext_key = true;
 		break;
-	case WLAN_CIPHER_SUITE_TKIP:
-	case WLAN_CIPHER_SUITE_AES_CMAC:
-	case WLAN_CIPHER_SUITE_BIP_CMAC_256:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_128:
-	case WLAN_CIPHER_SUITE_BIP_GMAC_256:
-		/* suppress error messages */
-		return -EOPNOTSUPP;
 	default:
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 	}
 
 	key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
@@ -394,8 +387,9 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	addr_cam = &rtwvif->addr_cam;
 	sec_cam = addr_cam->sec_entries[key_idx];
-	if (!sec_cam || !sec_cam->sec_cam_idx)
+	if (!sec_cam)
 		return -EINVAL;
+
 	/* detach sec cam from addr cam */
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;

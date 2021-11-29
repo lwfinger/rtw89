@@ -40,7 +40,7 @@ static void __rtw89_enter_ps_mode(struct rtw89_dev *rtwdev)
 	rtw89_mac_power_mode_change(rtwdev, true);
 }
 
-static void __rtw89_leave_ps_mode(struct rtw89_dev *rtwdev)
+void __rtw89_leave_ps_mode(struct rtw89_dev *rtwdev)
 {
 	if (!rtwdev->ps_mode)
 		return;
@@ -90,14 +90,10 @@ void rtw89_enter_lps(struct rtw89_dev *rtwdev, u8 mac_id)
 
 	__rtw89_enter_lps(rtwdev, mac_id);
 	__rtw89_enter_ps_mode(rtwdev);
-	rtw89_hci_link_ps(rtwdev, true);
 }
 
-static void rtw89_leave_lps_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
+static void rtw89_leave_lps_vif(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
-	struct rtw89_dev *rtwdev = data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
-
 	if (rtwvif->wifi_role != RTW89_WIFI_ROLE_STATION)
 		return;
 
@@ -105,39 +101,44 @@ static void rtw89_leave_lps_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
 	__rtw89_leave_lps(rtwdev, rtwvif->mac_id);
 }
 
-void rtw89_leave_lps(struct rtw89_dev *rtwdev, bool held_vifmtx)
+void rtw89_leave_lps(struct rtw89_dev *rtwdev)
 {
+	struct rtw89_vif *rtwvif;
+
 	lockdep_assert_held(&rtwdev->mutex);
 
 	if (!test_and_clear_bit(RTW89_FLAG_LEISURE_PS, rtwdev->flags))
 		return;
 
-	rtw89_hci_link_ps(rtwdev, false);
-	rtw89_iterate_vifs(rtwdev, rtw89_leave_lps_iter, rtwdev, held_vifmtx);
+	rtw89_for_each_rtwvif(rtwdev, rtwvif)
+		rtw89_leave_lps_vif(rtwdev, rtwvif);
 }
 
 void rtw89_enter_ips(struct rtw89_dev *rtwdev)
 {
+	struct rtw89_vif *rtwvif;
+
 	set_bit(RTW89_FLAG_INACTIVE_PS, rtwdev->flags);
 
-	rtw89_iterate_vifs(rtwdev, rtw89_remove_vif_cfg_iter, rtwdev, false);
+	rtw89_for_each_rtwvif(rtwdev, rtwvif)
+		rtw89_mac_vif_deinit(rtwdev, rtwvif);
 
 	rtw89_core_stop(rtwdev);
-	rtw89_hci_link_ps(rtwdev, true);
 }
 
 void rtw89_leave_ips(struct rtw89_dev *rtwdev)
 {
+	struct rtw89_vif *rtwvif;
 	int ret;
 
-	rtw89_hci_link_ps(rtwdev, false);
 	ret = rtw89_core_start(rtwdev);
 	if (ret)
 		rtw89_err(rtwdev, "failed to leave idle state\n");
 
 	rtw89_set_channel(rtwdev);
 
-	rtw89_iterate_vifs(rtwdev, rtw89_restore_vif_cfg_iter, rtwdev, false);
+	rtw89_for_each_rtwvif(rtwdev, rtwvif)
+		rtw89_mac_vif_init(rtwdev, rtwvif);
 
 	clear_bit(RTW89_FLAG_INACTIVE_PS, rtwdev->flags);
 }
@@ -145,5 +146,5 @@ void rtw89_leave_ips(struct rtw89_dev *rtwdev)
 void rtw89_set_coex_ctrl_lps(struct rtw89_dev *rtwdev, bool btc_ctrl)
 {
 	if (btc_ctrl)
-		rtw89_leave_lps(rtwdev, false);
+		rtw89_leave_lps(rtwdev);
 }

@@ -1,8 +1,9 @@
-rtw89 v5
+rtw89 v7
 ===========
 ### A repo for the newest Realtek rtlwifi codes.
 
-This branch has v5 of the code, which is latest from Realtek.
+This branch was created from v7 of the code, which is the version merged into the wireless-drivers-next
+repo, which means it will be in the 5.16 kernel.
 
 This code will build on any kernel 5.4 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
@@ -32,7 +33,7 @@ If any of the packages above are not found check if your distro installs them li
 ##### Installation
 For all distros:
 ```bash
-git clone https://github.com/lwfinger/rtw89.git -b v5
+git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make install
@@ -41,7 +42,7 @@ sudo make install
 ##### Installation with module signing for SecureBoot
 For Ubuntu:
 ```bash
-git clone https://github.com/lwfinger/rtw89.git -b v5
+git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make sign-install
@@ -49,7 +50,7 @@ sudo make sign-install
 
 For other distros, supply the location of the MOK.der and MOK.priv files as the MOK_KEY_DIR environment variable:
 ```
-git clone https://github.com/lwfinger/rtw89.git -b v5
+git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo bash -c 'MOK_KEY_DIR=/var/lib/shim-signed/mok make sign-install'
@@ -77,10 +78,12 @@ There, enter the line below:
 ```bash
 options <device_name> <<driver_option_name>>=<value>
 ```
-The available options for rtw89pci are disable_clkreq, disable_aspm, and disable_aspm
+The available options for rtw89pci are disable_clkreq, disable_aspm_l1, and disable_aspm_l1ss.
 The available options for rtw89core are debug_mask, and disable_ps_mode
 
-Normally, none of these will be needed.
+Normally, none of these will be needed; however, if you are getting firmware errors, one or both
+of the disable_aspm_* options may help. Thay are needed when a buggy BIOS fails to implement the
+PCI specs correctly.
 
 ***********************************************************************************************
 
@@ -103,4 +106,5 @@ issue is NOT the best place to report it. I have no idea of the internal working
 chips, and the Realtek engineers who do will not read these issues. To reach them, send E-mail to
 linux-wireless@vger.kernel.org. Include a detailed description of any messages in the kernel
 logs and any steps that you have taken to analyze or fix the problem. If your description is
-not complete, you are unlikely to get any satisfaction.
+not complete, you are unlikely to get any satisfaction. One other thing - your mail MUST be plain test.
+HTML mail is rejected.

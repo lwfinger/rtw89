@@ -74,7 +74,7 @@ static void ser_state_run(struct rtw89_ser *ser, u8 evt)
 	rtw89_debug(rtwdev, RTW89_DBG_SER, "ser: %s receive %s\n",
 		    ser_st_name(ser), ser_ev_name(ser, evt));
 
-	rtw89_leave_lps(rtwdev, false);
+	rtw89_leave_lps(rtwdev);
 	ser->st_tbl[ser->state].st_func(ser, evt);
 }
 
@@ -213,11 +213,8 @@ static void drv_resume_rx(struct rtw89_ser *ser)
 	clear_bit(RTW89_SER_DRV_STOP_RX, ser->flags);
 }
 
-static void ser_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
+static void ser_reset_vif(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
-	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
-
 	rtw89_core_release_bit_map(rtwdev->hw_port, rtwvif->port);
 	rtwvif->net_type = RTW89_NET_TYPE_NO_LINK;
 	rtwvif->trigger = false;
@@ -225,9 +222,12 @@ static void ser_reset_vif_iter(void *data, u8 *mac, struct ieee80211_vif *vif)
 
 static void ser_reset_mac_binding(struct rtw89_dev *rtwdev)
 {
+	struct rtw89_vif *rtwvif;
+
 	rtw89_cam_reset_keys(rtwdev);
 	rtw89_core_release_all_bits_map(rtwdev->mac_id_map, RTW89_MAX_MAC_ID_NUM);
-	rtw89_iterate_vifs(rtwdev, ser_reset_vif_iter, rtwdev, false);
+	rtw89_for_each_rtwvif(rtwdev, rtwvif)
+		ser_reset_vif(rtwdev, rtwvif);
 }
 
 /* hal function */

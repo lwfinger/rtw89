@@ -2996,55 +2996,81 @@ rtw89_write32_clr(struct rtw89_dev *rtwdev, u32 addr, u32 bit)
 static inline u32
 rtw89_read32_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	return field_get(mask, rtw89_read32(rtwdev, addr));
+	u32 shift = __ffs(mask);
+	u32 orig;
+	u32 ret;
+
+	orig = rtw89_read32(rtwdev, addr);
+	ret = (orig & mask) >> shift;
+
+	return ret;
 }
 
 static inline u16
 rtw89_read16_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	return field_get(mask, rtw89_read16(rtwdev, addr));
+	u32 shift = __ffs(mask);
+	u32 orig;
+	u32 ret;
+
+	orig = rtw89_read16(rtwdev, addr);
+	ret = (orig & mask) >> shift;
+
+	return ret;
 }
 
 static inline u8
 rtw89_read8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask)
 {
-	return field_get(mask, rtw89_read8(rtwdev, addr));
+	u32 shift = __ffs(mask);
+	u32 orig;
+	u32 ret;
+
+	orig = rtw89_read8(rtwdev, addr);
+	ret = (orig & mask) >> shift;
+
+	return ret;
 }
 
 static inline void
 rtw89_write32_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u32 data)
 {
+	u32 shift = __ffs(mask);
 	u32 orig;
 	u32 set;
 
 	WARN(addr & 0x3, "should be 4-byte aligned, addr = 0x%08x\n", addr);
 
 	orig = rtw89_read32(rtwdev, addr);
-	set = (orig & ~mask) | field_prep(mask, data);
+	set = (orig & ~mask) | ((data << shift) & mask);
 	rtw89_write32(rtwdev, addr, set);
 }
 
 static inline void
 rtw89_write16_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u16 data)
 {
+	u32 shift;
 	u16 orig, set;
 
 	mask &= 0xffff;
+	shift = __ffs(mask);
 
 	orig = rtw89_read16(rtwdev, addr);
-	set = (orig & ~mask) | field_prep(mask, data);
+	set = (orig & ~mask) | ((data << shift) & mask);
 	rtw89_write16(rtwdev, addr, set);
 }
 
 static inline void
 rtw89_write8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 data)
 {
+	u32 shift;
 	u8 orig, set;
 
 	mask &= 0xff;
+	shift = __ffs(mask);
 
 	orig = rtw89_read8(rtwdev, addr);
-	set = (orig & ~mask) | field_prep(mask, data);
+	set = (orig & ~mask) | ((data << shift) & mask);
 	rtw89_write8(rtwdev, addr, set);
 }
 

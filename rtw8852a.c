@@ -1137,7 +1137,7 @@ static void rtw8852a_set_channel_help(struct rtw89_dev *rtwdev, bool enter,
 		rtw8852a_dfs_en(rtwdev, false);
 		rtw8852a_tssi_cont_en_phyidx(rtwdev, false, RTW89_PHY_0);
 		rtw8852a_adc_en(rtwdev, false);
-		fsleep(40);
+		fsleep_alt(40);
 		rtw8852a_bb_reset_en(rtwdev, phy_idx, false);
 	} else {
 		rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
@@ -1633,7 +1633,7 @@ static u8 rtw8852a_get_thermal(struct rtw89_dev *rtwdev, enum rtw89_rf_path rf_p
 	rtw89_write_rf(rtwdev, rf_path, RR_TM, RR_TM_TRI, 0x0);
 	rtw89_write_rf(rtwdev, rf_path, RR_TM, RR_TM_TRI, 0x1);
 
-	fsleep(200);
+	fsleep_alt(200);
 
 	return (u8)rtw89_read_rf(rtwdev, rf_path, RR_TM, RR_TM_VAL);
 }

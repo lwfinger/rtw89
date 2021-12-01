@@ -3444,7 +3444,7 @@ static inline void fsleep_alt(unsigned long usecs)
 #define fsleep_alt fsleep
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && (SUSE == 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && (SUSE == 0)
 static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
                                                       struct ieee80211_txq *txq)
 {

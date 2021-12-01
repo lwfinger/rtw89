@@ -3426,19 +3426,18 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
-#define SUSE 0
 #if defined(CONFIG_SUSE_VERSION)
 #if CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
 #define SUSE 1
 #else
 #define SUSE 0
 #endif
+#else
+#define SUSE 0
 #endif
 
-#if !defined(fsleep)
-
 /* see Documentation/timers/timers-howto.rst for the thresholds */
-static inline void fsleep(unsigned long usecs)
+static inline void fsleep_alt(unsigned long usecs)
 {
 	if (usecs <= 10)
 		udelay(usecs);
@@ -3447,10 +3446,11 @@ static inline void fsleep(unsigned long usecs)
 	else
 		msleep(DIV_ROUND_UP(usecs, 1000));
 }
-#endif
+#else
+#define fsleep_alt fsleep
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && (SUSE != 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) && (SUSE == 0)
 static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
                                                       struct ieee80211_txq *txq)
 {

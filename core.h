@@ -2028,6 +2028,9 @@ struct rtw89_chip_ops {
 	void (*btc_bt_aci_imp)(struct rtw89_dev *rtwdev);
 	void (*btc_update_bt_cnt)(struct rtw89_dev *rtwdev);
 	void (*btc_wl_s1_standby)(struct rtw89_dev *rtwdev, bool state);
+
+	/* for USB */
+	u8 (*get_bulkout_id)(struct rtw89_dev *rtwdev, u8 ch_dma);
 };
 
 enum rtw89_dma_ch {

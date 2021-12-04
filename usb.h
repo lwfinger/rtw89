@@ -42,7 +42,7 @@
 #define BIT_DROP_DATA_EN	BIT(9)
 
 /* USB Vendor/Product IDs */
-#define RTW_USB_VENDOR_ID_REALTEK		0x0BDA
+#define VENDOR_ID_REALTEK			0x0bda
 #define RTW_USB_VENDOR_ID_NETGEAR		0x0846
 #define RTW_USB_VENDOR_ID_EDIMAX		0x7392
 

@@ -141,7 +141,7 @@ static u16 rtw_usb_read16_atomic(struct rtw89_dev *rtwdev, u32 addr)
 
 	rtw_usb_ctrl_atomic(rtwdev, udev, usb_rcvctrlpipe(udev, 0),
 			    RTW_USB_CMD_READ, addr, 0, buf, sizeof(*buf));
-	data = *buf;
+	data = le16_to_cpu(*buf);
 	kfree(buf);
 
 	return data;
@@ -160,7 +160,7 @@ static u32 rtw_usb_read32_atomic(struct rtw89_dev *rtwdev, u32 addr)
 
 	rtw_usb_ctrl_atomic(rtwdev, udev, usb_rcvctrlpipe(udev, 0),
 			    RTW_USB_CMD_READ, addr, 0, buf, sizeof(*buf));
-	data = *buf;
+	data = le32_to_cpu(*buf);
 	kfree(buf);
 
 	return data;
@@ -351,7 +351,7 @@ static void rtw_usb_tx_queue_init(struct rtw89_usb *rtwusb)
 {
 	int i;
 
-	for (i = 0; i < RTW89_DMA_CH_NUM; i++)
+	for (i = 0; i < RTW89_BULKOUT_NUM; i++)
 		skb_queue_head_init(&rtwusb->tx_queue[i]);
 }
 
@@ -359,7 +359,7 @@ static void rtw_usb_tx_queue_purge(struct rtw89_usb *rtwusb)
 {
 	int i;
 
-	for (i = 0; i < RTW89_DMA_CH_NUM; i++)
+	for (i = 0; i < RTW89_BULKOUT_NUM; i++)
 		skb_queue_purge(&rtwusb->tx_queue[i]);
 }
 
@@ -676,8 +676,8 @@ static void rtw_usb_disconnect(struct usb_interface *intf)
 }
 
 static const struct usb_device_id rtw_usb_id_table[] = {
-	{ RTK_USB_DEVICE(RTW_USB_VENDOR_ID_REALTEK,
-			 0x885a, rtw8852a_chip_info) },
+	{ RTK_USB_DEVICE(VENDOR_ID_REALTEK,
+			 0x885a, rtw8852a_chip_info)},
 	{},
 };
 MODULE_DEVICE_TABLE(usb, rtw_usb_id_table);

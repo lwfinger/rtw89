@@ -42,9 +42,11 @@
 #define BIT_DROP_DATA_EN	BIT(9)
 
 /* USB Vendor/Product IDs */
-#define VENDOR_ID_REALTEK			0x0bda
-#define RTW_USB_VENDOR_ID_NETGEAR		0x0846
-#define RTW_USB_VENDOR_ID_EDIMAX		0x7392
+#define VENDOR_ID_REALTEK		0x0bda
+#define VENDOR_ID_ASUS			0x0B05
+#define VENDOR_ID_DLINK			0x2001
+#define VENDOR_ID_NETGEAR		0x0846
+#define VENDOR_ID_EDIMAX		0x7392
 
 /* Register definitions for USB */
 

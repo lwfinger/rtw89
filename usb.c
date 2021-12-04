@@ -676,8 +676,16 @@ static void rtw_usb_disconnect(struct usb_interface *intf)
 }
 
 static const struct usb_device_id rtw_usb_id_table[] = {
-	{ RTK_USB_DEVICE(VENDOR_ID_REALTEK,
+	{RTK_USB_DEVICE(VENDOR_ID_REALTEK,	/* Realtek generic, e.g. Comfast CF-957AX */
+			 0x8832, rtw8852a_chip_info)},
+	{RTK_USB_DEVICE(VENDOR_ID_REALTEK, 
 			 0x885a, rtw8852a_chip_info)},
+	{RTK_USB_DEVICE(VENDOR_ID_REALTEK,	/* Realtek generic, e.g. Fenvi FU-AX1800P */
+			 0x885c, rtw8852a_chip_info)},
+	{RTK_USB_DEVICE(VENDOR_ID_ASUS,		/* ASUS USB-AX56 */
+			 0x1997, rtw8852a_chip_info)},
+	{RTK_USB_DEVICE(VENDOR_ID_DLINK, 	/* D-Link DWA-X1850 */
+			 0x3321, rtw8852a_chip_info)},
 	{},
 };
 MODULE_DEVICE_TABLE(usb, rtw_usb_id_table);

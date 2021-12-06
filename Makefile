@@ -77,7 +77,7 @@ endif
 	@echo "Install rtw89 SUCCESS"
 
 uninstall:
-	@rm -f $(MODDESTDIR)/rtw89.ko
+	@rm -f $(MODDESTDIR)/rtw89*.ko
 
 	@depmod -a
 
@@ -92,7 +92,13 @@ clean:
 	@rm -fr modules.order
 
 sign:
-	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89core.ko
-	kmodsign sha512 $(MOK_KEY_DIR)/MOK.priv $(MOK_KEY_DIR)/MOK.der rtw89pci.ko
+	mkdir -p ~/mok && pushd ~/mok
+	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
+	mokutil --import MOK.der
+	popd
+	
+	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89core.ko
+	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89pci.ko
+	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89usb.ko
 
 sign-install: all sign install

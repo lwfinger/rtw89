@@ -23,10 +23,15 @@ these should be provided by your kernel. If not, then you should go to the Backp
 ### Installation instruction
 ##### Requirements
 You will need to install "make", "gcc", "kernel headers", "kernel build essentials", and "git".
-You can install them with the following command, on **Ubuntu**:
+For **Ubuntu**: You can install them with the following command
 ```bash
 sudo apt-get update
 sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
+```
+For **Fedora**: You can install them with the following command
+```bash
+sudo dnf install kernel-headers kernel-devel
+sudo dnf group install "C Development Tools and Libraries"
 ```
 If any of the packages above are not found check if your distro installs them like that.
 
@@ -40,7 +45,7 @@ sudo make install
 ```
 
 ##### Installation with module signing for SecureBoot
-For Ubuntu:
+For all distros:
 ```bash
 git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
@@ -48,13 +53,7 @@ make
 sudo make sign-install
 ```
 
-For other distros, supply the location of the MOK.der and MOK.priv files as the MOK_KEY_DIR environment variable:
-```
-git clone https://github.com/lwfinger/rtw89.git
-cd rtw89
-make
-sudo bash -c 'MOK_KEY_DIR=/var/lib/shim-signed/mok make sign-install'
-```
+Reboot to active the new installed module.
 
 ##### How to disable/enable a Kernel module
  ```bash

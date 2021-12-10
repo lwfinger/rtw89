@@ -92,7 +92,8 @@ clean:
 	@rm -fr modules.order
 
 sign:
-	mkdir -p ~/mok && pushd ~/mok
+	mkdir -p ~/mok
+	pushd ~/mok
 	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
 	mokutil --import MOK.der
 	popd

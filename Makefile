@@ -19,10 +19,14 @@ endif
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.xz)")
 COMPRESS_XZ := y
 endif
+ifeq ("","$(wildcard MOK.der)")
+NO_SKIP_SIGN := y
+endif
 
 EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGFS
+KEY_FILE ?= MOK.der
 
 obj-m += rtw89core.o
 rtw89core-y +=  core.o \
@@ -92,12 +96,12 @@ clean:
 	@rm -fr modules.order
 
 sign:
-	mkdir -p ~/mok
-	pushd ~/mok
-  
-	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
-	mokutil --import MOK.der
-	
+ifeq ($(NO_SKIP_SIGN), y)
+	@openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
+	@mokutil --import MOK.der
+else
+	echo "Skipping key creation"
+endif
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko

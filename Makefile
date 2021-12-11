@@ -11,6 +11,7 @@ MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/realtek/rtw89
 else
 MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/rtw89
 endif
+
 #Handle the compression option for modules in 3.18+
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.gz)")
 COMPRESS_GZIP := y
@@ -18,7 +19,7 @@ endif
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.xz)")
 COMPRESS_XZ := y
 endif
-MOK_KEY_DIR ?= /var/lib/shim-signed/mok
+#MOK_KEY_DIR#\ ?= /var/lib/shim-signed/mok #No where use this variable, remove
 
 EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
@@ -94,12 +95,15 @@ clean:
 sign:
 	mkdir -p ~/mok
 	pushd ~/mok
+  
 	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
 	mokutil --import MOK.der
-	popd
 	
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89core.ko
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89pci.ko
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89usb.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
+  
+	popd
 
 sign-install: all sign install
+

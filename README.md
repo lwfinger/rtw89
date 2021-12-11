@@ -23,10 +23,16 @@ these should be provided by your kernel. If not, then you should go to the Backp
 ### Installation instruction
 ##### Requirements
 You will need to install "make", "gcc", "kernel headers", "kernel build essentials", and "git".
-You can install them with the following command, on **Ubuntu**:
+
+For **Ubuntu**: You can install them with the following command
 ```bash
 sudo apt-get update
 sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
+```
+For **Fedora**: You can install them with the following command
+```bash
+sudo dnf install kernel-headers kernel-devel
+sudo dnf group install "C Development Tools and Libraries"
 ```
 If any of the packages above are not found check if your distro installs them like that.
 
@@ -40,21 +46,26 @@ sudo make install
 ```
 
 ##### Installation with module signing for SecureBoot
-For Ubuntu:
+For all distros:
 ```bash
 git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make sign-install
 ```
-
-For other distros, supply the location of the MOK.der and MOK.priv files as the MOK_KEY_DIR environment variable:
+You will be promted a password, please keep it in mind and use it in next steps.
+Reboot to active the new installed module.
+In the MOK managerment screen:
+1. Select "Enroll key" and enroll the key created by above sign-install step
+2. When promted, enter the password you entered when create sign key. 
+3. If you enter wrong password, your computer won't not boot able. In this case, use the BOOT menu from your BIOS, to boot into your OS then do below steps:
+```bash
+sudo mokutil --reset
 ```
-git clone https://github.com/lwfinger/rtw89.git
-cd rtw89
-make
-sudo bash -c 'MOK_KEY_DIR=/var/lib/shim-signed/mok make sign-install'
-```
+Restart your computer
+Use BOOT menu from BIOS to boot into your OS
+In the MOK managerment screen, select reset MOK list
+Reboot then retry from the step make sign-install
 
 ##### How to disable/enable a Kernel module
  ```bash
@@ -93,6 +104,8 @@ cd ~/rtw89
 git pull
 make
 sudo make install
+;or
+sudo make sign-install
 ```
 
 Remember, this MUST be done whenever you get a new kernel - no exceptions.

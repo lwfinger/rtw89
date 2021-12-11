@@ -93,16 +93,17 @@ clean:
 	@rm -fr modules.order
 
 sign:
-#mkdir -p ~/mok && pushd ~/mok #Remove because we don't need it anymore
-#Store the key under home is better for future, we can re-sign without rebuild
-	@mkdir -p ~/.ssl 
-	@openssl req -new -x509 -newkey rsa:2048 -keyout ~/.ssl/MOK.priv -outform DER -out ~/.ssl/MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
-	@mokutil --import ~/.ssl/MOK.der
-#popd #Remove, it cause error
+	mkdir -p ~/mok
+	pushd ~/mok
+  
+	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
+	mokutil --import MOK.der
 	
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 ~/.ssl/MOK.priv ~/.ssl/MOK.der rtw89core.ko
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 ~/.ssl/MOK.priv ~/.ssl/MOK.der rtw89pci.ko
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 ~/.ssl/MOK.priv ~/.ssl/MOK.der rtw89usb.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
+	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
+  
+	popd
 
 sign-install: all sign install
 

@@ -104,6 +104,8 @@ cd ~/rtw89
 git pull
 make
 sudo make install
+;or
+sudo make sign-install
 ```
 
 Remember, this MUST be done whenever you get a new kernel - no exceptions.

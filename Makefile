@@ -93,13 +93,10 @@ clean:
 
 sign:
 	mkdir -p ~/mok
-	pushd ~/mok
-	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
-	mokutil --import MOK.der
-	popd
+	pushd ~/mok && dirs && openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/" && mokutil --import MOK.der
 	
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89core.ko
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89pci.ko
-	/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89usb.ko
+	/usr/src/linux-headers-$(shell uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89core.ko
+	/usr/src/linux-headers-$(shell uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89pci.ko
+	/usr/src/linux-headers-$(shell uname -r)/scripts/sign-file sha256 ~/mok/MOK.priv ~/mok/MOK.der rtw89usb.ko
 
 sign-install: all sign install

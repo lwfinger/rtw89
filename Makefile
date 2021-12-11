@@ -19,7 +19,6 @@ endif
 ifneq ("","$(wildcard $(MODDESTDIR)/*.ko.xz)")
 COMPRESS_XZ := y
 endif
-#MOK_KEY_DIR#\ ?= /var/lib/shim-signed/mok #No where use this variable, remove
 
 EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
@@ -99,11 +98,9 @@ sign:
 	openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Custom MOK/"
 	mokutil --import MOK.der
 	
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
-	@/usr/src/kernels/$(KVER)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
-  
-	popd
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
 
 sign-install: all sign install
 

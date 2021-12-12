@@ -2194,7 +2194,6 @@ struct rtw89_txpwr_table {
 struct rtw89_chip_info {
 	enum rtw89_core_chip_id chip_id;
 	const struct rtw89_chip_ops *ops;
-	const char *fw_name;
 	u32 fifo_size;
 	u16 max_amsdu_limit;
 	bool dis_2g_40m_ul_ofdma;
@@ -2789,6 +2788,7 @@ struct rtw89_dev {
 	struct rtw89_hci_info hci;
 	struct rtw89_efuse efuse;
 	struct rtw89_traffic_stats stats;
+	char *fw_name;
 
 	/* ensures exclusive access from mac80211 callbacks */
 	struct mutex mutex;

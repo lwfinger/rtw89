@@ -45,8 +45,7 @@ rtw89core-y +=  core.o \
 		coex.o \
 		ps.o \
 		sar.o \
-		ser.o \
-		usb.o
+		ser.o
 
 obj-m += rtw89pci.o
 rtw89pci-y := pci.o

@@ -496,7 +496,7 @@ static void rtw89_load_firmware_cb(const struct firmware *firmware, void *contex
 int rtw89_load_firmware(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_fw_info *fw = &rtwdev->fw;
-	const char *fw_name = rtwdev->chip->fw_name;
+	const char *fw_name = rtwdev->fw_name;
 	int ret;
 
 	fw->rtwdev = rtwdev;

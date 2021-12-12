@@ -601,6 +601,7 @@ static int rtw_usb_probe(struct usb_interface *intf,
 	rtwdev->chip = (const struct rtw89_chip_info *)id->driver_info;
 	rtwdev->hci.ops = &rtw89_usb_ops;
 	rtwdev->hci.type = RTW89_HCI_TYPE_USB;
+	rtwdev->fw_name = "rtw89/rtl8852a_u3_nic.bin",
 
 	ret = rtw89_core_init(rtwdev);
 	if (ret) {

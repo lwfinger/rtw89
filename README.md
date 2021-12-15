@@ -1,9 +1,9 @@
-rtw89 v7
+rtw89
 ===========
 ### A repo for the newest Realtek rtlwifi codes.
 
-This branch was created from v7 of the code, which is the version merged into the wireless-drivers-next
-repo, which means it will be in the 5.16 kernel.
+This branch was created from the version merged into the wireless-drivers-next
+repo, which is in the 5.16 kernel. ALL BRANCHES SUCH AS v5, v6, and v7 ARE DELETED!
 
 This code will build on any kernel 5.4 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
@@ -34,12 +34,16 @@ For **Fedora**: You can install them with the following command
 sudo dnf install kernel-headers kernel-devel
 sudo dnf group install "C Development Tools and Libraries"
 ```
+For **openSUSE**: Install necessary headers with
+```bash
+sudo zypper install make gcc kernel-devel kernel-default-devel
+git
 If any of the packages above are not found check if your distro installs them like that.
 
 ##### Installation
 For all distros:
 ```bash
-git clone https://github.com/lwfinger/rtw89.git
+git clone git://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make install
@@ -48,7 +52,7 @@ sudo make install
 ##### Installation with module signing for SecureBoot
 For all distros:
 ```bash
-git clone https://github.com/lwfinger/rtw89.git
+git clone git://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make sign-install

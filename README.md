@@ -36,8 +36,14 @@ sudo dnf group install "C Development Tools and Libraries"
 ```
 For **openSUSE**: Install necessary headers with
 ```bash
-sudo zypper install make gcc kernel-devel kernel-default-devel
-git
+sudo zypper install make gcc kernel-devel kernel-default-devel git
+```
+For **Arch or Manjaro**: Install necessary headers with
+```bash
+sudo pacman -Sy linux-$(uname -r)-headers yay
+sudo pacman -Syu dkms base-devel --needed
+yay -Sy rtw89-dkms-git
+```
 If any of the packages above are not found check if your distro installs them like that.
 
 ##### Installation
@@ -58,11 +64,12 @@ make
 sudo make sign-install
 ```
 You will be promted a password, please keep it in mind and use it in next steps.
-Reboot to active the new installed module.
+Reboot to activate the new installed module.
 In the MOK managerment screen:
 1. Select "Enroll key" and enroll the key created by above sign-install step
 2. When promted, enter the password you entered when create sign key. 
-3. If you enter wrong password, your computer won't not boot able. In this case, use the BOOT menu from your BIOS, to boot into your OS then do below steps:
+3. If you enter wrong password, your computer won't not bebootable. In this case,
+   use the BOOT menu from your BIOS, to boot into your OS then do below steps:
 ```bash
 sudo mokutil --reset
 ```
@@ -71,10 +78,10 @@ Use BOOT menu from BIOS to boot into your OS
 In the MOK managerment screen, select reset MOK list
 Reboot then retry from the step make sign-install
 
-##### How to disable/enable a Kernel module
+##### How to unload/reload a Kernel module
  ```bash
-sudo modprobe -r rtw89pci         #This unloads the module
-sudo modprobe rtw89pci            #This loads the module
+sudo modprobe -rv rtw89pci         #This unloads the module
+sudo modprobe -v rtw89pci          #This loads the module
 ```
 
 ##### Problem with recovery after sleep or hibernation
@@ -91,7 +98,7 @@ sudo nano /etc/modprobe.d/<dev_name>.conf
 ```
 There, enter the line below:
 ```bash
-options <device_name> <<driver_option_name>>=<value>
+options <driver_name> <<driver_option_name>>=<value>
 ```
 The available options for rtw89pci are disable_clkreq, disable_aspm_l1, and disable_aspm_l1ss.
 The available options for rtw89core are debug_mask, and disable_ps_mode
@@ -106,6 +113,7 @@ When your kernel changes, then you need to do the following:
 ```bash
 cd ~/rtw89
 git pull
+make clean
 make
 sudo make install
 ;or

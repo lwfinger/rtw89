@@ -36,11 +36,11 @@ sudo dnf group install "C Development Tools and Libraries"
 ```
 For **openSUSE**: Install necessary headers with
 ```bash
-sudo zypper install make gcc kernel-devel kernel-default-devel git
+sudo zypper install make gcc kernel-devel kernel-default-devel git libopenssl-devel
 ```
 For **Arch or Manjaro**: Install necessary headers with
 ```bash
-sudo pacman -Sy linux-$(uname -r)-headers yay
+sudo pacman -Sy linuxXYY-headers yay             #X is major version and Y is minor version of kernel (such as 515 for kernel 5.15)
 sudo pacman -Syu dkms base-devel --needed
 yay -Sy rtw89-dkms-git
 ```

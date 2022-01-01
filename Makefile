@@ -50,9 +50,6 @@ rtw89core-y +=  core.o \
 obj-m += rtw89pci.o
 rtw89pci-y := pci.o
 
-obj-m += rtw89usb.o
-rtw89usb-y := usb.o
-
 ccflags-y += -D__CHECK_ENDIAN__
 
 .PHONY: all install uninstall clean sign sign-install

@@ -99,7 +99,6 @@ else
 	echo "Skipping key creation"
 endif
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
-	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89usb.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
 
 sign-install: all sign install

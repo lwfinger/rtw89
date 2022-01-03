@@ -1085,6 +1085,18 @@ static void rtw89_core_hw_to_sband_rate(struct ieee80211_rx_status *rx_status)
 	rx_status->rate_idx -= 4;
 }
 
+static void rtw89_core_rx_to_mac80211(struct rtw89_dev *rtwdev,
+				      struct rtw89_rx_phy_ppdu *phy_ppdu,
+				      struct rtw89_rx_desc_info *desc_info,
+				      struct sk_buff *skb_ppdu,
+				      struct ieee80211_rx_status *rx_status)
+{
+	rtw89_core_hw_to_sband_rate(rx_status);
+	rtw89_core_rx_stats(rtwdev, phy_ppdu, desc_info, skb_ppdu);
+	ieee80211_rx_napi(rtwdev->hw, NULL, skb_ppdu, &rtwdev->napi);
+	rtwdev->napi_budget_countdown--;
+}
+
 static void rtw89_core_rx_pending_skb(struct rtw89_dev *rtwdev,
 				      struct rtw89_rx_phy_ppdu *phy_ppdu,
 				      struct rtw89_rx_desc_info *desc_info,
@@ -1104,10 +1116,7 @@ static void rtw89_core_rx_pending_skb(struct rtw89_dev *rtwdev,
 		if (rtw89_core_rx_ppdu_match(rtwdev, desc_info, rx_status))
 			rtw89_chip_query_ppdu(rtwdev, phy_ppdu, rx_status);
 		rtw89_correct_cck_chan(rtwdev, rx_status);
-		rtw89_core_hw_to_sband_rate(rx_status);
-		rtw89_core_rx_stats(rtwdev, phy_ppdu, desc_info, skb_ppdu);
-		ieee80211_rx_napi(rtwdev->hw, NULL, skb_ppdu, &rtwdev->napi);
-		rtwdev->napi_budget_countdown--;
+		rtw89_core_rx_to_mac80211(rtwdev, phy_ppdu, desc_info, skb_ppdu, rx_status);
 	}
 }
 
@@ -1332,10 +1341,7 @@ static void rtw89_core_flush_ppdu_rx_queue(struct rtw89_dev *rtwdev,
 	skb_queue_walk_safe(&ppdu_sts->rx_queue[band], skb_ppdu, tmp) {
 		skb_unlink(skb_ppdu, &ppdu_sts->rx_queue[band]);
 		rx_status = IEEE80211_SKB_RXCB(skb_ppdu);
-		rtw89_core_hw_to_sband_rate(rx_status);
-		rtw89_core_rx_stats(rtwdev, NULL, desc_info, skb_ppdu);
-		ieee80211_rx_napi(rtwdev->hw, NULL, skb_ppdu, &rtwdev->napi);
-		rtwdev->napi_budget_countdown--;
+		rtw89_core_rx_to_mac80211(rtwdev, NULL, desc_info, skb_ppdu, rx_status);
 	}
 }
 
@@ -1362,14 +1368,10 @@ void rtw89_core_rx(struct rtw89_dev *rtwdev,
 	memset(rx_status, 0, sizeof(*rx_status));
 	rtw89_core_update_rx_status(rtwdev, desc_info, rx_status);
 	if (desc_info->long_rxdesc &&
-	    BIT(desc_info->frame_type) & PPDU_FILTER_BITMAP) {
+	    BIT(desc_info->frame_type) & PPDU_FILTER_BITMAP)
 		skb_queue_tail(&ppdu_sts->rx_queue[band], skb);
-	} else {
-		rtw89_core_hw_to_sband_rate(rx_status);
-		rtw89_core_rx_stats(rtwdev, NULL, desc_info, skb);
-		ieee80211_rx_napi(rtwdev->hw, NULL, skb, &rtwdev->napi);
-		rtwdev->napi_budget_countdown--;
-	}
+	else
+		rtw89_core_rx_to_mac80211(rtwdev, NULL, desc_info, skb, rx_status);
 }
 EXPORT_SYMBOL(rtw89_core_rx);
 

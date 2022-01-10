@@ -2954,7 +2954,6 @@ static int rtw89_pci_probe(struct pci_dev *pdev,
 	rtwdev->hci.type = RTW89_HCI_TYPE_PCIE;
 	rtwdev->hci.rpwm_addr = R_AX_PCIE_HRPWM;
 	rtwdev->hci.cpwm_addr = R_AX_CPWM;
-	rtwdev->fw_name = "rtw89/rtw8852a_fw.bin",
 
 	SET_IEEE80211_DEV(rtwdev->hw, &pdev->dev);
 

@@ -1056,99 +1056,345 @@ static inline void SET_CMC_TBL_CSI_BW(void *table, u32 val)
 			   GENMASK(31, 30));
 }
 
-#define SET_FWROLE_MAINTAIN_MACID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
-#define SET_FWROLE_MAINTAIN_SELF_ROLE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(9, 8))
-#define SET_FWROLE_MAINTAIN_UPD_MODE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(12, 10))
-#define SET_FWROLE_MAINTAIN_WIFI_ROLE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(16, 13))
+static inline void SET_BCN_UPD_PORT(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
 
-#define SET_JOININFO_MACID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
-#define SET_JOININFO_OP(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(8))
-#define SET_JOININFO_BAND(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(9))
-#define SET_JOININFO_WMM(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(11, 10))
-#define SET_JOININFO_TGR(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(12))
-#define SET_JOININFO_ISHESTA(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(13))
-#define SET_JOININFO_DLBW(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 14))
-#define SET_JOININFO_TF_MAC_PAD(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(17, 16))
-#define SET_JOININFO_DL_T_PE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(20, 18))
-#define SET_JOININFO_PORT_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 21))
-#define SET_JOININFO_NET_TYPE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(25, 24))
-#define SET_JOININFO_WIFI_ROLE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(29, 26))
-#define SET_JOININFO_SELF_ROLE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 30))
+static inline void SET_BCN_UPD_MBSSID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8));
+}
 
-#define SET_GENERAL_PKT_MACID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
-#define SET_GENERAL_PKT_PROBRSP_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8))
-#define SET_GENERAL_PKT_PSPOLL_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 16))
-#define SET_GENERAL_PKT_NULL_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 24))
-#define SET_GENERAL_PKT_QOS_NULL_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(7, 0))
-#define SET_GENERAL_PKT_CTS2SELF_ID(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8))
+static inline void SET_BCN_UPD_BAND(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 16));
+}
 
-#define SET_LOG_CFG_LEVEL(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
-#define SET_LOG_CFG_PATH(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8))
-#define SET_LOG_CFG_COMP(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(31, 0))
-#define SET_LOG_CFG_COMP_EXT(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 2, val, GENMASK(31, 0))
+static inline void SET_BCN_UPD_GRP_IE_OFST(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, (val - 24) | BIT(7), GENMASK(31, 24));
+}
 
-#define SET_BA_CAM_VALID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(0))
-#define SET_BA_CAM_INIT_REQ(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, BIT(1))
-#define SET_BA_CAM_ENTRY_IDX(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(3, 2))
-#define SET_BA_CAM_TID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 4))
-#define SET_BA_CAM_MACID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8))
-#define SET_BA_CAM_BMAP_SIZE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(19, 16))
-#define SET_BA_CAM_SSN(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 20))
+static inline void SET_BCN_UPD_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(7, 0));
+}
 
-#define SET_LPS_PARM_MACID(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0))
-#define SET_LPS_PARM_PSMODE(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8))
-#define SET_LPS_PARM_RLBM(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(19, 16))
-#define SET_LPS_PARM_SMARTPS(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 20))
-#define SET_LPS_PARM_AWAKEINTERVAL(h2c, val) \
-	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 24))
-#define SET_LPS_PARM_VOUAPSD(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(0))
-#define SET_LPS_PARM_VIUAPSD(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(1))
-#define SET_LPS_PARM_BEUAPSD(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(2))
-#define SET_LPS_PARM_BKUAPSD(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(3))
-#define SET_LPS_PARM_LASTRPWM(h2c, val) \
-	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8))
+static inline void SET_BCN_UPD_SSN_SEL(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(9, 8));
+}
+
+static inline void SET_BCN_UPD_SSN_MODE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(11, 10));
+}
+
+static inline void SET_BCN_UPD_RATE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(20, 12));
+}
+
+static inline void SET_BCN_UPD_TXPWR(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(23, 21));
+}
+
+static inline void SET_BCN_UPD_TXINFO_CTRL_EN(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val, BIT(0));
+}
+
+static inline void SET_BCN_UPD_NTX_PATH_EN(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(4, 1));
+}
+
+static inline void SET_BCN_UPD_PATH_MAP_A(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(6, 5));
+}
+
+static inline void SET_BCN_UPD_PATH_MAP_B(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(8, 7));
+}
+
+static inline void SET_BCN_UPD_PATH_MAP_C(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(10, 9));
+}
+
+static inline void SET_BCN_UPD_PATH_MAP_D(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(12, 11));
+}
+
+static inline void SET_BCN_UPD_PATH_ANTSEL_A(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  BIT(13));
+}
+
+static inline void SET_BCN_UPD_PATH_ANTSEL_B(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  BIT(14));
+}
+
+static inline void SET_BCN_UPD_PATH_ANTSEL_C(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  BIT(15));
+}
+
+static inline void SET_BCN_UPD_PATH_ANTSEL_D(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  BIT(16));
+}
+
+static inline void SET_BCN_UPD_CSA_OFST(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val,  GENMASK(31, 17));
+}
+
+static inline void SET_FWROLE_MAINTAIN_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
+
+static inline void SET_FWROLE_MAINTAIN_SELF_ROLE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(9, 8));
+}
+
+static inline void SET_FWROLE_MAINTAIN_UPD_MODE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(12, 10));
+}
+
+static inline void SET_FWROLE_MAINTAIN_WIFI_ROLE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(16, 13));
+}
+
+static inline void SET_JOININFO_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
+
+static inline void SET_JOININFO_OP(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(8));
+}
+
+static inline void SET_JOININFO_BAND(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(9));
+}
+
+static inline void SET_JOININFO_WMM(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(11, 10));
+}
+
+static inline void SET_JOININFO_TGR(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(12));
+}
+
+static inline void SET_JOININFO_ISHESTA(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(13));
+}
+
+static inline void SET_JOININFO_DLBW(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 14));
+}
+
+static inline void SET_JOININFO_TF_MAC_PAD(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(17, 16));
+}
+
+static inline void SET_JOININFO_DL_T_PE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(20, 18));
+}
+
+static inline void SET_JOININFO_PORT_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 21));
+}
+
+static inline void SET_JOININFO_NET_TYPE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(25, 24));
+}
+
+static inline void SET_JOININFO_WIFI_ROLE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(29, 26));
+}
+
+static inline void SET_JOININFO_SELF_ROLE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 30));
+}
+
+static inline void SET_GENERAL_PKT_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
+
+static inline void SET_GENERAL_PKT_PROBRSP_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8));
+}
+
+static inline void SET_GENERAL_PKT_PSPOLL_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 16));
+}
+
+static inline void SET_GENERAL_PKT_NULL_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 24));
+}
+
+static inline void SET_GENERAL_PKT_QOS_NULL_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(7, 0));
+}
+
+static inline void SET_GENERAL_PKT_CTS2SELF_ID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8));
+}
+
+static inline void SET_LOG_CFG_LEVEL(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
+
+static inline void SET_LOG_CFG_PATH(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8));
+}
+
+static inline void SET_LOG_CFG_COMP(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(31, 0));
+}
+
+static inline void SET_LOG_CFG_COMP_EXT(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 2, val, GENMASK(31, 0));
+}
+
+static inline void SET_BA_CAM_VALID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(0));
+}
+
+static inline void SET_BA_CAM_INIT_REQ(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, BIT(1));
+}
+
+static inline void SET_BA_CAM_ENTRY_IDX(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(3, 2));
+}
+
+static inline void SET_BA_CAM_TID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 4));
+}
+
+static inline void SET_BA_CAM_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8));
+}
+
+static inline void SET_BA_CAM_BMAP_SIZE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(19, 16));
+}
+
+static inline void SET_BA_CAM_SSN(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 20));
+}
+
+static inline void SET_BA_CAM_UID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c + 1, val, GENMASK(7, 0));
+}
+
+static inline void SET_BA_CAM_STD_EN(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c + 1, val, BIT(8));
+}
+
+static inline void SET_BA_CAM_BAND(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c + 1, val, BIT(9));
+}
+
+static inline void SET_BA_CAM_ENTRY_IDX_V1(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c + 1, val, GENMASK(31, 28));
+}
+
+static inline void SET_LPS_PARM_MACID(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(7, 0));
+}
+
+static inline void SET_LPS_PARM_PSMODE(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(15, 8));
+}
+
+static inline void SET_LPS_PARM_RLBM(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(19, 16));
+}
+
+static inline void SET_LPS_PARM_SMARTPS(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(23, 20));
+}
+
+static inline void SET_LPS_PARM_AWAKEINTERVAL(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)h2c, val, GENMASK(31, 24));
+}
+
+static inline void SET_LPS_PARM_VOUAPSD(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(0));
+}
+
+static inline void SET_LPS_PARM_VIUAPSD(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(1));
+}
+
+static inline void SET_LPS_PARM_BEUAPSD(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(2));
+}
+
+static inline void SET_LPS_PARM_BKUAPSD(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, BIT(3));
+}
+
+static inline void SET_LPS_PARM_LASTRPWM(void *h2c, u32 val)
+{
+	le32p_replace_bits((__le32 *)(h2c) + 1, val, GENMASK(15, 8));
+}
 
 enum rtw89_btc_btf_h2c_class {
 	BTFC_SET = 0x10,
@@ -1190,191 +1436,230 @@ enum rtw89_btc_cxdrvinfo {
 	CXDRVINFO_MAX,
 };
 
-static inline void RTW89_SET_FWCMD_CXHDR_TYPE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXHDR_TYPE(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 0, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXHDR_LEN(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXHDR_LEN(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 1, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_ANT_TYPE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_ANT_TYPE(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 2, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_ANT_NUM(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_ANT_NUM(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 3, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_ANT_ISO(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_ANT_ISO(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 4, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_ANT_POS(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_ANT_POS(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 5, val, BIT(0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_ANT_DIVERSITY(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_ANT_DIVERSITY(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 5, val, BIT(1));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_MOD_RFE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_MOD_RFE(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 6, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_MOD_CV(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_MOD_CV(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 7, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_MOD_BT_SOLO(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_MOD_BT_SOLO(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_MOD_BT_POS(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_MOD_BT_POS(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(1));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_MOD_SW_TYPE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_MOD_SW_TYPE(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 8, val, BIT(2));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_WL_GCH(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_WL_GCH(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 10, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_WL_ONLY(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_WL_ONLY(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(0));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_WL_INITOK(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_WL_INITOK(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(1));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_DBCC_EN(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_DBCC_EN(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(2));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_CX_OTHER(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_CX_OTHER(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(3));
 }
 
-static inline void RTW89_SET_FWCMD_CXINIT_BT_ONLY(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXINIT_BT_ONLY(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 11, val, BIT(4));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_CONNECT_CNT(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_CONNECT_CNT(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 2, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_LINK_MODE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_LINK_MODE(void *cmd, u8 val)
 {
 	u8p_replace_bits((u8 *)(cmd) + 3, val, GENMASK(7, 0));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_NONE(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_NONE(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(0));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_STA(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_STA(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(1));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_AP(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_AP(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(2));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_VAP(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_VAP(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(3));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(4));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC_MASTER(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_ADHOC_MASTER(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(5));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_MESH(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_MESH(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(6));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_MONITOR(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_MONITOR(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(7));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_DEV(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_DEV(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(8));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GC(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GC(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(9));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GO(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_P2P_GO(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(10));
 }
 
-static inline void RTW89_SET_FWCMD_CXROLE_ROLE_NAN(void *cmd, u32 val)
+static inline void RTW89_SET_FWCMD_CXROLE_ROLE_NAN(void *cmd, u16 val)
 {
 	le16p_replace_bits((__le16 *)((u8 *)(cmd) + 4), val, BIT(11));
 }
-#define RTW89_SET_FWCMD_CXROLE_ACT_CONNECTED(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_PID(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(3, 1))
-#define RTW89_SET_FWCMD_CXROLE_ACT_PHY(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(4))
-#define RTW89_SET_FWCMD_CXROLE_ACT_NOA(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(5))
-#define RTW89_SET_FWCMD_CXROLE_ACT_BAND(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(7, 6))
-#define RTW89_SET_FWCMD_CXROLE_ACT_CLIENT_PS(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, BIT(0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_BW(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, GENMASK(7, 1))
-#define RTW89_SET_FWCMD_CXROLE_ACT_ROLE(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (8 + 12 * (n)), val, GENMASK(7, 0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_CH(cmd, val, n) \
-	u8p_replace_bits((u8 *)(cmd) + (9 + 12 * (n)), val, GENMASK(7, 0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_TX_LVL(cmd, val, n) \
-	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (10 + 12 * (n))), val, GENMASK(15, 0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_RX_LVL(cmd, val, n) \
-	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (12 + 12 * (n))), val, GENMASK(15, 0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_TX_RATE(cmd, val, n) \
-	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (14 + 12 * (n))), val, GENMASK(15, 0))
-#define RTW89_SET_FWCMD_CXROLE_ACT_RX_RATE(cmd, val, n) \
-	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (16 + 12 * (n))), val, GENMASK(15, 0))
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_CONNECTED(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_PID(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(3, 1));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_PHY(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(4));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_NOA(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, BIT(5));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_BAND(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (6 + 12 * (n)), val, GENMASK(7, 6));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_CLIENT_PS(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, BIT(0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_BW(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (7 + 12 * (n)), val, GENMASK(7, 1));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_ROLE(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (8 + 12 * (n)), val, GENMASK(7, 0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_CH(void *cmd, u8 val, int n)
+{
+	u8p_replace_bits((u8 *)(cmd) + (9 + 12 * (n)), val, GENMASK(7, 0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_TX_LVL(void *cmd, u16 val, int n)
+{
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (10 + 12 * (n))), val, GENMASK(15, 0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_RX_LVL(void *cmd, u16 val, int n)
+{
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (12 + 12 * (n))), val, GENMASK(15, 0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_TX_RATE(void *cmd, u16 val, int n)
+{
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (14 + 12 * (n))), val, GENMASK(15, 0));
+}
+
+static inline void RTW89_SET_FWCMD_CXROLE_ACT_RX_RATE(void *cmd, u16 val, int n)
+{
+	le16p_replace_bits((__le16 *)((u8 *)(cmd) + (16 + 12 * (n))), val, GENMASK(15, 0));
+}
 
 static inline void RTW89_SET_FWCMD_CXCTRL_MANUAL(void *cmd, u32 val)
 {
@@ -1544,6 +1829,7 @@ struct rtw89_fw_h2c_rf_reg_info {
 /* CLASS 5 - Frame Exchange */
 #define H2C_CL_MAC_FR_EXCHG		0x5
 #define H2C_FUNC_MAC_CCTLINFO_UD	0x2
+#define H2C_FUNC_MAC_BCN_UPD		0x5
 
 /* CLASS 6 - Address CAM */
 #define H2C_CL_MAC_ADDR_CAM_UPDATE	0x6
@@ -1585,20 +1871,25 @@ int rtw89_wait_firmware_completion(struct rtw89_dev *rtwdev);
 void rtw89_h2c_pkt_set_hdr(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 			   u8 type, u8 cat, u8 class, u8 func,
 			   bool rack, bool dack, u32 len);
-int rtw89_fw_h2c_default_cmac_tbl(struct rtw89_dev *rtwdev, u8 macid);
+int rtw89_fw_h2c_default_cmac_tbl(struct rtw89_dev *rtwdev,
+				  struct rtw89_vif *rtwvif);
 int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 				struct ieee80211_vif *vif,
 				struct ieee80211_sta *sta);
 int rtw89_fw_h2c_txtime_cmac_tbl(struct rtw89_dev *rtwdev,
 				 struct rtw89_sta *rtwsta);
-int rtw89_fw_h2c_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *vif);
+int rtw89_fw_h2c_update_beacon(struct rtw89_dev *rtwdev,
+			       struct rtw89_vif *rtwvif);
+int rtw89_fw_h2c_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *vif,
+		     struct rtw89_sta *rtwsta, const u8 *scan_mac_addr);
 void rtw89_fw_c2h_irqsafe(struct rtw89_dev *rtwdev, struct sk_buff *c2h);
 void rtw89_fw_c2h_work(struct work_struct *work);
-int rtw89_fw_h2c_vif_maintain(struct rtw89_dev *rtwdev,
-			      struct rtw89_vif *rtwvif,
-			      enum rtw89_upd_mode upd_mode);
+int rtw89_fw_h2c_role_maintain(struct rtw89_dev *rtwdev,
+			       struct rtw89_vif *rtwvif,
+			       struct rtw89_sta *rtwsta,
+			       enum rtw89_upd_mode upd_mode);
 int rtw89_fw_h2c_join_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
-			   u8 dis_conn);
+			   struct rtw89_sta *rtwsta, bool dis_conn);
 int rtw89_fw_h2c_macid_pause(struct rtw89_dev *rtwdev, u8 sh, u8 grp,
 			     bool pause);
 int rtw89_fw_h2c_set_edca(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
@@ -1619,8 +1910,9 @@ int rtw89_fw_h2c_raw(struct rtw89_dev *rtwdev, const u8 *buf, u16 len);
 void rtw89_fw_send_all_early_h2c(struct rtw89_dev *rtwdev);
 void rtw89_fw_free_all_early_h2c(struct rtw89_dev *rtwdev);
 int rtw89_fw_h2c_general_pkt(struct rtw89_dev *rtwdev, u8 macid);
-int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
-			struct ieee80211_ampdu_params *params);
+int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta,
+			bool valid, struct ieee80211_ampdu_params *params);
+
 int rtw89_fw_h2c_lps_parm(struct rtw89_dev *rtwdev,
 			  struct rtw89_lps_parm *lps_param);
 struct sk_buff *rtw89_fw_h2c_alloc_skb_with_hdr(u32 len);

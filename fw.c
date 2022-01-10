@@ -496,7 +496,7 @@ static void rtw89_load_firmware_cb(const struct firmware *firmware, void *contex
 int rtw89_load_firmware(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_fw_info *fw = &rtwdev->fw;
-	const char *fw_name = rtwdev->fw_name;
+	const char *fw_name = rtwdev->chip->fw_name;
 	int ret;
 
 	fw->rtwdev = rtwdev;
@@ -523,7 +523,8 @@ void rtw89_unload_firmware(struct rtw89_dev *rtwdev)
 }
 
 #define H2C_CAM_LEN 60
-int rtw89_fw_h2c_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
+int rtw89_fw_h2c_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
+		     struct rtw89_sta *rtwsta, const u8 *scan_mac_addr)
 {
 	struct sk_buff *skb;
 
@@ -533,7 +534,7 @@ int rtw89_fw_h2c_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 		return -ENOMEM;
 	}
 	skb_put(skb, H2C_CAM_LEN);
-	rtw89_cam_fill_addr_cam_info(rtwdev, rtwvif, skb->data);
+	rtw89_cam_fill_addr_cam_info(rtwdev, rtwvif, rtwsta, scan_mac_addr, skb->data);
 	rtw89_cam_fill_bssid_cam_info(rtwdev, rtwvif, skb->data);
 
 	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
@@ -554,11 +555,27 @@ fail:
 	return -EBUSY;
 }
 
-#define H2C_BA_CAM_LEN 4
-int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
-			struct ieee80211_ampdu_params *params)
+#define H2C_BA_CAM_LEN 8
+int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta,
+			bool valid, struct ieee80211_ampdu_params *params)
 {
+	u8 macid = rtwsta->mac_id;
 	struct sk_buff *skb;
+	u8 entry_idx;
+	int ret;
+
+	ret = valid ?
+	      rtw89_core_acquire_sta_ba_entry(rtwsta, params->tid, &entry_idx) :
+	      rtw89_core_release_sta_ba_entry(rtwsta, params->tid, &entry_idx);
+	if (ret) {
+		/* it still works even if we don't have static BA CAM, because
+		 * hardware can create dynamic BA CAM automatically.
+		 */
+		rtw89_debug(rtwdev, RTW89_DBG_TXRX,
+			    "failed to %s entry tid=%d for h2c ba cam\n",
+			    valid ? "alloc" : "free", params->tid);
+		return 0;
+	}
 
 	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_BA_CAM_LEN);
 	if (!skb) {
@@ -567,6 +584,7 @@ int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
 	}
 	skb_put(skb, H2C_BA_CAM_LEN);
 	SET_BA_CAM_MACID(skb->data, macid);
+	SET_BA_CAM_ENTRY_IDX(skb->data, entry_idx);
 	if (!valid)
 		goto end;
 	SET_BA_CAM_VALID(skb->data, valid);
@@ -576,7 +594,7 @@ int rtw89_fw_h2c_ba_cam(struct rtw89_dev *rtwdev, bool valid, u8 macid,
 	else
 		SET_BA_CAM_BMAP_SIZE(skb->data, 0);
 	/* If init req is set, hw will set the ssn */
-	SET_BA_CAM_INIT_REQ(skb->data, 0);
+	SET_BA_CAM_INIT_REQ(skb->data, 1);
 	SET_BA_CAM_SSN(skb->data, params->ssn);
 
 end:
@@ -715,12 +733,14 @@ fail:
 }
 
 #define H2C_CMC_TBL_LEN 68
-int rtw89_fw_h2c_default_cmac_tbl(struct rtw89_dev *rtwdev, u8 macid)
+int rtw89_fw_h2c_default_cmac_tbl(struct rtw89_dev *rtwdev,
+				  struct rtw89_vif *rtwvif)
 {
 	struct rtw89_hal *hal = &rtwdev->hal;
 	struct sk_buff *skb;
 	u8 ntx_path = hal->antenna_tx ? hal->antenna_tx : RF_B;
 	u8 map_b = hal->antenna_tx == RF_AB ? 1 : 0;
+	u8 macid = rtwvif->mac_id;
 
 	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_CMC_TBL_LEN);
 	if (!skb) {
@@ -742,6 +762,8 @@ int rtw89_fw_h2c_default_cmac_tbl(struct rtw89_dev *rtwdev, u8 macid)
 	SET_CMC_TBL_ANTSEL_D(skb->data, 0);
 	SET_CMC_TBL_DOPPLER_CTRL(skb->data, 0);
 	SET_CMC_TBL_TXPWR_TOLERENCE(skb->data, 0);
+	if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
+		SET_CMC_TBL_DATA_DCM(skb->data, 0);
 
 	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
 			      H2C_CAT_MAC, H2C_CL_MAC_FR_EXCHG,
@@ -820,13 +842,15 @@ int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 				struct ieee80211_sta *sta)
 {
 	struct rtw89_hal *hal = &rtwdev->hal;
-	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
+	struct rtw89_sta *rtwsta = sta_to_rtwsta_safe(sta);
 	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	struct sk_buff *skb;
 	u8 pads[RTW89_PPE_BW_NUM];
+	u8 mac_id = rtwsta ? rtwsta->mac_id : rtwvif->mac_id;
 
 	memset(pads, 0, sizeof(pads));
-	__get_sta_he_pkt_padding(rtwdev, sta, pads);
+	if (sta)
+		__get_sta_he_pkt_padding(rtwdev, sta, pads);
 
 	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_CMC_TBL_LEN);
 	if (!skb) {
@@ -834,7 +858,7 @@ int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 		return -ENOMEM;
 	}
 	skb_put(skb, H2C_CMC_TBL_LEN);
-	SET_CTRL_INFO_MACID(skb->data, rtwsta->mac_id);
+	SET_CTRL_INFO_MACID(skb->data, mac_id);
 	SET_CTRL_INFO_OPERATION(skb->data, 1);
 	SET_CMC_TBL_DISRTSFB(skb->data, 1);
 	SET_CMC_TBL_DISDATAFB(skb->data, 1);
@@ -852,7 +876,10 @@ int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 	SET_CMC_TBL_NOMINAL_PKT_PADDING(skb->data, pads[RTW89_CHANNEL_WIDTH_20]);
 	SET_CMC_TBL_NOMINAL_PKT_PADDING40(skb->data, pads[RTW89_CHANNEL_WIDTH_40]);
 	SET_CMC_TBL_NOMINAL_PKT_PADDING80(skb->data, pads[RTW89_CHANNEL_WIDTH_80]);
-	SET_CMC_TBL_BSR_QUEUE_SIZE_FORMAT(skb->data, sta->he_cap.has_he);
+	if (sta)
+		SET_CMC_TBL_BSR_QUEUE_SIZE_FORMAT(skb->data, sta->he_cap.has_he);
+	if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
+		SET_CMC_TBL_DATA_DCM(skb->data, 0);
 
 	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
 			      H2C_CAT_MAC, H2C_CL_MAC_FR_EXCHG,
@@ -910,28 +937,85 @@ fail:
 	return -EBUSY;
 }
 
-#define H2C_VIF_MAINTAIN_LEN 4
-int rtw89_fw_h2c_vif_maintain(struct rtw89_dev *rtwdev,
-			      struct rtw89_vif *rtwvif,
-			      enum rtw89_upd_mode upd_mode)
+#define H2C_BCN_BASE_LEN 12
+int rtw89_fw_h2c_update_beacon(struct rtw89_dev *rtwdev,
+			       struct rtw89_vif *rtwvif)
+{
+	struct rtw89_hal *hal = &rtwdev->hal;
+	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
+	struct sk_buff *skb;
+	struct sk_buff *skb_beacon;
+	u16 tim_offset;
+	int bcn_total_len;
+
+	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset, NULL);
+	if (!skb_beacon) {
+		rtw89_err(rtwdev, "failed to get beacon skb\n");
+		return -ENOMEM;
+	}
+
+	bcn_total_len = H2C_BCN_BASE_LEN + skb_beacon->len;
+	skb = rtw89_fw_h2c_alloc_skb_with_hdr(bcn_total_len);
+	if (!skb) {
+		rtw89_err(rtwdev, "failed to alloc skb for fw dl\n");
+		dev_kfree_skb_any(skb_beacon);
+		return -ENOMEM;
+	}
+	skb_put(skb, H2C_BCN_BASE_LEN);
+
+	SET_BCN_UPD_PORT(skb->data, rtwvif->port);
+	SET_BCN_UPD_MBSSID(skb->data, 0);
+	SET_BCN_UPD_BAND(skb->data, rtwvif->mac_idx);
+	SET_BCN_UPD_GRP_IE_OFST(skb->data, tim_offset);
+	SET_BCN_UPD_MACID(skb->data, rtwvif->mac_id);
+	SET_BCN_UPD_SSN_SEL(skb->data, RTW89_MGMT_HW_SSN_SEL);
+	SET_BCN_UPD_SSN_MODE(skb->data, RTW89_MGMT_HW_SEQ_MODE);
+	SET_BCN_UPD_RATE(skb->data, hal->current_band_type == RTW89_BAND_2G ?
+				    RTW89_HW_RATE_CCK1 : RTW89_HW_RATE_OFDM6);
+
+	skb_put_data(skb, skb_beacon->data, skb_beacon->len);
+	dev_kfree_skb_any(skb_beacon);
+
+	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
+			      H2C_CAT_MAC, H2C_CL_MAC_FR_EXCHG,
+			      H2C_FUNC_MAC_BCN_UPD, 0, 1,
+			      bcn_total_len);
+
+	if (rtw89_h2c_tx(rtwdev, skb, false)) {
+		rtw89_err(rtwdev, "failed to send h2c\n");
+		dev_kfree_skb_any(skb);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+#define H2C_ROLE_MAINTAIN_LEN 4
+int rtw89_fw_h2c_role_maintain(struct rtw89_dev *rtwdev,
+			       struct rtw89_vif *rtwvif,
+			       struct rtw89_sta *rtwsta,
+			       enum rtw89_upd_mode upd_mode)
 {
 	struct sk_buff *skb;
+	u8 mac_id = rtwsta ? rtwsta->mac_id : rtwvif->mac_id;
+	u8 self_role = rtwvif->net_type == RTW89_NET_TYPE_AP_MODE && rtwsta ?
+		       RTW89_SELF_ROLE_AP_CLIENT : rtwvif->self_role;
 
-	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_VIF_MAINTAIN_LEN);
+	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_ROLE_MAINTAIN_LEN);
 	if (!skb) {
 		rtw89_err(rtwdev, "failed to alloc skb for h2c join\n");
 		return -ENOMEM;
 	}
-	skb_put(skb, H2C_VIF_MAINTAIN_LEN);
-	SET_FWROLE_MAINTAIN_MACID(skb->data, rtwvif->mac_id);
-	SET_FWROLE_MAINTAIN_SELF_ROLE(skb->data, rtwvif->self_role);
+	skb_put(skb, H2C_ROLE_MAINTAIN_LEN);
+	SET_FWROLE_MAINTAIN_MACID(skb->data, mac_id);
+	SET_FWROLE_MAINTAIN_SELF_ROLE(skb->data, self_role);
 	SET_FWROLE_MAINTAIN_UPD_MODE(skb->data, upd_mode);
 	SET_FWROLE_MAINTAIN_WIFI_ROLE(skb->data, rtwvif->wifi_role);
 
 	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
 			      H2C_CAT_MAC, H2C_CL_MAC_MEDIA_RPT,
 			      H2C_FUNC_MAC_FWROLE_MAINTAIN, 0, 1,
-			      H2C_VIF_MAINTAIN_LEN);
+			      H2C_ROLE_MAINTAIN_LEN);
 
 	if (rtw89_h2c_tx(rtwdev, skb, false)) {
 		rtw89_err(rtwdev, "failed to send h2c\n");
@@ -947,9 +1031,17 @@ fail:
 
 #define H2C_JOIN_INFO_LEN 4
 int rtw89_fw_h2c_join_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
-			   u8 dis_conn)
+			   struct rtw89_sta *rtwsta, bool dis_conn)
 {
 	struct sk_buff *skb;
+	u8 mac_id = rtwsta ? rtwsta->mac_id : rtwvif->mac_id;
+	u8 self_role = rtwvif->self_role;
+	u8 net_type = rtwvif->net_type;
+
+	if (net_type == RTW89_NET_TYPE_AP_MODE && rtwsta) {
+		self_role = RTW89_SELF_ROLE_AP_CLIENT;
+		net_type = dis_conn ? RTW89_NET_TYPE_NO_LINK : net_type;
+	}
 
 	skb = rtw89_fw_h2c_alloc_skb_with_hdr(H2C_JOIN_INFO_LEN);
 	if (!skb) {
@@ -957,7 +1049,7 @@ int rtw89_fw_h2c_join_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
 		return -ENOMEM;
 	}
 	skb_put(skb, H2C_JOIN_INFO_LEN);
-	SET_JOININFO_MACID(skb->data, rtwvif->mac_id);
+	SET_JOININFO_MACID(skb->data, mac_id);
 	SET_JOININFO_OP(skb->data, dis_conn);
 	SET_JOININFO_BAND(skb->data, rtwvif->mac_idx);
 	SET_JOININFO_WMM(skb->data, rtwvif->wmm);
@@ -967,9 +1059,9 @@ int rtw89_fw_h2c_join_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
 	SET_JOININFO_TF_MAC_PAD(skb->data, 0);
 	SET_JOININFO_DL_T_PE(skb->data, 0);
 	SET_JOININFO_PORT_ID(skb->data, rtwvif->port);
-	SET_JOININFO_NET_TYPE(skb->data, rtwvif->net_type);
+	SET_JOININFO_NET_TYPE(skb->data, net_type);
 	SET_JOININFO_WIFI_ROLE(skb->data, rtwvif->wifi_role);
-	SET_JOININFO_SELF_ROLE(skb->data, rtwvif->self_role);
+	SET_JOININFO_SELF_ROLE(skb->data, self_role);
 
 	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
 			      H2C_CAT_MAC, H2C_CL_MAC_MEDIA_RPT,

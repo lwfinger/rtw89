@@ -308,6 +308,7 @@ enum rtw89_mac_c2h_info_func {
 	RTW89_MAC_C2H_FUNC_REC_ACK,
 	RTW89_MAC_C2H_FUNC_DONE_ACK,
 	RTW89_MAC_C2H_FUNC_C2H_LOG,
+	RTW89_MAC_C2H_FUNC_BCN_CNT,
 	RTW89_MAC_C2H_FUNC_INFO_MAX,
 };
 
@@ -810,6 +811,7 @@ int rtw89_mac_vif_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
 int rtw89_mac_vif_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
 int rtw89_mac_set_hw_muedca_ctrl(struct rtw89_dev *rtwdev,
 				 struct rtw89_vif *rtwvif, bool en);
+int rtw89_mac_set_macid_pause(struct rtw89_dev *rtwdev, u8 macid, bool pause);
 
 static inline void rtw89_mac_bf_monitor_track(struct rtw89_dev *rtwdev)
 {

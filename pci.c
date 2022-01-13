@@ -2904,7 +2904,6 @@ static int __maybe_unused rtw89_pci_resume(struct device *dev)
 }
 
 SIMPLE_DEV_PM_OPS(rtw89_pm_ops, rtw89_pci_suspend, rtw89_pci_resume);
-EXPORT_SYMBOL(rtw89_pm_ops);
 
 static const struct rtw89_hci_ops rtw89_pci_ops = {
 	.tx_write	= rtw89_pci_ops_tx_write,

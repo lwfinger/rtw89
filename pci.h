@@ -625,6 +625,4 @@ static inline bool rtw89_pci_ltr_is_err_reg_val(u32 val)
 	return val == 0xffffffff || val == 0xeaeaeaea;
 }
 
-extern const struct dev_pm_ops rtw89_pm_ops;
-
 #endif

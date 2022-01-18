@@ -3,6 +3,8 @@
  */
 
 #include <linux/version.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
 #include "cam.h"
 #include "coex.h"
 #include "core.h"
@@ -2260,7 +2262,12 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU |
 				  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
 				  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 				  IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_16US;
+#else
+				  u8_encode_bits(IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_16US,
+						 IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_MASK);
+#endif
 		if (i == NL80211_IFTYPE_STATION)
 			phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU;
 		he_cap->he_mcs_nss_supp.rx_mcs_80 = cpu_to_le16(mcs_map);

@@ -1096,6 +1096,16 @@ static void rtw89_core_rx_stats(struct rtw89_dev *rtwdev,
 	rtw89_iterate_vifs_bh(rtwdev, rtw89_vif_rx_stats_iter, &iter_data);
 }
 
+static void rtw89_core_correct_vht_rate(struct ieee80211_rx_status *rx_status)
+{
+	/* Our hardware can receive the VHT packet with rate higher than MCS 9.
+	 * This kind of packet is out of specification and dropped by mac80211,
+	 * and it leads very low TCP throughput.
+	 */
+	if (rx_status->encoding == RX_ENC_VHT && rx_status->rate_idx > 9)
+		rx_status->rate_idx = 9;
+}
+
 static void rtw89_correct_cck_chan(struct rtw89_dev *rtwdev,
 				   struct ieee80211_rx_status *status)
 {
@@ -1127,6 +1137,7 @@ static void rtw89_core_rx_to_mac80211(struct rtw89_dev *rtwdev,
 {
 	rtw89_core_hw_to_sband_rate(rx_status);
 	rtw89_core_rx_stats(rtwdev, phy_ppdu, desc_info, skb_ppdu);
+	rtw89_core_correct_vht_rate(rx_status);
 	ieee80211_rx_napi(rtwdev->hw, NULL, skb_ppdu, &rtwdev->napi);
 	rtwdev->napi_budget_countdown--;
 }

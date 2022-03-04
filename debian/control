@@ -2,6 +2,7 @@ Source: rtw89
 Section: misc
 Priority: optional
 Maintainer: lwfinger <Larry.Finger@lwfinger.net>
+Uploaders: Henning Glawe <glaweh@debian.org>
 Build-Depends: debhelper (>= 11),
                 dkms,
                 bc,

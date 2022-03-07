@@ -3,3 +3,6 @@ files
 rtw89-dkms.substvars
 rtw89-dkms.debhelper.log
 rtw89-dkms/
+rtw89-dkms.dkms.debhelper
+rtw89-dkms.postinst.debhelper
+rtw89-dkms.prerm.debhelper

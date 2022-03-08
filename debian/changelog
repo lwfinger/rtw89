@@ -7,6 +7,7 @@ rtw89 (1.0.1+20220224) UNRELEASED; urgency=medium
   * Cherry-Pick from Ubuntu-PPA (Gökhan Gökkaya <wirelessanten@gmail.com>)
     http://ppa.launchpad.net/kelebek333/kablosuz/ubuntu/pool/main/r/rtw89-dkms:
     * some changes to debian/control
+    * blacklist in-kernel modules for linux >= 5.16
   * fix call to dh_dkms in debian/rules
 
  -- Henning Glawe <glaweh@debian.org>  Fri, 04 Mar 2022 08:48:31 +0100

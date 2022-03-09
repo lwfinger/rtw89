@@ -1,4 +1,4 @@
-rtw89 (1.0.1+20220224) UNRELEASED; urgency=medium
+rtw89 (1.0.1+20220307) UNRELEASED; urgency=medium
 
   * make the debian package 'native' by adjusting
     * debian/changelog

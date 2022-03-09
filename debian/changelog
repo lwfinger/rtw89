@@ -9,6 +9,8 @@ rtw89 (1.0.1+20220224) UNRELEASED; urgency=medium
     * some changes to debian/control
     * blacklist in-kernel modules for linux >= 5.16
   * fix call to dh_dkms in debian/rules
+  * include firmware at target location and add code for diverting
+    firmware already contained in other packages
 
  -- Henning Glawe <glaweh@debian.org>  Fri, 04 Mar 2022 08:48:31 +0100
 

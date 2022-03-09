@@ -16,6 +16,9 @@ override_dh_auto_install:
 	dh_install -prtw89-dkms LICENSE 					        usr/src/rtw89-$(VERSION)
 	dh_install -prtw89-dkms Makefile 					        usr/src/rtw89-$(VERSION)
 	dh_install -prtw89-dkms debian/rtw89-dkms-blacklist.conf    etc/modprobe.d/
+	dh_install -prtw89-dkms rtw8852a_fw.bin                       lib/firmware/rtw89/
+	dh_install -prtw89-dkms rtl8852au_fw.bin rtl8852au_config.bin lib/firmware/rtl_bt/
+
 
 override_dh_dkms:
 	dh_dkms -p rtw89-dkms -V $(VERSION) -- debian/dkms.conf

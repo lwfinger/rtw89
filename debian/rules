@@ -12,10 +12,10 @@ VERSION ?= $(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+).*$$/\1/
 	dh $@ --with dkms
 
 override_dh_auto_install:
-	dh_install -prtw89-dkms *.c *.h *.bin *.md 					usr/src/rtw89-$(VERSION)
-	dh_install -prtw89-dkms LICENSE 					        usr/src/rtw89-$(VERSION)
-	dh_install -prtw89-dkms Makefile 					        usr/src/rtw89-$(VERSION)
-	dh_install -prtw89-dkms debian/rtw89-dkms-blacklist.conf    etc/modprobe.d/
+	dh_install -prtw89-dkms *.c *.h *.bin *.md                    usr/src/rtw89-$(VERSION)
+	dh_install -prtw89-dkms LICENSE                               usr/src/rtw89-$(VERSION)
+	dh_install -prtw89-dkms Makefile                              usr/src/rtw89-$(VERSION)
+	dh_install -prtw89-dkms debian/rtw89-dkms-blacklist.conf      etc/modprobe.d/
 	dh_install -prtw89-dkms rtw8852a_fw.bin                       lib/firmware/rtw89/
 	dh_install -prtw89-dkms rtl8852au_fw.bin rtl8852au_config.bin lib/firmware/rtl_bt/
 

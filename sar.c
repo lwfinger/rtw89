@@ -2,6 +2,8 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include <linux/version.h>
+
 #include "debug.h"
 #include "sar.h"
 

@@ -30,22 +30,30 @@ KEY_FILE ?= MOK.der
 
 obj-m += rtw89core.o
 rtw89core-y +=  core.o \
-		debug.o \
 		mac80211.o \
 		mac.o \
 		phy.o \
 		fw.o \
-		rtw8852a.o \
-		rtw8852a_table.o \
-		rtw8852a_rfk.o \
-		rtw8852a_rfk_table.o \
 		cam.o \
 		efuse.o \
 		regd.o \
+		sar.o \
 		coex.o \
 		ps.o \
-		sar.o \
+		debug.o \
 		ser.o
+
+obj-m += rtw_8852a.o
+rtw_8852a-y := rtw8852a.o \
+		    rtw8852a_table.o \
+		    rtw8852a_rfk.o \
+		    rtw8852a_rfk_table.o
+
+obj-m += rtw_8852ae.o
+rtw_8852ae-y := rtw8852ae.o
+
+#obj-m += rtw89debug.o
+#rtw89debug-y := debug.o
 
 obj-m += rtw89pci.o
 rtw89pci-y := pci.o

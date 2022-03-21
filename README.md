@@ -82,8 +82,8 @@ Reboot then retry from the step make sign-install
 
 ##### How to unload/reload a Kernel module
  ```bash
-sudo modprobe -rv rtw89pci         #This unloads the module
-sudo modprobe -v rtw89pci          #This loads the module
+sudo modprobe -rv rtw_8852ae         #This unloads the module
+sudo modprobe -v rtw_8852ae          #This loads the module
 ```
 
 ##### Problem with recovery after sleep or hibernation

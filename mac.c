@@ -3393,7 +3393,7 @@ rtw89_mac_c2h_scanofld_rsp(struct rtw89_dev *rtwdev, struct sk_buff *c2h,
 	reason = RTW89_GET_MAC_C2H_SCANOFLD_RSP(c2h->data);
 	band = RTW89_GET_MAC_C2H_SCANOFLD_BAND(c2h->data);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5. 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	if (!(rtwdev->chip->support_bands & BIT(NL80211_BAND_6GHZ)))
 		band = chan > 14 ? RTW89_BAND_5G : RTW89_BAND_2G;
 #endif

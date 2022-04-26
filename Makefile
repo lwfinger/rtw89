@@ -3,8 +3,6 @@ KVER  ?= $(shell uname -r)
 KSRC := /lib/modules/$(KVER)/build
 FIRMWAREDIR := /lib/firmware/
 PWD := $(shell pwd)
-CLR_MODULE_FILES := *.mod.c *.mod *.o .*.cmd *.ko *~ .tmp_versions* modules.order Module.symvers
-SYMBOL_FILE := Module.symvers
 # Handle the move of the entire rtw88 tree
 ifneq ("","$(wildcard /lib/modules/$(KVER)/kernel/drivers/net/wireless/realtek)")
 MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/realtek/rtw89
@@ -27,6 +25,11 @@ EXTRA_CFLAGS += -O2
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGMSG
 EXTRA_CFLAGS += -DCONFIG_RTW89_DEBUGFS
 KEY_FILE ?= MOK.der
+
+KO_FILES := rtw_8852ae.ko \
+			rtw_8852a.ko  \
+			rtw89core.ko  \
+			rtw89pci.ko
 
 obj-m += rtw89core.o
 rtw89core-y +=  core.o \
@@ -64,15 +67,22 @@ ccflags-y += -D__CHECK_ENDIAN__
 
 all:
 	$(MAKE) -C $(KSRC) M=$(PWD) modules
-install: all
-	@rm -f $(MODDESTDIR)/rtw89*.ko
 
+remove_ko:
+ifeq ($(COMPRESS_GZIP), y)
+	@cd $(MODDESTDIR) && rm -f $(KO_FILES:.ko=.ko.gz)
+else ifeq ($(COMPRESS_XZ), y)
+	@cd $(MODDESTDIR) && rm -f $(KO_FILES:.ko=.ko.xz)
+else
+	@cd $(MODDESTDIR) && rm -f $(KO_FILES)
+endif
+
+install: all remove_ko
 	@mkdir -p $(MODDESTDIR)
 	@install -p -D -m 644 *.ko $(MODDESTDIR)
 ifeq ($(COMPRESS_GZIP), y)
 	@gzip -f $(MODDESTDIR)/*.ko
-endif
-ifeq ($(COMPRESS_XZ), y)
+else ifeq ($(COMPRESS_XZ), y)
 	@xz -f $(MODDESTDIR)/*.ko
 endif
 	@depmod -a $(KVER)
@@ -84,9 +94,7 @@ endif
 
 	@echo "Install rtw89 SUCCESS"
 
-uninstall:
-	@rm -f $(MODDESTDIR)/rtw89*.ko
-
+uninstall: remove_ko
 	@depmod -a
 
 	@echo "Uninstall rtw89 SUCCESS"

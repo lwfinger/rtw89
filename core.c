@@ -428,10 +428,18 @@ rtw89_core_tx_update_ampdu_info(struct rtw89_dev *rtwdev,
 
 	ampdu_num = (u8)((rtwsta->ampdu_params[tid].agg_num ?
 			  rtwsta->ampdu_params[tid].agg_num :
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 			  4 << sta->ht_cap.ampdu_factor) - 1);
+#else
+			  4 << sta->deflink.ht_cap.ampdu_factor) - 1);
+#endif
 
 	desc_info->agg_en = true;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	desc_info->ampdu_density = sta->ht_cap.ampdu_density;
+#else
+	desc_info->ampdu_density = sta->deflink.ht_cap.ampdu_density;
+#endif
 	desc_info->ampdu_num = ampdu_num;
 }
 
@@ -601,7 +609,11 @@ __rtw89_core_tx_check_he_qos_htc(struct rtw89_dev *rtwdev,
 	if (pkt_type < PACKET_MAX)
 		return false;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	if (!sta || !sta->he_cap.has_he)
+#else
+	if (!sta || !sta->deflink.he_cap.has_he)
+#endif
 		return false;
 
 	if (!ieee80211_is_data_qos(fc))

@@ -1,3 +1,25 @@
+rtw89 (1.0.1+20220709) UNRELEASED; urgency=medium
+
+  * update debian package version
+
+ -- Henning Glawe <glaweh@debian.org>  Sat, 09 Jul 2022 18:40:00 +0100
+
+rtw89 (1.0.1+20220307) UNRELEASED; urgency=medium
+
+  * make the debian package 'native' by adjusting
+    * debian/changelog
+    * debian/source/format
+  * add myself to debian/control:Uploaders to silence irrelevant lintian output
+  * Cherry-Pick from Ubuntu-PPA (Gökhan Gökkaya <wirelessanten@gmail.com>)
+    http://ppa.launchpad.net/kelebek333/kablosuz/ubuntu/pool/main/r/rtw89-dkms:
+    * some changes to debian/control
+    * blacklist in-kernel modules for linux >= 5.16
+  * fix call to dh_dkms in debian/rules
+  * include firmware at target location and add code for diverting
+    firmware already contained in other packages
+
+ -- Henning Glawe <glaweh@debian.org>  Fri, 04 Mar 2022 08:48:31 +0100
+
 rtw89 (1.0.1-1) unstable; urgency=medium
 
   * fix Remove unnecessary dependencies.

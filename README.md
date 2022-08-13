@@ -86,6 +86,12 @@ sudo modprobe -rv rtw_8852ae         #This unloads the module
 sudo modprobe -v rtw_8852ae          #This loads the module
 ```
 
+##### Uninstall drivers
+For all distros:
+ ```bash
+sudo make uninstall
+```
+
 ##### Problem with recovery after sleep or hibernation
 Some BIOSs have trouble changing power state from D3hot to D0. If you have this problem, then
 

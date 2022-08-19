@@ -3479,7 +3479,11 @@ void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif
 	enum rtw89_phy_idx phy_idx = RTW89_PHY_0;
 	u8 bss_color;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (!vif->bss_conf.he_support || !vif->cfg.assoc)
+#else
 	if (!vif->bss_conf.he_support || !vif->bss_conf.assoc)
+#endif
 		return;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)  && SUSE == 0
@@ -3492,8 +3496,13 @@ void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif
 			      phy_idx);
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_TGT, bss_color,
 			      phy_idx);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_STAID,
+			      vif->cfg.aid, phy_idx);
+#else
 	rtw89_phy_write32_idx(rtwdev, R_BSS_CLR_MAP, B_BSS_CLR_MAP_STAID,
 			      vif->bss_conf.aid, phy_idx);
+#endif
 }
 
 static void

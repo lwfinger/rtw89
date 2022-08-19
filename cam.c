@@ -679,7 +679,11 @@ void rtw89_cam_fill_addr_cam_info(struct rtw89_dev *rtwdev,
 	FWCMD_SET_ADDR_FRM_TGT_IND(cmd, rtwvif->frm_tgt_ind);
 	FWCMD_SET_ADDR_MACID(cmd, rtwsta ? rtwsta->mac_id : rtwvif->mac_id);
 	if (rtwvif->net_type == RTW89_NET_TYPE_INFRA)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		FWCMD_SET_ADDR_AID12(cmd, vif->cfg.aid & 0xfff);
+#else
 		FWCMD_SET_ADDR_AID12(cmd, vif->bss_conf.aid & 0xfff);
+#endif
 	else if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
 		FWCMD_SET_ADDR_AID12(cmd, sta ? sta->aid & 0xfff : 0);
 	FWCMD_SET_ADDR_WOL_PATTERN(cmd, rtwvif->wowlan_pattern);

@@ -2128,6 +2128,9 @@ static void rtw89_core_txq_check_agg(struct rtw89_dev *rtwdev,
 	if (test_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags))
 		return;
 
+	if (test_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags))
+		return;
+
 	if (unlikely(skb->protocol == cpu_to_be16(ETH_P_PAE))) {
 		rtw89_core_stop_tx_ba_session(rtwdev, rtwtxq);
 		return;
@@ -3061,6 +3064,53 @@ void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 					   &tid_config->tid_conf[i]);
 }
 
+static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
+				       struct ieee80211_sta *sta,
+				       struct cfg80211_tid_cfg *tid_conf)
+{
+	struct ieee80211_txq *txq;
+	struct rtw89_txq *rtwtxq;
+	u32 mask = tid_conf->mask;
+	u8 tids = tid_conf->tids;
+	int tids_nbit = BITS_PER_BYTE;
+	int i;
+
+	for (i = 0; i < tids_nbit; i++, tids >>= 1) {
+		if (!tids)
+			break;
+
+		if (!(tids & BIT(0)))
+			continue;
+
+		txq = sta->txq[i];
+		rtwtxq = (struct rtw89_txq *)txq->drv_priv;
+
+		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL)) {
+			if (tid_conf->ampdu == NL80211_TID_CONFIG_ENABLE) {
+				clear_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
+			} else {
+				if (test_bit(RTW89_TXQ_F_AMPDU, &rtwtxq->flags))
+					ieee80211_stop_tx_ba_session(sta, txq->tid);
+				spin_lock_bh(&rtwdev->ba_lock);
+				list_del_init(&rtwtxq->list);
+				set_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
+				spin_unlock_bh(&rtwdev->ba_lock);
+			}
+		}
+	}
+}
+
+void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
+			       struct ieee80211_sta *sta,
+			       struct cfg80211_tid_config *tid_config)
+{
+	int i;
+
+	for (i = 0; i < tid_config->n_tid_conf; i++)
+		_rtw89_core_set_tid_config(rtwdev, sta,
+					   &tid_config->tid_conf[i]);
+}
+
 static void rtw89_init_ht_cap(struct rtw89_dev *rtwdev,
 			      struct ieee80211_sta_ht_cap *ht_cap)
 {
@@ -3841,6 +3891,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 #endif
 	hw->wiphy->max_remain_on_channel_duration = 1000;
+
+	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
+	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 
 	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
 

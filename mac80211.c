@@ -1155,6 +1155,34 @@ static int rtw89_ops_set_tid_config(struct ieee80211_hw *hw,
 	return 0;
 }
 
+static void rtw89_set_tid_config_iter(void *data, struct ieee80211_sta *sta)
+{
+	struct cfg80211_tid_config *tid_config = data;
+	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
+	struct rtw89_dev *rtwdev = rtwsta->rtwvif->rtwdev;
+
+	rtw89_core_set_tid_config(rtwdev, sta, tid_config);
+}
+
+static int rtw89_ops_set_tid_config(struct ieee80211_hw *hw,
+				    struct ieee80211_vif *vif,
+				    struct ieee80211_sta *sta,
+				    struct cfg80211_tid_config *tid_config)
+{
+	struct rtw89_dev *rtwdev = hw->priv;
+
+	mutex_lock(&rtwdev->mutex);
+	if (sta)
+		rtw89_core_set_tid_config(rtwdev, sta, tid_config);
+	else
+		ieee80211_iterate_stations_atomic(rtwdev->hw,
+						  rtw89_set_tid_config_iter,
+						  tid_config);
+	mutex_unlock(&rtwdev->mutex);
+
+	return 0;
+}
+
 const struct ieee80211_ops rtw89_ops = {
 	.tx			= rtw89_ops_tx,
 	.wake_tx_queue		= rtw89_ops_wake_tx_queue,

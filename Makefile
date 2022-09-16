@@ -52,6 +52,15 @@ rtw_8852a-y := rtw8852a.o \
 obj-m += rtw_8852ae.o
 rtw_8852ae-y := rtw8852ae.o
 
+obj-m += rtw_8852c.o
+rtw_8852c-y := rtw8852c.o \
+	       rtw8852c_table.o \
+	       rtw8852c_rfk.o \
+	       rtw8852c_rfk_table.o
+
+obj-m += rtw_8852ce.o
+rtw_8852ce-y := rtw8852ce.o
+
 #obj-m += rtw89debug.o
 #rtw89debug-y := debug.o
 

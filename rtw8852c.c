@@ -915,7 +915,11 @@ static void rtw8852c_decode_chan_idx(struct rtw89_dev *rtwdev, u8 chan_idx,
 		return;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	*band = idx <= RTW8852C_CH_BASE_IDX_5G_LAST ? NL80211_BAND_5GHZ : NL80211_BAND_6GHZ;
+#else
+	*band = NL80211_BAND_5GHZ;
+#endif
 	*ch = rtw8852c_ch_base_table[idx] + (offset << 1);
 }
 
@@ -2960,9 +2964,14 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.txpwr_factor_mac	= 1,
 	.dig_table		= NULL,
 	.tssi_dbw_table		= &rtw89_8852c_tssi_dbw_table,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	.support_bands		= BIT(NL80211_BAND_2GHZ) |
 				  BIT(NL80211_BAND_5GHZ) |
 				  BIT(NL80211_BAND_6GHZ),
+#else
+	.support_bands		= BIT(NL80211_BAND_2GHZ) |
+				  BIT(NL80211_BAND_5GHZ),
+#endif
 	.support_bw160		= true,
 	.hw_sec_hdr		= true,
 	.rf_path_num		= 2,

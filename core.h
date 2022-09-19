@@ -3490,8 +3490,10 @@ enum nl80211_band rtw89_hw_to_nl80211_band(enum rtw89_band hw_band)
 		return NL80211_BAND_2GHZ;
 	case RTW89_BAND_5G:
 		return NL80211_BAND_5GHZ;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	case RTW89_BAND_6G:
 		return NL80211_BAND_6GHZ;
+#endif
 	}
 }
 

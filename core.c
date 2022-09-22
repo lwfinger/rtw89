@@ -286,9 +286,11 @@ static void rtw89_get_channel_params(struct cfg80211_chan_def *chandef,
 	case NL80211_BAND_5GHZ:
 		band = RTW89_BAND_5G;
 		break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	case NL80211_BAND_6GHZ:
 		band = RTW89_BAND_6G;
 		break;
+#endif
 	}
 
 	switch (band) {
@@ -2700,7 +2702,9 @@ static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
 err:
 	hw->wiphy->bands[NL80211_BAND_2GHZ] = NULL;
 	hw->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	hw->wiphy->bands[NL80211_BAND_6GHZ] = NULL;
+#endif
 	if (sband_2ghz)
 		kfree(sband_2ghz->iftype_data);
 	if (sband_5ghz)
@@ -2719,14 +2723,20 @@ static void rtw89_core_clr_supported_band(struct rtw89_dev *rtwdev)
 
 	kfree(hw->wiphy->bands[NL80211_BAND_2GHZ]->iftype_data);
 	kfree(hw->wiphy->bands[NL80211_BAND_5GHZ]->iftype_data);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	if (hw->wiphy->bands[NL80211_BAND_6GHZ])
 		kfree(hw->wiphy->bands[NL80211_BAND_6GHZ]->iftype_data);
+#endif
 	kfree(hw->wiphy->bands[NL80211_BAND_2GHZ]);
 	kfree(hw->wiphy->bands[NL80211_BAND_5GHZ]);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	kfree(hw->wiphy->bands[NL80211_BAND_6GHZ]);
+#endif
 	hw->wiphy->bands[NL80211_BAND_2GHZ] = NULL;
 	hw->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	hw->wiphy->bands[NL80211_BAND_6GHZ] = NULL;
+#endif
 }
 
 static void rtw89_core_ppdu_sts_init(struct rtw89_dev *rtwdev)

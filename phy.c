@@ -261,6 +261,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	struct rtw89_phy_rate_pattern *rate_pattern = &rtwvif->rate_pattern;
 	struct rtw89_ra_info *ra = &rtwsta->ra;
 	const struct rtw89_chan *chan = rtw89_chan_get(rtwdev, RTW89_SUB_ENTITY_0);
+	struct ieee80211_vif *vif = rtwvif_to_vif(rtwsta->rtwvif);
 	const u64 *high_rate_masks = rtw89_ra_mask_ht_rates;
 	u8 rssi = ewma_rssi_read(&rtwsta->avg_rssi);
 	u64 ra_mask = 0;
@@ -474,7 +475,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 #endif
 		ra->dcm_cap = 1;
 
-	if (rate_pattern->enable) {
+	if (rate_pattern->enable && !vif->p2p) {
 		ra_mask = rtw89_phy_ra_mask_cfg(rtwdev, rtwsta);
 		ra_mask &= rate_pattern->ra_mask;
 		mode = rate_pattern->ra_mode;

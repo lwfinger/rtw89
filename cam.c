@@ -432,10 +432,8 @@ static void rtw89_cam_reset_key_iter(struct ieee80211_hw *hw,
 				     void *data)
 {
 	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 
 	rtw89_cam_sec_key_del(rtwdev, vif, sta, key, false);
-	rtw89_cam_deinit(rtwdev, rtwvif);
 }
 
 void rtw89_cam_deinit_addr_cam(struct rtw89_dev *rtwdev,
@@ -447,15 +445,22 @@ void rtw89_cam_deinit_addr_cam(struct rtw89_dev *rtwdev,
 	clear_bit(addr_cam->addr_cam_idx, cam_info->addr_cam_map);
 }
 
-void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
+void rtw89_cam_deinit_bssid_cam(struct rtw89_dev *rtwdev,
+				struct rtw89_bssid_cam_entry *bssid_cam)
 {
 	struct rtw89_cam_info *cam_info = &rtwdev->cam_info;
+
+	bssid_cam->valid = false;
+	clear_bit(bssid_cam->bssid_cam_idx, cam_info->bssid_cam_map);
+}
+
+void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
+{
 	struct rtw89_addr_cam_entry *addr_cam = &rtwvif->addr_cam;
 	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 
 	rtw89_cam_deinit_addr_cam(rtwdev, addr_cam);
-	bssid_cam->valid = false;
-	clear_bit(bssid_cam->bssid_cam_idx, cam_info->bssid_cam_map);
+	rtw89_cam_deinit_bssid_cam(rtwdev, bssid_cam);
 }
 
 void rtw89_cam_reset_keys(struct rtw89_dev *rtwdev)
@@ -490,6 +495,12 @@ int rtw89_cam_init_addr_cam(struct rtw89_dev *rtwdev,
 	u8 addr_cam_idx;
 	int i;
 	int ret;
+
+	if (unlikely(addr_cam->valid)) {
+		rtw89_debug(rtwdev, RTW89_DBG_FW,
+			    "addr cam is already valid; skip init\n");
+		return 0;
+	}
 
 	ret = rtw89_cam_get_avail_addr_cam(rtwdev, &addr_cam_idx);
 	if (ret) {
@@ -535,12 +546,19 @@ static int rtw89_cam_get_avail_bssid_cam(struct rtw89_dev *rtwdev,
 	return 0;
 }
 
-static int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
-				    struct rtw89_vif *rtwvif)
+int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
+			     struct rtw89_vif *rtwvif,
+			     struct rtw89_bssid_cam_entry *bssid_cam,
+			     const u8 *bssid)
 {
-	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 	u8 bssid_cam_idx;
 	int ret;
+
+	if (unlikely(bssid_cam->valid)) {
+		rtw89_debug(rtwdev, RTW89_DBG_FW,
+			    "bssid cam is already valid; skip init\n");
+		return 0;
+	}
 
 	ret = rtw89_cam_get_avail_bssid_cam(rtwdev, &bssid_cam_idx);
 	if (ret) {
@@ -553,7 +571,7 @@ static int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
 	bssid_cam->len = BSSID_CAM_ENT_SIZE;
 	bssid_cam->offset = 0;
 	bssid_cam->valid = true;
-	ether_addr_copy(bssid_cam->bssid, rtwvif->bssid);
+	ether_addr_copy(bssid_cam->bssid, bssid);
 
 	return 0;
 }
@@ -571,7 +589,7 @@ int rtw89_cam_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 	int ret;
 
-	ret = rtw89_cam_init_bssid_cam(rtwdev, rtwvif);
+	ret = rtw89_cam_init_bssid_cam(rtwdev, rtwvif, bssid_cam, rtwvif->bssid);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to init bssid cam\n");
 		return ret;
@@ -587,22 +605,34 @@ int rtw89_cam_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 }
 
 int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
-				  struct rtw89_vif *rtwvif, u8 *cmd)
+				  struct rtw89_vif *rtwvif,
+				  struct rtw89_sta *rtwsta, u8 *cmd)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
 #endif
-	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
+	struct rtw89_bssid_cam_entry *bssid_cam = rtw89_get_bssid_cam_of(rtwvif, rtwsta);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
 #else
 	u8 bss_color = 0;
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	u8 bss_mask;
+
+	if (vif->bss_conf.nontransmitted)
+		bss_mask = RTW89_BSSID_MATCH_5_BYTES;
+	else
+		bss_mask = RTW89_BSSID_MATCH_ALL;
 #endif
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);
 	FWCMD_SET_ADDR_BSSID_OFFSET(cmd, bssid_cam->offset);
 	FWCMD_SET_ADDR_BSSID_LEN(cmd, bssid_cam->len);
 	FWCMD_SET_ADDR_BSSID_VALID(cmd, bssid_cam->valid);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	FWCMD_SET_ADDR_BSSID_MASK(cmd, bss_mask);
+#endif
 	FWCMD_SET_ADDR_BSSID_BB_SEL(cmd, bssid_cam->phy_idx);
 	FWCMD_SET_ADDR_BSSID_BSS_COLOR(cmd, bss_color);
 

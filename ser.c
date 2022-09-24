@@ -2,11 +2,10 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
-#include <linux/version.h>
-
 #include <linux/devcoredump.h>
 
 #include "cam.h"
+#include "chan.h"
 #include "debug.h"
 #include "fw.h"
 #include "mac.h"
@@ -154,7 +153,10 @@ static void ser_state_run(struct rtw89_ser *ser, u8 evt)
 	rtw89_debug(rtwdev, RTW89_DBG_SER, "ser: %s receive %s\n",
 		    ser_st_name(ser), ser_ev_name(ser, evt));
 
+	mutex_lock(&rtwdev->mutex);
 	rtw89_leave_lps(rtwdev);
+	mutex_unlock(&rtwdev->mutex);
+
 	ser->st_tbl[ser->state].st_func(ser, evt);
 }
 
@@ -300,22 +302,29 @@ static void ser_reset_vif(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	rtwvif->trigger = false;
 }
 
-static void ser_sta_deinit_addr_cam_iter(void *data, struct ieee80211_sta *sta)
+static void ser_sta_deinit_cam_iter(void *data, struct ieee80211_sta *sta)
 {
-	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
+	struct rtw89_vif *rtwvif = (struct rtw89_vif *)data;
+	struct rtw89_dev *rtwdev = rtwvif->rtwdev;
 	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
 
-	rtw89_cam_deinit_addr_cam(rtwdev, &rtwsta->addr_cam);
+	if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE || sta->tdls)
+		rtw89_cam_deinit_addr_cam(rtwdev, &rtwsta->addr_cam);
+	if (sta->tdls)
+		rtw89_cam_deinit_bssid_cam(rtwdev, &rtwsta->bssid_cam);
+
+	INIT_LIST_HEAD(&rtwsta->ba_cam_list);
 }
 
 static void ser_deinit_cam(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 {
-	if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
-		ieee80211_iterate_stations_atomic(rtwdev->hw,
-						  ser_sta_deinit_addr_cam_iter,
-						  rtwdev);
+	ieee80211_iterate_stations_atomic(rtwdev->hw,
+					  ser_sta_deinit_cam_iter,
+					  rtwvif);
 
 	rtw89_cam_deinit(rtwdev, rtwvif);
+
+	bitmap_zero(rtwdev->cam_info.ba_cam_map, RTW89_MAX_BA_CAM_NUM);
 }
 
 static void ser_reset_mac_binding(struct rtw89_dev *rtwdev)
@@ -387,6 +396,7 @@ static void ser_idle_st_hdl(struct rtw89_ser *ser, u8 evt)
 	switch (evt) {
 	case SER_EV_STATE_IN:
 		rtw89_hci_recovery_complete(rtwdev);
+		clear_bit(RTW89_FLAG_CRASH_SIMULATING, rtwdev->flags);
 		break;
 	case SER_EV_L1_RESET:
 		ser_state_goto(ser, SER_RESET_TRX_ST);
@@ -530,7 +540,7 @@ static int rtw89_ser_fw_backtrace_dump(struct rtw89_dev *rtwdev, u8 *buf,
 				       const struct __fw_backtrace_entry *ent)
 {
 	struct __fw_backtrace_info *ptr = (struct __fw_backtrace_info *)buf;
-	u32 fwbt_addr = ent->wcpu_addr - RTW89_WCPU_BASE_ADDR;
+	u32 fwbt_addr = ent->wcpu_addr & RTW89_WCPU_BASE_MASK;
 	u32 fwbt_size = ent->size;
 	u32 fwbt_key = ent->key;
 	u32 i;
@@ -600,6 +610,7 @@ bottom:
 
 	ser_reset_mac_binding(rtwdev);
 	rtw89_core_stop(rtwdev);
+	rtw89_entity_init(rtwdev);
 	INIT_LIST_HEAD(&rtwdev->rtwvifs_list);
 }
 
@@ -622,7 +633,6 @@ static void ser_l2_reset_st_hdl(struct rtw89_ser *ser, u8 evt)
 		fallthrough;
 	case SER_EV_L2_RECFG_DONE:
 		ser_state_goto(ser, SER_IDLE_ST);
-		clear_bit(RTW89_FLAG_RESTART_TRIGGER, rtwdev->flags);
 		break;
 
 	case SER_EV_STATE_OUT:

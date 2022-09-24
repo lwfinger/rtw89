@@ -30,6 +30,7 @@ KEY_FILE ?= MOK.der
 
 obj-m += rtw89core.o
 rtw89core-y +=  core.o \
+		chan.o \
 		mac80211.o \
 		mac.o \
 		phy.o \

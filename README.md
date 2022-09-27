@@ -82,8 +82,14 @@ Reboot then retry from the step make sign-install
 
 ##### How to unload/reload a Kernel module
  ```bash
-sudo modprobe -rv rtw_8852ae         #This unloads the module
+sudo modprobe -rv rtw_8852ae
+sudo modprobe -rv rtw_core	     #These two statements unload the module
+
+Doe to the behavior og the modprobe utility, it takes both to unload.
+
 sudo modprobe -v rtw_8852ae          #This loads the module
+
+A single modprobe call will reload the module.
 ```
 
 ##### Uninstall drivers

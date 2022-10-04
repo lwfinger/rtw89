@@ -7,7 +7,7 @@ repo, which is in the 5.16 kernel. IF YOU USE DRIVERS FROM THIS REPO FOR KERNELS
 5.16+, TOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
 IN ALL MANNER OF STRANGE ERRORS.
 
-This code will build on any kernel 5.4 and newer as long as the distro has not modified
+This code will build on any kernel 5.8 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
 NO, I WILL NOT MODIFY THE SOURCE FOR YOU. YOU ARE ON YOUR OWN!!!!!
 
@@ -15,7 +15,7 @@ I am working on fixing builds on older kernels.
 
 This repository includes drivers for the following card:
 
-Realtek 8852AE
+Realtek 8852AE, 8852BE, and 8853CE
 
 If you are looking for a driver for chips such as
 RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL8723BE, or RTL8821AE,
@@ -85,7 +85,7 @@ Reboot then retry from the step make sign-install
 sudo modprobe -rv rtw_8852ae
 sudo modprobe -rv rtw_core	     #These two statements unload the module
 
-Doe to the behavior og the modprobe utility, it takes both to unload.
+Doe to the behavior of the modprobe utility, it takes both to unload.
 
 sudo modprobe -v rtw_8852ae          #This loads the module
 

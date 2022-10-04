@@ -268,8 +268,13 @@ void rtw89_early_fw_feature_recognize(struct device *device,
 	int ret;
 	int i;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	ret = request_partial_firmware_into_buf(&firmware, chip->fw_name,
 						device, &buf, sizeof(buf), 0);
+#else
+	ret = request_firmware_into_buf(&firmware, chip->fw_name,
+						device, &buf, sizeof(buf));
+#endif
 	if (ret) {
 		dev_err(device, "failed to early request firmware: %d\n", ret);
 		return;

@@ -217,7 +217,7 @@ static const u64
 rtw89_ra_mask_he_rates[4] = {RA_MASK_HE_1SS_RATES, RA_MASK_HE_2SS_RATES,
 			     RA_MASK_HE_3SS_RATES, RA_MASK_HE_4SS_RATES};
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 static void rtw89_phy_ra_gi_ltf(struct rtw89_dev *rtwdev,
 				struct rtw89_sta *rtwsta,
 				bool *fix_giltf_en, u8 *fix_giltf)
@@ -301,7 +301,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 #endif
 		    IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD)
 			ldpc_en = 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		rtw89_phy_ra_gi_ltf(rtwdev, rtwsta, &fix_giltf_en, &fix_giltf);
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)

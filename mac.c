@@ -1256,6 +1256,10 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.wde_size0 = {RTW89_WDE_PG_64, 4095, 1,},
 	/* DLFW */
 	.wde_size4 = {RTW89_WDE_PG_64, 0, 4096,},
+	/* PCIE 64 */
+	.wde_size6 = {RTW89_WDE_PG_64, 512, 0,},
+	/* DLFW */
+	.wde_size9 = {RTW89_WDE_PG_64, 0, 1024,},
 	/* 8852C DLFW */
 	.wde_size18 = {RTW89_WDE_PG_64, 0, 2048,},
 	/* 8852C PCIE SCC */
@@ -1264,6 +1268,10 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.ple_size0 = {RTW89_PLE_PG_128, 1520, 16,},
 	/* DLFW */
 	.ple_size4 = {RTW89_PLE_PG_128, 64, 1472,},
+	/* PCIE 64 */
+	.ple_size6 = {RTW89_PLE_PG_128, 496, 16,},
+	/* DLFW */
+	.ple_size8 = {RTW89_PLE_PG_128, 64, 960,},
 	/* 8852C DLFW */
 	.ple_size18 = {RTW89_PLE_PG_128, 2544, 16,},
 	/* 8852C PCIE SCC */
@@ -1272,6 +1280,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.wde_qt0 = {3792, 196, 0, 107,},
 	/* DLFW */
 	.wde_qt4 = {0, 0, 0, 0,},
+	/* PCIE 64 */
+	.wde_qt6 = {448, 48, 0, 16,},
 	/* 8852C DLFW */
 	.wde_qt17 = {0, 0, 0,  0,},
 	/* 8852C PCIE SCC */
@@ -1282,6 +1292,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.ple_qt5 = {264, 0, 32, 20, 64, 13, 1101, 0, 64, 128, 120,},
 	/* DLFW */
 	.ple_qt13 = {0, 0, 16, 48, 0, 0, 0, 0, 0, 0, 0,},
+	/* PCIE 64 */
+	.ple_qt18 = {147, 0, 16, 20, 17, 13, 89, 0, 32, 14, 8, 0,},
 	/* DLFW 52C */
 	.ple_qt44 = {0, 0, 16, 256, 0, 0, 0, 0, 0, 0, 0, 0,},
 	/* DLFW 52C */
@@ -1290,6 +1302,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.ple_qt46 = {525, 0, 16, 20, 13, 13, 178, 0, 32, 62, 8, 16,},
 	/* 8852C PCIE SCC */
 	.ple_qt47 = {525, 0, 32, 20, 1034, 13, 1199, 0, 1053, 62, 160, 1037,},
+	/* PCIE 64 */
+	.ple_qt58 = {147, 0, 16, 20, 157, 13, 229, 0, 172, 14, 24, 0,},
 };
 EXPORT_SYMBOL(rtw89_mac_size);
 
@@ -3556,9 +3570,7 @@ static void rtw89_mac_port_cfg_tbtt_early(struct rtw89_dev *rtwdev,
 static void rtw89_mac_port_cfg_bss_color(struct rtw89_dev *rtwdev,
 					 struct rtw89_vif *rtwvif)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
-#endif
 	static const u32 masks[RTW89_PORT_NUM] = {
 		B_AX_BSS_COLOB_AX_PORT_0_MASK, B_AX_BSS_COLOB_AX_PORT_1_MASK,
 		B_AX_BSS_COLOB_AX_PORT_2_MASK, B_AX_BSS_COLOB_AX_PORT_3_MASK,
@@ -3569,11 +3581,7 @@ static void rtw89_mac_port_cfg_bss_color(struct rtw89_dev *rtwdev,
 	u32 reg;
 	u8 bss_color;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	bss_color = vif->bss_conf.he_bss_color.color;
-#else
-	bss_color = 0;
-#endif
 	reg_base = port >= 4 ? R_AX_PTCL_BSS_COLOR_1 : R_AX_PTCL_BSS_COLOR_0;
 	reg = rtw89_mac_reg_by_idx(reg_base, rtwvif->mac_idx);
 	rtw89_write32_mask(rtwdev, reg, masks[port], bss_color);
@@ -3836,10 +3844,8 @@ rtw89_mac_c2h_scanofld_rsp(struct rtw89_dev *rtwdev, struct sk_buff *c2h,
 	band = RTW89_GET_MAC_C2H_SCANOFLD_BAND(c2h->data);
 	actual_period = RTW89_GET_MAC_C2H_ACTUAL_PERIOD(c2h->data);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	if (!(rtwdev->chip->support_bands & BIT(NL80211_BAND_6GHZ)))
 		band = chan > 14 ? RTW89_BAND_5G : RTW89_BAND_2G;
-#endif
 
 	rtw89_debug(rtwdev, RTW89_DBG_HW_SCAN,
 		    "band: %d, chan: %d, reason: %d, status: %d, tx_fail: %d, actual: %d\n",
@@ -4446,11 +4452,7 @@ static int rtw89_mac_set_csi_para_reg(struct rtw89_dev *rtwdev,
 	u8 nc = 1, nr = 3, ng = 0, cb = 1, cs = 1, ldpc_en = 1, stbc_en = 1;
 	u8 port_sel = rtwvif->port;
 	u8 sound_dim = 3, t;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	u8 *phy_cap = sta->he_cap.he_cap_elem.phy_cap_info;
-#else
 	u8 *phy_cap = sta->deflink.he_cap.he_cap_elem.phy_cap_info;
-#endif
 	u32 reg;
 	u16 val;
 	int ret;
@@ -4467,21 +4469,12 @@ static int rtw89_mac_set_csi_para_reg(struct rtw89_dev *rtwdev,
 			      phy_cap[5]);
 		sound_dim = min(sound_dim, t);
 	}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
-	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
-		ldpc_en &= !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
-		stbc_en &= !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
-		t = FIELD_GET(IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK,
-			      sta->vht_cap.cap);
-#else
 	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
 		ldpc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
 		stbc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
 		t = FIELD_GET(IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK,
 			      sta->deflink.vht_cap.cap);
-#endif
 		sound_dim = min(sound_dim, t);
 	}
 	nc = min(nc, sound_dim);
@@ -4522,29 +4515,17 @@ static int rtw89_mac_csi_rrsc(struct rtw89_dev *rtwdev,
 	if (ret)
 		return ret;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	if (sta->he_cap.has_he) {
-#else
 	if (sta->deflink.he_cap.has_he) {
-#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_HE_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_HE_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_HE_MSC5));
 	}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	if (sta->vht_cap.vht_supported) {
-#else
 	if (sta->deflink.vht_cap.vht_supported) {
-#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_VHT_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_VHT_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_VHT_MSC5));
 	}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	if (sta->ht_cap.ht_supported) {
-#else
 	if (sta->deflink.ht_cap.ht_supported) {
-#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_HT_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_HT_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_HT_MSC5));
@@ -4838,6 +4819,7 @@ int rtw89_mac_read_xtal_si(struct rtw89_dev *rtwdev, u8 offset, u8 *val)
 
 	return 0;
 }
+EXPORT_SYMBOL(rtw89_mac_read_xtal_si);
 
 static
 void rtw89_mac_pkt_drop_sta(struct rtw89_dev *rtwdev, struct rtw89_sta *rtwsta)

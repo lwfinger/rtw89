@@ -85,46 +85,5 @@ static struct pci_driver rtw89_8852be_driver = {
 module_pci_driver(rtw89_8852be_driver);
 
 MODULE_AUTHOR("Realtek Corporation");
->>>>>>> replacement
-	.dma_addr_set		= &rtw89_pci_ch_dma_addr_set,
-
-	.ltr_set		= rtw89_pci_ltr_set,
-	.fill_txaddr_info	= rtw89_pci_fill_txaddr_info,
-	.config_intr_mask	= rtw89_pci_config_intr_mask,
-	.enable_intr		= rtw89_pci_enable_intr,
-	.disable_intr		= rtw89_pci_disable_intr,
-	.recognize_intrs	= rtw89_pci_recognize_intrs,
-};
-
-static const struct rtw89_driver_info rtw89_8852be_info = {
-	.chip = &rtw8852b_chip_info,
-	.bus = {
-		.pci = &rtw8852b_pci_info,
-	},
-};
-
-static const struct pci_device_id rtw89_8852be_id_table[] = {
-	{
-		PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0xb852),
-		.driver_data = (kernel_ulong_t)&rtw89_8852be_info,
-	},
-	{
-		PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0xb85b),
-		.driver_data = (kernel_ulong_t)&rtw89_8852be_info,
-	},
-	{},
-};
-MODULE_DEVICE_TABLE(pci, rtw89_8852be_id_table);
-
-static struct pci_driver rtw89_8852be_driver = {
-	.name		= "rtw89_8852be",
-	.id_table	= rtw89_8852be_id_table,
-	.probe		= rtw89_pci_probe,
-	.remove		= rtw89_pci_remove,
-	.driver.pm	= &rtw89_pm_ops,
-};
-module_pci_driver(rtw89_8852be_driver);
-
-MODULE_AUTHOR("Realtek Corporation");
 MODULE_DESCRIPTION("Realtek 802.11ax wireless 8852BE driver");
 MODULE_LICENSE("Dual BSD/GPL");

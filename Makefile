@@ -56,6 +56,7 @@ rtw_8852ae-y := rtw8852be.o
 obj-m += rtw_8852b.o
 rtw_8852b-y := rtw8852b.o \
 		    rtw8852b_table.o \
+		    rtw8852b_rfk.o \
 		    rtw8852b_rfk_table.o
 
 obj-m += rtw_8852be.o
@@ -103,6 +104,7 @@ endif
 	@echo "Install rtw89 SUCCESS"
 
 uninstall:
+	@cp *.bin /lib/firmware/rtw89/.
 	@rm -f $(MODDESTDIR)/rtw89*.ko
 
 	@depmod -a

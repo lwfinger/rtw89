@@ -50,8 +50,8 @@ rtw_8852a-y := rtw8852a.o \
 		    rtw8852a_rfk.o \
 		    rtw8852a_rfk_table.o
 
-obj-m += rtw_8852be.o
-rtw_8852ae-y := rtw8852be.o
+obj-m += rtw_8852ae.o
+rtw_8852ae-y := rtw8852ae.o
 
 obj-m += rtw_8852b.o
 rtw_8852b-y := rtw8852b.o \

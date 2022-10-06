@@ -905,9 +905,6 @@ static int rtw89_ops_assign_vif_chanctx(struct ieee80211_hw *hw,
 	return ret;
 }
 
-        int (*assign_vif_chanctx)(struct ieee80211_hw *hw,
-                                  struct ieee80211_vif *vif,
-                                  struct ieee80211_chanctx_conf *ctx);
 static void rtw89_ops_unassign_vif_chanctx(struct ieee80211_hw *hw,
 					   struct ieee80211_vif *vif,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)

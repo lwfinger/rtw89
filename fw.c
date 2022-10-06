@@ -1188,14 +1188,13 @@ int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 		SET_CMC_TBL_NOMINAL_PKT_PADDING80(skb->data, pads[RTW89_CHANNEL_WIDTH_80]);
 		SET_CMC_TBL_NOMINAL_PKT_PADDING160(skb->data, pads[RTW89_CHANNEL_WIDTH_160]);
 	}
-	if (sta) {
+	if (sta)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0)
 		SET_CMC_TBL_BSR_QUEUE_SIZE_FORMAT(skb->data,
 						  sta->deflink.he_cap.has_he);
 #else
 		SET_CMC_TBL_BSR_QUEUE_SIZE_FORMAT(skb->data, sta->he_cap.has_he);
 #endif
-	}
 	if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
 		SET_CMC_TBL_DATA_DCM(skb->data, 0);
 

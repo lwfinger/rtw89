@@ -366,14 +366,18 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	case RTW89_BAND_2G:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 		ra_mask |= sta->supp_rates[NL80211_BAND_2GHZ];
-		if (sta->supp_rates[NL80211_BAND_2GHZ] <= 0xf)
+		if (sta->supp_rates[NL80211_BAND_2GHZ] & 0xf)
 #else
 		ra_mask |= sta->deflink.supp_rates[NL80211_BAND_2GHZ];
-		if (sta->deflink.supp_rates[NL80211_BAND_2GHZ] <= 0xf)
+		if (sta->deflink.supp_rates[NL80211_BAND_2GHZ] & 0xf)
 #endif
 			mode |= RTW89_RA_MODE_CCK;
-		else
-			mode |= RTW89_RA_MODE_CCK | RTW89_RA_MODE_OFDM;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+		if (sta->supp_rates[NL80211_BAND_2GHZ] & 0xff0)
+#else
+		if (sta->deflink.supp_rates[NL80211_BAND_2GHZ] & 0xff0)
+#endif
+			mode |= RTW89_RA_MODE_OFDM;
 		break;
 	case RTW89_BAND_5G:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)

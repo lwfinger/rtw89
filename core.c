@@ -1829,8 +1829,13 @@ EXPORT_SYMBOL(rtw89_core_napi_stop);
 void rtw89_core_napi_init(struct rtw89_dev *rtwdev)
 {
 	init_dummy_netdev(&rtwdev->netdev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
+		       rtwdev->hci.ops->napi_poll);
+#else
 	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
 		       rtwdev->hci.ops->napi_poll, NAPI_POLL_WEIGHT);
+#endif
 }
 EXPORT_SYMBOL(rtw89_core_napi_init);
 

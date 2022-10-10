@@ -3966,6 +3966,7 @@ void rtw89_mac_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 		if (func < RTW89_MAC_C2H_FUNC_OFLD_MAX)
 			handler = rtw89_mac_c2h_ofld_handler[func];
 		break;
+	case RTW89_MAC_C2H_CLASS_TWT:
 	case RTW89_MAC_C2H_CLASS_FWDBG:
 		return;
 	default:

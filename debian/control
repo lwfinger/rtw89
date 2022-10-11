@@ -14,6 +14,7 @@ Vcs-Git: https://github.com/lwfinger/rtlrtw89.git
 Package: rtw89-dkms
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: rtw8852be-dkms
 XB-Modaliases: ${modaliases}
 Description: DKMS files to build and install rtl8852be
  The rtl8852ae driver provides the driver for USB wifi adapter.

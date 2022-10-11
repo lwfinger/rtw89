@@ -9,7 +9,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 VERSION ?= $(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+).*$$/\1/p')
 
 %:
-	dh $@ --with dkms
+	dh $@ --with dkms,modaliases
 
 override_dh_auto_install:
 	dh_install -prtw89-dkms *.c *.h *.bin *.md 					usr/src/rtw89-$(VERSION)

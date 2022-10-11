@@ -4,3 +4,4 @@ files
 *stamp
 *.log
 rtw89-dkms/
+rtw89-firmware/

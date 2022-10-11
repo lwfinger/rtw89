@@ -11,7 +11,7 @@ Vcs-Git: https://github.com/lwfinger/rtlrtw89.git
 
 Package: rtw89-dkms
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, bc
+Depends: ${shlibs:Depends}, ${misc:Depends}, bc, rtw89-firmware
 Conflicts: rtw8852be-dkms
 XB-Modaliases: ${modaliases}
 Description: DKMS files to build and install rtl8852be
@@ -20,3 +20,11 @@ Description: DKMS files to build and install rtl8852be
  To install this package, you have to install the header files for your
  current kernel manually (usually included in the "linux-headers-<your
  architecture>").
+
+Package: rtw89-firmware
+Architecture: all
+Depends: ${misc:Depends}
+Description: Firmware for Realtek RTW89 devices
+ WiFi firmware drivers for the the following parts:
+ .
+ * Realtek RTW8852AE, RTW8852BE, and RTW8852CE.

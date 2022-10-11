@@ -2,11 +2,12 @@
 # -*- makefile -*-
 
 include /usr/share/dpkg/default.mk
+include /usr/share/dpkg/pkg-info.mk
 
 export DH_VERBOSE = 1
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-VERSION ?= $(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+).*$$/\1/p')
+VERSION ?= $(DEB_VERSION_UPSTREAM)
 
 %:
 	dh $@ --with dkms,modaliases
@@ -18,7 +19,7 @@ override_dh_auto_install:
 	dh_install -prtw89-dkms debian/dkms.conf					usr/src/rtw89-$(VERSION)
 
 override_dh_dkms:
-	dh_dkms -V
+	dh_dkms -V $(VERSION)
 
 override_dh_auto_build:
 	:

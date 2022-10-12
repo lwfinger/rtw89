@@ -5,9 +5,9 @@
 #include <linux/version.h>
 
 #include "debug.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 #include "sar.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 static enum rtw89_sar_subband rtw89_sar_get_subband(struct rtw89_dev *rtwdev,
 						    u32 center_freq)
 {

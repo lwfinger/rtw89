@@ -935,7 +935,7 @@ static int rtw89_mac_sub_pwr_seq(struct rtw89_dev *rtwdev, u8 cv_msk,
 			if (cur_cfg->val == PWR_DELAY_US)
 				udelay(cur_cfg->addr);
 			else
-				fsleep(cur_cfg->addr * 1000);
+				fsleep_alt(cur_cfg->addr * 1000);
 			break;
 		default:
 			return -EINVAL;
@@ -3734,7 +3734,7 @@ int rtw89_mac_port_update(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	rtw89_mac_port_cfg_bss_color(rtwdev, rtwvif);
 	rtw89_mac_port_cfg_mbssid(rtwdev, rtwvif);
 	rtw89_mac_port_cfg_func_en(rtwdev, rtwvif);
-	fsleep(BCN_ERLY_SET_DLY);
+	fsleep_alt(BCN_ERLY_SET_DLY);
 	rtw89_mac_port_cfg_bcn_early(rtwdev, rtwvif);
 
 	return 0;
@@ -4328,7 +4328,7 @@ void rtw89_mac_cfg_sb(struct rtw89_dev *rtwdev, u32 val)
 	      FIELD_PREP(B_MAC_AX_SB_DRV_MASK, val) |
 	      FIELD_PREP(B_MAC_AX_SB_FW_MASK, fw_sb);
 	rtw89_write32(rtwdev, R_AX_SCOREBOARD, val);
-	fsleep(1000); /* avoid BT FW loss information */
+	fsleep_alt(1000); /* avoid BT FW loss information */
 }
 
 u32 rtw89_mac_get_sb(struct rtw89_dev *rtwdev)

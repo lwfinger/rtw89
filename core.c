@@ -2633,12 +2633,14 @@ static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 			}
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL) && tids == 0xff) {
 			if (tid_conf->amsdu == NL80211_TID_CONFIG_ENABLE)
 				sta->max_amsdu_subframes = 0;
 			else
 				sta->max_amsdu_subframes = 1;
 		}
+#endif
 	}
 }
 
@@ -3344,8 +3346,10 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
+#endif
 
 	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
 

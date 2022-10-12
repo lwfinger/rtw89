@@ -19,3 +19,5 @@ DEST_MODULE_LOCATION[5]="/updates/"
 DEST_MODULE_LOCATION[6]="/updates/"
 DEST_MODULE_LOCATION[7]="/updates/"
 AUTOINSTALL="YES"
+# Set the acceptable kernel values - 5.8+
+BUILD_EXCLUSIVE_KERNEL="^(5\.0[8-9]+\.|5\.[1-9][0-9]+\.|6.[0-9]+\.)"

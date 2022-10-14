@@ -172,7 +172,7 @@ Build and installation
 git clean -xfd
 
 dpkg-buildpackage -us -uc
-sudo apt install ../rtw89-dkms_1.0.2-1_all.deb ../rtw89-firmware_1.0.2-1_all.deb
+sudo apt install ../rtw89-dkms_1.0.2-2_all.deb ../rtw89-firmware_1.0.2-2_all.deb
 ```
 
 That should install the package, and build the module for your

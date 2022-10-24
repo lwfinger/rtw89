@@ -97,14 +97,19 @@ endif
 	@depmod -a $(KVER)
 
 	@mkdir -p /lib/firmware/rtw89/
-	@cp rtw8852a_fw.bin /lib/firmware/rtw89/.
+	@cp \
+		rtw8852a_fw.bin \
+		rtw8852b_fw.bin \
+		rtw8852c_fw.bin \
+		/lib/firmware/rtw89/.
 	@mkdir -p /lib/firmware/rtl_bt/
 	@cp rtl8852au*.bin /lib/firmware/rtl_bt/.
 
 	@echo "Install rtw89 SUCCESS"
 
 uninstall:
-	@cp *.bin /lib/firmware/rtw89/.
+	@rm -f /lib/firmware/rtw89/*bin
+	@rm -f /lib/firmware/rtl_bt/*bin
 	@rm -f $(MODDESTDIR)/rtw89*.ko
 
 	@depmod -a

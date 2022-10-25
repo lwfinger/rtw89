@@ -42,7 +42,8 @@ rtw89core-y +=  core.o \
 		coex.o \
 		ps.o \
 		debug.o \
-		ser.o
+		ser.o \
+		wow.o
 
 obj-m += rtw_8852a.o
 rtw_8852a-y := rtw8852a.o \

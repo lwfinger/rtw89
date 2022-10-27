@@ -51,7 +51,7 @@ If any of the packages above are not found check if your distro installs them li
 ##### Installation
 For all distros:
 ```bash
-git clone git://github.com/lwfinger/rtw89.git
+git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make install
@@ -60,7 +60,7 @@ sudo make install
 ##### Installation with module signing for SecureBoot
 For all distros:
 ```bash
-git clone git://github.com/lwfinger/rtw89.git
+git clone https://github.com/lwfinger/rtw89.git
 cd rtw89
 make
 sudo make sign-install

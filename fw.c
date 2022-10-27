@@ -899,10 +899,18 @@ static int rtw89_fw_h2c_add_wow_fw_ofld(struct rtw89_dev *rtwdev,
 		skb = ieee80211_proberesp_get(rtwdev->hw, vif);
 		break;
 	case RTW89_PKT_OFLD_TYPE_NULL_DATA:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0)
+		skb = ieee80211_nullfunc_get(rtwdev->hw, vif, false);
+#else
 		skb = ieee80211_nullfunc_get(rtwdev->hw, vif, -1, false);
+#endif
 		break;
 	case RTW89_PKT_OFLD_TYPE_QOS_NULL:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0)
+		skb = ieee80211_nullfunc_get(rtwdev->hw, vif, true);
+#else
 		skb = ieee80211_nullfunc_get(rtwdev->hw, vif, -1, true);
+#endif
 		break;
 	default:
 		goto err;

@@ -477,7 +477,8 @@ static int rtw89_wow_cfg_wake(struct rtw89_dev *rtwdev, bool wow)
 
 static int rtw89_wow_check_fw_status(struct rtw89_dev *rtwdev, bool wow_enable)
 {
-	u8 polling, ret;
+	u8 polling;
+	int ret;
 
 	ret = read_poll_timeout_atomic(rtw89_read8_mask, polling,
 				       wow_enable == !!polling,

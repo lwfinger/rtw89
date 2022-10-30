@@ -131,6 +131,10 @@ endif
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852a.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852ae.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852b.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852be.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852c.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852ce.ko
 
 sign-install: all sign install
 

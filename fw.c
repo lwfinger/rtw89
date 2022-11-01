@@ -85,15 +85,31 @@ static int rtw89_fw_hdr_parser(struct rtw89_dev *rtwdev, const u8 *fw, u32 len,
 {
 	struct rtw89_fw_hdr_section_info *section_info;
 	const u8 *fw_end = fw + len;
+	const u8 *fwdynhdr;
 	const u8 *bin;
+	u32 base_hdr_len;
 	u32 i;
 
 	if (!info)
 		return -EINVAL;
 
 	info->section_num = GET_FW_HDR_SEC_NUM(fw);
-	info->hdr_len = RTW89_FW_HDR_SIZE +
-			info->section_num * RTW89_FW_SECTION_HDR_SIZE;
+	base_hdr_len = RTW89_FW_HDR_SIZE +
+		       info->section_num * RTW89_FW_SECTION_HDR_SIZE;
+	info->dynamic_hdr_en = GET_FW_HDR_DYN_HDR(fw);
+
+	if (info->dynamic_hdr_en) {
+		info->hdr_len = GET_FW_HDR_LEN(fw);
+		info->dynamic_hdr_len = info->hdr_len - base_hdr_len;
+		fwdynhdr = fw + base_hdr_len;
+		if (GET_FW_DYNHDR_LEN(fwdynhdr) != info->dynamic_hdr_len) {
+			rtw89_err(rtwdev, "[ERR]invalid fw dynamic header len\n");
+			return -EINVAL;
+		}
+	} else {
+		info->hdr_len = base_hdr_len;
+		info->dynamic_hdr_len = 0;
+	}
 
 	bin = fw + info->hdr_len;
 
@@ -546,7 +562,7 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev, enum rtw89_fw_type type)
 		goto fwdl_err;
 	}
 
-	ret = rtw89_fw_download_hdr(rtwdev, fw, info.hdr_len);
+	ret = rtw89_fw_download_hdr(rtwdev, fw, info.hdr_len - info.dynamic_hdr_len);
 	if (ret) {
 		ret = -EBUSY;
 		goto fwdl_err;
@@ -1382,7 +1398,7 @@ int rtw89_fw_h2c_update_beacon(struct rtw89_dev *rtwdev,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
 	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset,
-                                              NULL, 0);
+					      NULL, 0);
 #else
 	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset, NULL);
 #endif

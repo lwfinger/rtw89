@@ -57,7 +57,9 @@ static const u16 rtw89_rate_info_bw_to_mhz_map[] = {
 	[RATE_INFO_BW_40] = 40,
 	[RATE_INFO_BW_80] = 80,
 	[RATE_INFO_BW_160] = 160,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	[RATE_INFO_BW_320] = 320,
+#endif
 };
 
 static u16 rtw89_rate_info_bw_to_mhz(enum rate_info_bw bw)

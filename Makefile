@@ -97,17 +97,6 @@ ifeq ($(COMPRESS_XZ), y)
 endif
 	@depmod -a $(KVER)
 
-	@mkdir -p /lib/firmware/rtw89/
-ifeq ("","$(wildcard /lib/firmware/rtw89/rtw8852a_fw.*)")
-	@cp rtw8852a_fw.bin /lib/firmware/rtw89/.
-endif
-ifeq ("","$(wildcard /lib/firmware/rtw89/rtw8852b_fw.*)")
-	@cp rtw8852b_fw.bin /lib/firmware/rtw89/.
-endif
-ifeq ("","$(wildcard /lib/firmware/rtw89/rtw8852c_fw.*)")
-	@cp rtw8852c_fw.bin /lib/firmware/rtw89/.
-endif
-
 	@echo "Install rtw89 SUCCESS"
 
 uninstall:

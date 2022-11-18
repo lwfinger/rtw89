@@ -1,7 +1,6 @@
 SHELL := /bin/bash
 KVER  ?= $(shell uname -r)
 KSRC := /lib/modules/$(KVER)/build
-FIRMWAREDIR := /lib/firmware/
 PWD := $(shell pwd)
 CLR_MODULE_FILES := *.mod.c *.mod *.o .*.cmd *.ko *~ .tmp_versions* modules.order Module.symvers
 SYMBOL_FILE := Module.symvers

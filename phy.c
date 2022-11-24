@@ -2994,8 +2994,8 @@ void rtw89_phy_ul_tb_ctrl_check(struct rtw89_dev *rtwdev,
 	if (!vif->cfg.assoc)
 		return;
 #else
-	if (!bss->assoc)
-		return
+	if (!vif->bss_conf.assoc)
+		return;
 #endif
 
 	if (stats->rx_tf_periodic > UL_TB_TF_CNT_L2H_TH)

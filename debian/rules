@@ -13,7 +13,7 @@ VERSION ?= $(DEB_VERSION_UPSTREAM)
 	dh $@ --with dkms,modaliases
 
 override_dh_auto_install:
-	dh_install -prtw89-dkms *.c *.h *.bin *.md 					usr/src/rtw89-$(VERSION)
+	dh_install -prtw89-dkms *.c *.h *.md 						usr/src/rtw89-$(VERSION)
 	dh_install -prtw89-dkms LICENSE 					        usr/src/rtw89-$(VERSION)
 	dh_install -prtw89-dkms Makefile 					        usr/src/rtw89-$(VERSION)
 

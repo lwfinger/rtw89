@@ -278,30 +278,38 @@ void rtw89_early_fw_feature_recognize(struct device *device,
 				      const struct rtw89_chip_info *chip,
 				      u32 *early_feat_map)
 {
-	union {
-		struct rtw89_mfw_hdr mfw_hdr;
-		u8 fw_hdr[RTW89_FW_HDR_SIZE];
-	} buf = {};
+	union rtw89_compat_fw_hdr buf = {};
 	const struct firmware *firmware;
+	bool full_req = false;
 	u32 ver_code;
 	int ret;
 	int i;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-	ret = request_partial_firmware_into_buf(&firmware, chip->fw_name,
-						device, &buf, sizeof(buf), 0);
-#else
-	ret = request_firmware_into_buf(&firmware, chip->fw_name,
-						device, &buf, sizeof(buf));
+	/* If SECURITY_LOADPIN_ENFORCE is enabled, reading partial files will
+	 * be denied (-EPERM). Then, we don't get right firmware things as
+	 * expected. So, in this case, we have to request full firmware here.
+	 */
+	if (IS_ENABLED(CONFIG_SECURITY_LOADPIN_ENFORCE))
+		full_req = true;
+
+	if (full_req)
+		ret = request_firmware(&firmware, chip->fw_name, device);
+	else
+		ret = request_partial_firmware_into_buf(&firmware, chip->fw_name,
+							device, &buf, sizeof(buf),
+							0);
 #endif
 	if (ret) {
 		dev_err(device, "failed to early request firmware: %d\n", ret);
 		return;
 	}
 
-	ver_code = buf.mfw_hdr.sig != RTW89_MFW_SIG ?
-		   RTW89_FW_HDR_VER_CODE(&buf.fw_hdr) :
-		   RTW89_MFW_HDR_VER_CODE(&buf.mfw_hdr);
+	if (full_req)
+		ver_code = rtw89_compat_fw_hdr_ver_code(firmware->data);
+	else
+		ver_code = rtw89_compat_fw_hdr_ver_code(&buf);
+
 	if (!ver_code)
 		goto out;
 

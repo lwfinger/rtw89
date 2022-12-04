@@ -4,7 +4,7 @@ rtw89
 
 This branch was created from the version merged into the wireless-drivers-next
 repo, which is in the 5.16 kernel. IF YOU USE DRIVERS FROM THIS REPO FOR KERNELS
-5.16+, TOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
+5.16+, YOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
 IN ALL MANNER OF STRANGE ERRORS.
 
 This code will build on any kernel 5.7 and newer as long as the distro has not modified

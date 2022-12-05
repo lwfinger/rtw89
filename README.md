@@ -85,7 +85,7 @@ Reboot then retry from the step make sign-install
 sudo modprobe -rv rtw_8852ae
 sudo modprobe -rv rtw_core	     #These two statements unload the module
 
-Doe to the behavior of the modprobe utility, it takes both to unload.
+Due to the behavior of the modprobe utility, it takes both to unload.
 
 sudo modprobe -v rtw_8852ae          #This loads the module
 

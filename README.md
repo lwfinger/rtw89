@@ -178,3 +178,13 @@ sudo apt install ../rtw89-dkms_1.0.2-2_all.deb ../rtw89-firmware_1.0.2-2_all.deb
 That should install the package, and build the module for your
 currently active kernel.  You should then be able to `modprobe` as
 above.
+
+```bash
+Missing firmware for RTW8852BE
+
+Thae necessary firmwar3e file should be in package firmware-realtek of linux-firmware-realtek;
+however some versions of some distros have been extremely slow to pick up this firmware file,
+even though it has been in the official linux-firmware repo at vger.kernel.org since
+Oct. 27, 2022. If your distro is one of these, you can download the firmware from
+https://lwfinger.com/download/rtw8852b_fw.bin, and copy it to /lib/firmware/rtw89/.
+```

@@ -310,6 +310,7 @@ rtw89_early_fw_feature_recognize(struct device *device,
 							device, &buf, sizeof(buf),
 							0);
 #endif
+
 	if (ret) {
 		dev_err(device, "failed to early request firmware: %d\n", ret);
 		return NULL;

@@ -299,7 +299,6 @@ static void rtw89_fw_recognize_features(struct rtw89_dev *rtwdev)
 	rtw89_fw_iterate_feature_cfg(&rtwdev->fw, chip, suit_ver_code);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 const struct firmware *
 rtw89_early_fw_feature_recognize(struct device *device,
 				 const struct rtw89_chip_info *chip,

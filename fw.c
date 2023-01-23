@@ -977,7 +977,7 @@ static int rtw89_fw_h2c_add_general_pkt(struct rtw89_dev *rtwdev,
 	if (ret)
 		goto err;
 
-	list_add_tail(&info->list, &rtwvif->general_pkt_list);
+	list_add_tail(&info->list, &rtw_wow->pkt_list);
 	*id = info->id;
 	return 0;
 
@@ -2180,6 +2180,7 @@ int rtw89_fw_h2c_del_pkt_offload(struct rtw89_dev *rtwdev, u8 id)
 	skb = rtw89_fw_h2c_alloc_skb_with_hdr(rtwdev, H2C_LEN_PKT_OFLD);
 	if (!skb) {
 		rtw89_err(rtwdev, "failed to alloc skb for h2c pkt offload\n");
+		rtw89_core_release_bit_map(rtwdev->pkt_offload, alloc_id);
 		return -ENOMEM;
 	}
 	skb_put(skb, H2C_LEN_PKT_OFLD);
@@ -2244,6 +2245,7 @@ int rtw89_fw_h2c_add_pkt_offload(struct rtw89_dev *rtwdev, u8 *id,
 	ret = rtw89_h2c_tx(rtwdev, skb, false);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to send h2c\n");
+		rtw89_core_release_bit_map(rtwdev->pkt_offload, alloc_id);
 		goto fail;
 	}
 

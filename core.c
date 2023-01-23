@@ -2493,8 +2493,10 @@ int rtw89_core_sta_disconnect(struct rtw89_dev *rtwdev,
 	if (sta->tdls)
 		rtw89_cam_deinit_bssid_cam(rtwdev, &rtwsta->bssid_cam);
 
-	if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls)
+	if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls) {
 		rtw89_vif_type_mapping(vif, false);
+		rtw89_fw_release_general_pkt_list_vif(rtwdev, rtwvif, true);
+	}
 
 	ret = rtw89_fw_h2c_assoc_cmac_tbl(rtwdev, vif, sta);
 	if (ret) {
@@ -2582,12 +2584,6 @@ int rtw89_core_sta_assoc(struct rtw89_dev *rtwdev,
 		return ret;
 	}
 
-	ret = rtw89_fw_h2c_general_pkt(rtwdev, rtwsta->mac_id);
-	if (ret) {
-		rtw89_warn(rtwdev, "failed to send h2c general packet\n");
-		return ret;
-	}
-
 	rtwdev->total_sta_assoc++;
 	if (sta->tdls)
 		rtwvif->tdls_peer++;
@@ -2606,6 +2602,12 @@ int rtw89_core_sta_assoc(struct rtw89_dev *rtwdev,
 					 BTC_ROLE_MSTS_STA_CONN_END);
 		rtw89_core_get_no_ul_ofdma_htc(rtwdev, &rtwsta->htc_template);
 		rtw89_phy_ul_tb_assoc(rtwdev, rtwvif);
+
+		ret = rtw89_fw_h2c_general_pkt(rtwdev, rtwvif, rtwsta->mac_id);
+		if (ret) {
+			rtw89_warn(rtwdev, "failed to send h2c general packet\n");
+			return ret;
+		}
 	}
 
 	return ret;
@@ -3130,7 +3132,6 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 			continue;
 		INIT_LIST_HEAD(&rtwdev->scan_info.pkt_list[band]);
 	}
-	INIT_LIST_HEAD(&rtwdev->wow.pkt_list);
 	INIT_WORK(&rtwdev->ba_work, rtw89_core_ba_work);
 	INIT_WORK(&rtwdev->txq_work, rtw89_core_txq_work);
 	INIT_DELAYED_WORK(&rtwdev->txq_reinvoke_work, rtw89_core_txq_reinvoke_work);

@@ -2185,6 +2185,7 @@ void rtw89_phy_set_txpwr_byrate(struct rtw89_dev *rtwdev,
 				const struct rtw89_chan *chan,
 				enum rtw89_phy_idx phy_idx)
 {
+	u8 max_nss_num = rtwdev->chip->rf_path_num;
 	static const u8 rs[] = {
 		RTW89_RS_CCK,
 		RTW89_RS_OFDM,
@@ -2207,7 +2208,7 @@ void rtw89_phy_set_txpwr_byrate(struct rtw89_dev *rtwdev,
 	BUILD_BUG_ON(rtw89_rs_idx_max[RTW89_RS_HEDCM] % 4);
 
 	addr = R_AX_PWR_BY_RATE;
-	for (cur.nss = 0; cur.nss <= RTW89_NSS_2; cur.nss++) {
+	for (cur.nss = 0; cur.nss < max_nss_num; cur.nss++) {
 		for (i = 0; i < ARRAY_SIZE(rs); i++) {
 			if (cur.nss >= rtw89_rs_nss_max[rs[i]])
 				continue;
@@ -2270,6 +2271,7 @@ void rtw89_phy_set_txpwr_limit(struct rtw89_dev *rtwdev,
 			       const struct rtw89_chan *chan,
 			       enum rtw89_phy_idx phy_idx)
 {
+	u8 max_ntx_num = rtwdev->chip->rf_path_num;
 	struct rtw89_txpwr_limit lmt;
 	u8 ch = chan->channel;
 	u8 bw = chan->band_width;
@@ -2284,7 +2286,7 @@ void rtw89_phy_set_txpwr_limit(struct rtw89_dev *rtwdev,
 		     RTW89_TXPWR_LMT_PAGE_SIZE);
 
 	addr = R_AX_PWR_LMT;
-	for (i = 0; i < RTW89_NTX_NUM; i++) {
+	for (i = 0; i < max_ntx_num; i++) {
 		rtw89_phy_fill_txpwr_limit(rtwdev, chan, &lmt, i);
 
 		ptr = (s8 *)&lmt;
@@ -2305,6 +2307,7 @@ void rtw89_phy_set_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 				  const struct rtw89_chan *chan,
 				  enum rtw89_phy_idx phy_idx)
 {
+	u8 max_ntx_num = rtwdev->chip->rf_path_num;
 	struct rtw89_txpwr_limit_ru lmt_ru;
 	u8 ch = chan->channel;
 	u8 bw = chan->band_width;
@@ -2319,7 +2322,7 @@ void rtw89_phy_set_txpwr_limit_ru(struct rtw89_dev *rtwdev,
 		     RTW89_TXPWR_LMT_RU_PAGE_SIZE);
 
 	addr = R_AX_PWR_RU_LMT;
-	for (i = 0; i < RTW89_NTX_NUM; i++) {
+	for (i = 0; i < max_ntx_num; i++) {
 		rtw89_phy_fill_txpwr_limit_ru(rtwdev, chan, &lmt_ru, i);
 
 		ptr = (s8 *)&lmt_ru;

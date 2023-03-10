@@ -3117,8 +3117,10 @@ struct rtw89_chip_info {
 	u32 txwd_body_size;
 	u32 h2c_ctrl_reg;
 	const u32 *h2c_regs;
+	struct rtw89_reg_def h2c_counter_reg;
 	u32 c2h_ctrl_reg;
 	const u32 *c2h_regs;
+	struct rtw89_reg_def c2h_counter_reg;
 	const struct rtw89_page_regs *page_regs;
 	bool cfo_src_fd;
 	const struct rtw89_reg_def *dcfo_comp;
@@ -4309,6 +4311,22 @@ rtw89_write8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 data)
 	shift = __ffs(mask);
 
 	orig = rtw89_read8(rtwdev, addr);
+	set = (orig & ~mask) | ((data << shift) & mask);
+	rtw89_write8(rtwdev, addr, set);
+}
+
+static inline void
+rtw89_write8_mask_add(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 add)
+{
+	u32 shift;
+	u8 orig, set;
+	u8 data;
+
+	mask &= 0xff;
+	shift = __ffs(mask);
+
+	orig = rtw89_read8(rtwdev, addr);
+	data = ((orig & mask) >> shift) + add;
 	set = (orig & ~mask) | ((data << shift) & mask);
 	rtw89_write8(rtwdev, addr, set);
 }

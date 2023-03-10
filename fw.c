@@ -2785,6 +2785,8 @@ static int rtw89_fw_write_h2c_reg(struct rtw89_dev *rtwdev,
 	for (i = 0; i < RTW89_H2CREG_MAX; i++)
 		rtw89_write32(rtwdev, h2c_reg[i], info->h2creg[i]);
 
+	rtw89_write8_mask_add(rtwdev, chip->h2c_counter_reg.addr,
+			      chip->h2c_counter_reg.mask, 1);
 	rtw89_write8(rtwdev, chip->h2c_ctrl_reg, B_AX_H2CREG_TRIGGER);
 
 	return 0;
@@ -2816,6 +2818,9 @@ static int rtw89_fw_read_c2h_reg(struct rtw89_dev *rtwdev,
 	info->id = RTW89_GET_C2H_HDR_FUNC(*info->c2hreg);
 	info->content_len = (RTW89_GET_C2H_HDR_LEN(*info->c2hreg) << 2) -
 				RTW89_C2HREG_HDR_LEN;
+
+	rtw89_write8_mask_add(rtwdev, chip->c2h_counter_reg.addr,
+			      chip->c2h_counter_reg.mask, 1);
 
 	return 0;
 }

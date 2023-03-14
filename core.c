@@ -2856,9 +2856,6 @@ int rtw89_core_sta_disassoc(struct rtw89_dev *rtwdev,
 	if (vif->type == NL80211_IFTYPE_STATION)
 		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, false);
 
-	if (vif->type == NL80211_IFTYPE_STATION)
-		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, false);
-
 	rtwdev->total_sta_assoc--;
 	if (sta->tdls)
 		rtwvif->tdls_peer--;
@@ -3053,147 +3050,6 @@ static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 				sta->max_amsdu_subframes = 1;
 		}
 #endif
-	}
-}
-
-void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-			       struct ieee80211_sta *sta,
-			       struct cfg80211_tid_config *tid_config)
-{
-	int i;
-
-	for (i = 0; i < tid_config->n_tid_conf; i++)
-		_rtw89_core_set_tid_config(rtwdev, sta,
-					   &tid_config->tid_conf[i]);
-}
-
-static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-				       struct ieee80211_sta *sta,
-				       struct cfg80211_tid_cfg *tid_conf)
-{
-	struct ieee80211_txq *txq;
-	struct rtw89_txq *rtwtxq;
-	u32 mask = tid_conf->mask;
-	u8 tids = tid_conf->tids;
-	int tids_nbit = BITS_PER_BYTE;
-	int i;
-
-	for (i = 0; i < tids_nbit; i++, tids >>= 1) {
-		if (!tids)
-			break;
-
-		if (!(tids & BIT(0)))
-			continue;
-
-		txq = sta->txq[i];
-		rtwtxq = (struct rtw89_txq *)txq->drv_priv;
-
-		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL)) {
-			if (tid_conf->ampdu == NL80211_TID_CONFIG_ENABLE) {
-				clear_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-			} else {
-				if (test_bit(RTW89_TXQ_F_AMPDU, &rtwtxq->flags))
-					ieee80211_stop_tx_ba_session(sta, txq->tid);
-				spin_lock_bh(&rtwdev->ba_lock);
-				list_del_init(&rtwtxq->list);
-				set_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-				spin_unlock_bh(&rtwdev->ba_lock);
-			}
-		}
-	}
-}
-
-void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-			       struct ieee80211_sta *sta,
-			       struct cfg80211_tid_config *tid_config)
-{
-	int i;
-
-	for (i = 0; i < tid_config->n_tid_conf; i++)
-		_rtw89_core_set_tid_config(rtwdev, sta,
-					   &tid_config->tid_conf[i]);
-}
-
-static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-				       struct ieee80211_sta *sta,
-				       struct cfg80211_tid_cfg *tid_conf)
-{
-	struct ieee80211_txq *txq;
-	struct rtw89_txq *rtwtxq;
-	u32 mask = tid_conf->mask;
-	u8 tids = tid_conf->tids;
-	int tids_nbit = BITS_PER_BYTE;
-	int i;
-
-	for (i = 0; i < tids_nbit; i++, tids >>= 1) {
-		if (!tids)
-			break;
-
-		if (!(tids & BIT(0)))
-			continue;
-
-		txq = sta->txq[i];
-		rtwtxq = (struct rtw89_txq *)txq->drv_priv;
-
-		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL)) {
-			if (tid_conf->ampdu == NL80211_TID_CONFIG_ENABLE) {
-				clear_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-			} else {
-				if (test_bit(RTW89_TXQ_F_AMPDU, &rtwtxq->flags))
-					ieee80211_stop_tx_ba_session(sta, txq->tid);
-				spin_lock_bh(&rtwdev->ba_lock);
-				list_del_init(&rtwtxq->list);
-				set_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-				spin_unlock_bh(&rtwdev->ba_lock);
-			}
-		}
-	}
-}
-
-void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-			       struct ieee80211_sta *sta,
-			       struct cfg80211_tid_config *tid_config)
-{
-	int i;
-
-	for (i = 0; i < tid_config->n_tid_conf; i++)
-		_rtw89_core_set_tid_config(rtwdev, sta,
-					   &tid_config->tid_conf[i]);
-}
-
-static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
-				       struct ieee80211_sta *sta,
-				       struct cfg80211_tid_cfg *tid_conf)
-{
-	struct ieee80211_txq *txq;
-	struct rtw89_txq *rtwtxq;
-	u32 mask = tid_conf->mask;
-	u8 tids = tid_conf->tids;
-	int tids_nbit = BITS_PER_BYTE;
-	int i;
-
-	for (i = 0; i < tids_nbit; i++, tids >>= 1) {
-		if (!tids)
-			break;
-
-		if (!(tids & BIT(0)))
-			continue;
-
-		txq = sta->txq[i];
-		rtwtxq = (struct rtw89_txq *)txq->drv_priv;
-
-		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL)) {
-			if (tid_conf->ampdu == NL80211_TID_CONFIG_ENABLE) {
-				clear_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-			} else {
-				if (test_bit(RTW89_TXQ_F_AMPDU, &rtwtxq->flags))
-					ieee80211_stop_tx_ba_session(sta, txq->tid);
-				spin_lock_bh(&rtwdev->ba_lock);
-				list_del_init(&rtwtxq->list);
-				set_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags);
-				spin_unlock_bh(&rtwdev->ba_lock);
-			}
-		}
 	}
 }
 
@@ -3984,19 +3840,12 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
+	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 #endif
 	hw->wiphy->max_remain_on_channel_duration = 1000;
-
-	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
-	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
-
-	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
-	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
-
-	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
-	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 
 	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
 
@@ -4073,7 +3922,9 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	struct rtw89_dev *rtwdev;
 	struct ieee80211_ops *ops;
 	u32 driver_data_size;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 	u32 early_feat_map = 0;
+#endif
 	int fw_format = -1;
 	bool no_chanctx;
 

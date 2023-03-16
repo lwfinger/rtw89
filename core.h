@@ -2600,6 +2600,19 @@ struct rtw89_phy_rate_pattern {
 	bool enable;
 };
 
+struct rtw89_tx_wait_info {
+	struct rtw89_dev *rtwdev;
+	struct completion completion;
+	struct work_struct work;
+	atomic_t wait_done;
+	bool tx_done;
+};
+
+struct rtw89_tx_skb_data {
+	struct rtw89_tx_wait_info *wait;
+	u8 hci_priv[];
+};
+
 #define RTW89_P2P_MAX_NOA_NUM 2
 
 struct rtw89_vif {
@@ -3940,6 +3953,7 @@ struct rtw89_dev {
 	/* used to protect rf read write */
 	struct mutex rf_mutex;
 	struct workqueue_struct *txq_wq;
+	struct workqueue_struct *gc_wq;
 	struct work_struct txq_work;
 	struct delayed_work txq_reinvoke_work;
 	/* used to protect ba_list and forbid_ba_list */
@@ -4149,6 +4163,14 @@ static inline void rtw89_hci_clear(struct rtw89_dev *rtwdev, struct pci_dev *pde
 {
 	if (rtwdev->hci.ops->clear)
 		rtwdev->hci.ops->clear(rtwdev, pdev);
+}
+
+static inline
+struct rtw89_tx_skb_data *RTW89_TX_SKB_CB(struct sk_buff *skb)
+{
+	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+
+	return (struct rtw89_tx_skb_data *)info->status.status_driver_data;
 }
 
 static inline u8 rtw89_read8(struct rtw89_dev *rtwdev, u32 addr)
@@ -4824,11 +4846,22 @@ static inline struct sk_buff *rtw89_alloc_skb_for_rx(struct rtw89_dev *rtwdev,
 	return dev_alloc_skb(length);
 }
 
+static inline void rtw89_core_tx_wait_complete(struct rtw89_dev *rtwdev,
+					       struct rtw89_tx_wait_info *wait,
+					       bool tx_done)
+{
+	wait->tx_done = tx_done;
+	complete(&wait->completion);
+	queue_work(rtwdev->gc_wq, &wait->work);
+}
+
 int rtw89_core_tx_write(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
 			struct ieee80211_sta *sta, struct sk_buff *skb, int *qsel);
 int rtw89_h2c_tx(struct rtw89_dev *rtwdev,
 		 struct sk_buff *skb, bool fwdl);
 void rtw89_core_tx_kick_off(struct rtw89_dev *rtwdev, u8 qsel);
+int rtw89_core_tx_kick_off_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *skb,
+				    int qsel, unsigned int timeout);
 void rtw89_core_fill_txdesc(struct rtw89_dev *rtwdev,
 			    struct rtw89_tx_desc_info *desc_info,
 			    void *txdesc);

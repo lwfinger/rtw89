@@ -1,3 +1,11 @@
+rtw89 (1.0.2-3) unstable; urgency=medium
+
+  * Updated debian packaging to 3.0 (quilt) format
+  * No longer packaging rtw89-firmware
+  * Enable builds on both debian and ubuntu
+
+ -- Jesse Rhodes <jesse@sney.ca>  Thu, 16 Mar 2023 15:14:59 -0400
+
 rtw89 (1.0.2-2) unstable; urgency=medium
 
   * Upstream updates

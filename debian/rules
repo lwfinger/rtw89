@@ -10,7 +10,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 VERSION ?= $(DEB_VERSION_UPSTREAM)
 
 %:
-	dh $@ --with dkms,modaliases
+	dh $@ --with dkms
 
 override_dh_auto_install:
 	dh_install -prtw89-dkms *.c *.h *.md 						usr/src/rtw89-$(VERSION)

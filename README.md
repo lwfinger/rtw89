@@ -31,6 +31,8 @@ For **Ubuntu**: You can install them with the following command
 sudo apt-get update
 sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
 ```
+Users of Debian, Ubuntu, and similar (Mint etc) may want to scroll down and follow the DKMS instructions at the end of this document instead.
+
 For **Fedora**: You can install them with the following command
 ```bash
 sudo dnf install kernel-headers kernel-devel
@@ -148,22 +150,21 @@ logs and any steps that you have taken to analyze or fix the problem. If your de
 not complete, you are unlikely to get any satisfaction. One other thing - your mail MUST be plain test.
 HTML mail is rejected.
 
-# DKMS packaging for ubuntu/debian
+# DKMS packaging for debian and derivatives
 
-DKMS on debian/ubuntu simplifies the secure-boot issues, signing is
-taken care of through the same mechanisms as nVidia and drivers.  You
-won't need special reboot and MOK registration.
-
-Additionally DKMS ensures new kernel installations will automatically
-rebuild the driver, so you can accept normal kernel updates.
+DKMS is commonly used on debian and derivatives, like ubuntu, to streamline building extra kernel modules.  
+By following the instructions below and installing the resulting package, the rtw89 driver will automatically rebuild on kernel updates. Secure boot signing will happen automatically as well, 
+as long as the dkms signing key (usually located at /var/lib/dkms/mok.key) is enrolled. See your distro's secure boot documentation for more details. 
 
 Prerequisites:
 
-A few packages are required to build the debs from source:
-
 ``` bash
-sudo apt install dkms debhelper dh-modaliases
+sudo apt install dh-sequence-dkms debhelper build-essential devscripts
 ```
+
+This workflow uses devscripts, which has quite a few perl dependencies.  
+You may wish to build inside a chroot to avoid unnecessary clutter on your system. The debian wiki page for [chroot](https://wiki.debian.org/chroot) has simple instructions for debian, which you can adapt to other distros as needed by changing the release codename and mirror url.  
+If you do, make sure to install the package on your host system, as it will fail if you try to install inside the chroot. 
 
 Build and installation
 
@@ -171,20 +172,19 @@ Build and installation
 # If you've already built as above clean up your workspace or check one out specially (otherwise some temp files can end up in your package)
 git clean -xfd
 
+git deborig HEAD
 dpkg-buildpackage -us -uc
-sudo apt install ../rtw89-dkms_1.0.2-2_all.deb ../rtw89-firmware_1.0.2-2_all.deb
+sudo apt install ../rtw89-dkms_1.0.2-3_all.deb 
 ```
 
-That should install the package, and build the module for your
+This will install the package, and build the module for your
 currently active kernel.  You should then be able to `modprobe` as
-above.
+above. It will also load automatically on boot.
 
-```bash
-Missing firmware for RTW8852BE
+##### A note regarding firmware
 
-Thae necessary firmwar3e file should be in package firmware-realtek of linux-firmware-realtek;
-however some versions of some distros have been extremely slow to pick up this firmware file,
-even though it has been in the official linux-firmware repo at vger.kernel.org since
-Oct. 27, 2022. If your distro is one of these, you can download the firmware from
-https://lwfinger.com/download/rtw8852b_fw.bin, and copy it to /lib/firmware/rtw89/.
-```
+Firmware from userspace is required to use this driver. This package will attempt to pull the firmware in automatically as a Recommends.
+However, if your distro does not provide one of firmware-realtek >= 20230117-1 or linux-firmware >= 20220329.git681281e4-0ubuntu3.10, 
+the driver will fail to load, and dmesg will show an error about a specific missing firmware file. In this case, you can download the firmware files 
+directly from https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/rtw89.
+

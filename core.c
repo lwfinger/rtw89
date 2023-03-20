@@ -3877,16 +3877,16 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 					   u32 bus_data_size,
 					   const struct rtw89_chip_info *chip)
 {
+	struct rtw89_fw_info early_fw = {};
 	const struct firmware *firmware;
 	struct ieee80211_hw *hw;
 	struct rtw89_dev *rtwdev;
 	struct ieee80211_ops *ops;
 	u32 driver_data_size;
-	u32 early_feat_map = 0;
 	bool no_chanctx;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-	firmware = rtw89_early_fw_feature_recognize(device, chip, &early_feat_map);
+	firmware = rtw89_early_fw_feature_recognize(device, chip, &early_fw);
 #endif
 
 	ops = kmemdup(&rtw89_ops, sizeof(rtw89_ops), GFP_KERNEL);
@@ -3894,8 +3894,8 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 		goto err;
 
 	no_chanctx = chip->support_chanctx_num == 0 ||
-		     !(early_feat_map & BIT(RTW89_FW_FEATURE_SCAN_OFFLOAD)) ||
-		     !(early_feat_map & BIT(RTW89_FW_FEATURE_BEACON_FILTER));
+		     !RTW89_CHK_FW_FEATURE(SCAN_OFFLOAD, &early_fw) ||
+		     !RTW89_CHK_FW_FEATURE(BEACON_FILTER, &early_fw);
 
 	if (no_chanctx) {
 		ops->add_chanctx = NULL;

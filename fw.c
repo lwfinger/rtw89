@@ -294,7 +294,6 @@ static void rtw89_fw_recognize_features(struct rtw89_dev *rtwdev)
 	suit_ver_code = RTW89_FW_SUIT_VER_CODE(fw_suit);
 
 	rtw89_fw_iterate_feature_cfg(&rtwdev->fw, chip, suit_ver_code);
-}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 const struct firmware *

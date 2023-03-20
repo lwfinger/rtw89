@@ -3884,10 +3884,13 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	struct rtw89_dev *rtwdev;
 	struct ieee80211_ops *ops;
 	u32 driver_data_size;
+	u32 early_feat_map = 0;
 	bool no_chanctx;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-	firmware = rtw89_early_fw_feature_recognize(device, chip, &early_fw);
+	firmware = rtw89_early_fw_feature_recognize(device, chip, &early_fw, &fw_format);
+#else
+	firmware = rtw89_early_fw_feature_recognize(device, chip, &early_feat_map);
 #endif
 
 	ops = kmemdup(&rtw89_ops, sizeof(rtw89_ops), GFP_KERNEL);

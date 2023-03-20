@@ -459,6 +459,9 @@ static void rtw89_ops_bss_info_changed(struct ieee80211_hw *hw,
 	if (changed & BSS_CHANGED_CQM)
 		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, true);
 
+	if (changed & BSS_CHANGED_CQM)
+		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, true);
+
 	mutex_unlock(&rtwdev->mutex);
 }
 

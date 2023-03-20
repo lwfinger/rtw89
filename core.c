@@ -2856,6 +2856,9 @@ int rtw89_core_sta_disassoc(struct rtw89_dev *rtwdev,
 	if (vif->type == NL80211_IFTYPE_STATION)
 		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, false);
 
+	if (vif->type == NL80211_IFTYPE_STATION)
+		rtw89_fw_h2c_set_bcn_fltr_cfg(rtwdev, vif, false);
+
 	rtwdev->total_sta_assoc--;
 	if (sta->tdls)
 		rtwvif->tdls_peer--;

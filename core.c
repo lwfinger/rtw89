@@ -3885,6 +3885,7 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	struct ieee80211_ops *ops;
 	u32 driver_data_size;
 	u32 early_feat_map = 0;
+	int fw_format = -1;
 	bool no_chanctx;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
@@ -3922,6 +3923,7 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	rtwdev->ops = ops;
 	rtwdev->chip = chip;
 	rtwdev->fw.req.firmware = firmware;
+	rtwdev->fw.fw_format = fw_format;
 
 	rtw89_debug(rtwdev, RTW89_DBG_FW, "probe driver %s chanctx\n",
 		    no_chanctx ? "without" : "with");

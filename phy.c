@@ -4460,3 +4460,29 @@ void rtw89_phy_tssi_ctrl_set_bandedge_cfg(struct rtw89_dev *rtwdev,
 					      data[RTW89_TSSI_SBW20]);
 }
 EXPORT_SYMBOL(rtw89_phy_tssi_ctrl_set_bandedge_cfg);
+||||||| expected
+}
+EXPORT_SYMBOL(rtw89_decode_chan_idx);
+=======
+}
+EXPORT_SYMBOL(rtw89_decode_chan_idx);
+
+#define EDCCA_DEFAULT 249
+void rtw89_phy_config_edcca(struct rtw89_dev *rtwdev, bool scan)
+{
+	u32 reg = rtwdev->chip->edcca_lvl_reg;
+	struct rtw89_hal *hal = &rtwdev->hal;
+	u32 val;
+
+	if (scan) {
+		hal->edcca_bak = rtw89_phy_read32(rtwdev, reg);
+		val = hal->edcca_bak;
+		u32p_replace_bits(&val, EDCCA_DEFAULT, B_SEG0R_EDCCA_LVL_A_MSK);
+		u32p_replace_bits(&val, EDCCA_DEFAULT, B_SEG0R_EDCCA_LVL_P_MSK);
+		u32p_replace_bits(&val, EDCCA_DEFAULT, B_SEG0R_PPDU_LVL_MSK);
+		rtw89_phy_write32(rtwdev, reg, val);
+	} else {
+		rtw89_phy_write32(rtwdev, reg, hal->edcca_bak);
+	}
+}
+>>>>>>> replacement

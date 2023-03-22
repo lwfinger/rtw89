@@ -555,5 +555,6 @@ void rtw89_phy_tssi_ctrl_set_bandedge_cfg(struct rtw89_dev *rtwdev,
 					  enum rtw89_tssi_bandedge_cfg bandedge_cfg);
 void rtw89_phy_ul_tb_assoc(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);
 void rtw89_phy_ul_tb_ctrl_track(struct rtw89_dev *rtwdev);
+void rtw89_phy_config_edcca(struct rtw89_dev *rtwdev, bool scan);
 
 #endif

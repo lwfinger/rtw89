@@ -725,10 +725,18 @@ static u16 rtw89_core_get_data_rate(struct rtw89_dev *rtwdev,
 	else
 		lowest_rate = RTW89_HW_RATE_OFDM6;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+	if (!sta->supp_rates[chan->band_type])
+#else
 	if (!sta->deflink.supp_rates[chan->band_type])
+#endif
 		return lowest_rate;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+	return __ffs(sta->supp_rates[chan->band_type]) + lowest_rate;
+#else
 	return __ffs(sta->deflink.supp_rates[chan->band_type]) + lowest_rate;
+#endif
 }
 
 static void
@@ -2344,7 +2352,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 	struct sk_buff *skb;
 	int ret, qsel;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
+	if (vif->type != NL80211_IFTYPE_STATION || !vif->bss_conf.assoc)
+#else
 	if (vif->type != NL80211_IFTYPE_STATION || !vif->cfg.assoc)
+#endif
 		return 0;
 
 	rcu_read_lock();
@@ -2354,7 +2366,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 		goto out;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, -1, qos);
+#else
+	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, qos);
+#endif
 	if (!skb) {
 		ret = -ENOMEM;
 		goto out;

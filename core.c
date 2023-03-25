@@ -962,6 +962,10 @@ int rtw89_h2c_tx(struct rtw89_dev *rtwdev,
 		return 0;
 	}
 
+	if (!skb) {
+		pr_warn_once("skb NULL in %s\n", __func__);
+		return -EINVAL;
+	}
 	tx_req.skb = skb;
 	tx_req.tx_type = RTW89_CORE_TX_TYPE_FWCMD;
 	if (fwdl)

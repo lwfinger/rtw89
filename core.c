@@ -550,6 +550,7 @@ rtw89_core_tx_update_mgmt_info(struct rtw89_dev *rtwdev,
 	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
 	const struct rtw89_chan *chan = rtw89_chan_get(rtwdev, RTW89_SUB_ENTITY_0);
 	u8 qsel, ch_dma;
+	u16 data_rate;
 
 	qsel = desc_info->hiq ? RTW89_TX_QSEL_B0_HI : RTW89_TX_QSEL_B0_MGMT;
 	ch_dma = rtw89_core_get_ch_dma(rtwdev, qsel);
@@ -565,8 +566,14 @@ rtw89_core_tx_update_mgmt_info(struct rtw89_dev *rtwdev,
 	desc_info->en_wd_info = true;
 	desc_info->use_rate = true;
 	desc_info->dis_data_fb = true;
-	desc_info->data_rate = rtw89_core_get_mgmt_rate(rtwdev, tx_req);
-
+	if (!desc_info->data_rate) {
+		pr_warn_once("desc_info->data_rate is NULL in %s!\n", __func__);
+		return;
+	}
+	pr_warn_once("entering rtw89_core_get_mgmt_rate\n");
+	data_rate = rtw89_core_get_mgmt_rate(rtwdev, tx_req);
+	pr_warn_once("back from rtw89_core_get_mgmt_rate - %d\n", data_rate);
+	desc_info->data_rate = data_rate;
 	rtw89_debug(rtwdev, RTW89_DBG_TXRX,
 		    "tx mgmt frame with rate 0x%x on channel %d (band %d, bw %d)\n",
 		    desc_info->data_rate, chan->channel, chan->band_type,
@@ -962,10 +969,6 @@ int rtw89_h2c_tx(struct rtw89_dev *rtwdev,
 		return 0;
 	}
 
-	if (!skb) {
-		pr_warn_once("skb NULL in %s\n", __func__);
-		return -EINVAL;
-	}
 	tx_req.skb = skb;
 	tx_req.tx_type = RTW89_CORE_TX_TYPE_FWCMD;
 	if (fwdl)

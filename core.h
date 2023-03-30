@@ -109,6 +109,7 @@ enum rtw89_core_chip_id {
 	RTL8852A,
 	RTL8852B,
 	RTL8852C,
+	RTL8851B,
 };
 
 enum rtw89_cv {
@@ -3387,6 +3388,7 @@ struct rtw89_sub_entity {
 struct rtw89_hal {
 	u32 rx_fltr;
 	u8 cv;
+	u8 acv;
 	u32 sw_amsdu_max_size;
 	u32 antenna_tx;
 	u32 antenna_rx;

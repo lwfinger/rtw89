@@ -3337,6 +3337,8 @@ struct rtw89_fw_info {
 	int fw_format;
 	u8 h2c_seq;
 	u8 rec_seq;
+	u8 h2c_counter;
+	u8 c2h_counter;
 	struct rtw89_fw_suit normal;
 	struct rtw89_fw_suit wowlan;
 	bool fw_log_enable;
@@ -4420,22 +4422,6 @@ rtw89_write8_mask(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 data)
 	shift = __ffs(mask);
 
 	orig = rtw89_read8(rtwdev, addr);
-	set = (orig & ~mask) | ((data << shift) & mask);
-	rtw89_write8(rtwdev, addr, set);
-}
-
-static inline void
-rtw89_write8_mask_add(struct rtw89_dev *rtwdev, u32 addr, u32 mask, u8 add)
-{
-	u32 shift;
-	u8 orig, set;
-	u8 data;
-
-	mask &= 0xff;
-	shift = __ffs(mask);
-
-	orig = rtw89_read8(rtwdev, addr);
-	data = ((orig & mask) >> shift) + add;
 	set = (orig & ~mask) | ((data << shift) & mask);
 	rtw89_write8(rtwdev, addr, set);
 }

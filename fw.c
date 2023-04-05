@@ -260,6 +260,9 @@ static const struct __fw_feat_cfg fw_feat_tbl[] = {
 	__CFG_FW_FEAT(RTL8852A, ge, 0, 13, 36, 0, CRASH_TRIGGER),
 	__CFG_FW_FEAT(RTL8852A, lt, 0, 13, 38, 0, NO_PACKET_DROP),
 	__CFG_FW_FEAT(RTL8852B, ge, 0, 29, 26, 0, NO_LPS_PG),
+	__CFG_FW_FEAT(RTL8852B, ge, 0, 29, 26, 0, TX_WAKE),
+	__CFG_FW_FEAT(RTL8852B, ge, 0, 29, 29, 0, CRASH_TRIGGER),
+	__CFG_FW_FEAT(RTL8852B, ge, 0, 29, 29, 0, SCAN_OFFLOAD),
 	__CFG_FW_FEAT(RTL8852C, le, 0, 27, 33, 0, NO_DEEP_PS),
 	__CFG_FW_FEAT(RTL8852C, ge, 0, 27, 34, 0, TX_WAKE),
 	__CFG_FW_FEAT(RTL8852C, ge, 0, 27, 36, 0, SCAN_OFFLOAD),
@@ -294,6 +297,7 @@ static void rtw89_fw_recognize_features(struct rtw89_dev *rtwdev)
 	suit_ver_code = RTW89_FW_SUIT_VER_CODE(fw_suit);
 
 	rtw89_fw_iterate_feature_cfg(&rtwdev->fw, chip, suit_ver_code);
+}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 const struct firmware *
@@ -629,6 +633,8 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev, enum rtw89_fw_type type)
 
 	fw_info->h2c_seq = 0;
 	fw_info->rec_seq = 0;
+	fw_info->h2c_counter = 0;
+	fw_info->c2h_counter = 0;
 	rtwdev->mac.rpwm_seq_num = RPWM_SEQ_NUM_MAX;
 	rtwdev->mac.cpwm_seq_num = CPWM_SEQ_NUM_MAX;
 
@@ -1167,10 +1173,19 @@ fail:
 static void __rtw89_fw_h2c_set_tx_path(struct rtw89_dev *rtwdev,
 				       struct sk_buff *skb)
 {
+	const struct rtw89_chip_info *chip = rtwdev->chip;
 	struct rtw89_hal *hal = &rtwdev->hal;
-	u8 ntx_path = hal->antenna_tx ? hal->antenna_tx : RF_B;
-	u8 map_b = hal->antenna_tx == RF_AB ? 1 : 0;
+	u8 ntx_path;
+	u8 map_b;
 
+	if (chip->rf_path_num == 1) {
+		ntx_path = RF_A;
+		map_b = 0;
+	} else {
+		ntx_path = hal->antenna_tx ? hal->antenna_tx : RF_B;
+		map_b = hal->antenna_tx == RF_AB ? 1 : 0;
+	}
+ 
 	SET_CMC_TBL_NTX_PATH_EN(skb->data, ntx_path);
 	SET_CMC_TBL_PATH_MAP_A(skb->data, 0);
 	SET_CMC_TBL_PATH_MAP_B(skb->data, map_b);
@@ -1771,108 +1786,6 @@ int rtw89_fw_h2c_set_ofld_cfg(struct rtw89_dev *rtwdev)
 			      H2C_CAT_MAC, H2C_CL_MAC_FW_OFLD,
 			      H2C_FUNC_OFLD_CFG, 0, 1,
 			      H2C_OFLD_CFG_LEN);
-
-	ret = rtw89_h2c_tx(rtwdev, skb, false);
-	if (ret) {
-		rtw89_err(rtwdev, "failed to send h2c\n");
-		goto fail;
-	}
-
-	return 0;
-fail:
-	dev_kfree_skb_any(skb);
-
-	return ret;
-}
-
-#define H2C_CFG_BCN_FLTR_LEN 4
-int rtw89_fw_h2c_set_bcn_fltr_cfg(struct rtw89_dev *rtwdev,
-				  struct ieee80211_vif *vif,
-				  bool connect)
-{
-	struct rtw89_vif *rtwvif = vif_to_rtwvif_safe(vif);
-	struct ieee80211_bss_conf *bss_conf = vif ? &vif->bss_conf : NULL;
-	struct sk_buff *skb;
-	__le32 *h2c;
-	int ret;
-
-	if (!RTW89_CHK_FW_FEATURE(BEACON_FILTER, &rtwdev->fw))
-		return -EINVAL;
-
-	if (!rtwvif || !bss_conf || rtwvif->net_type != RTW89_NET_TYPE_INFRA)
-		return -EINVAL;
-
-	skb = rtw89_fw_h2c_alloc_skb_with_hdr(rtwdev, H2C_CFG_BCN_FLTR_LEN);
-	if (!skb) {
-		rtw89_err(rtwdev, "failed to alloc skb for h2c bcn filter\n");
-		return -ENOMEM;
-	}
-
-	skb_put(skb, H2C_CFG_BCN_FLTR_LEN);
-	h2c = (__le32 *)skb->data;
-
-	h2c[0] = le32_encode_bits(connect, RTW89_H2C_BCNFLTR_W0_MON_RSSI) |
-		 le32_encode_bits(connect, RTW89_H2C_BCNFLTR_W0_MON_BCN) |
-		 le32_encode_bits(connect, RTW89_H2C_BCNFLTR_W0_MON_EN) |
-		 le32_encode_bits(RTW89_BCN_FLTR_OFFLOAD_MODE_DEFAULT,
-				  RTW89_H2C_BCNFLTR_W0_MODE) |
-		 le32_encode_bits(RTW89_BCN_LOSS_CNT, RTW89_H2C_BCNFLTR_W0_BCN_LOSS_CNT) |
-		 le32_encode_bits(bss_conf->cqm_rssi_hyst, RTW89_H2C_BCNFLTR_W0_RSSI_HYST) |
-		 le32_encode_bits(bss_conf->cqm_rssi_thold + MAX_RSSI,
-				  RTW89_H2C_BCNFLTR_W0_RSSI_THRESHOLD) |
-		 le32_encode_bits(rtwvif->mac_id, RTW89_H2C_BCNFLTR_W0_MAC_ID);
-
-	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
-			      H2C_CAT_MAC, H2C_CL_MAC_FW_OFLD,
-			      H2C_FUNC_CFG_BCNFLTR, 0, 1,
-			      H2C_CFG_BCN_FLTR_LEN);
-
-	ret = rtw89_h2c_tx(rtwdev, skb, false);
-	if (ret) {
-		rtw89_err(rtwdev, "failed to send h2c\n");
-		goto fail;
-	}
-
-	return 0;
-fail:
-	dev_kfree_skb_any(skb);
-
-	return ret;
-}
-
-#define H2C_RSSI_OFLD_LEN 8
-int rtw89_fw_h2c_rssi_offload(struct rtw89_dev *rtwdev,
-			      struct rtw89_rx_phy_ppdu *phy_ppdu)
-{
-	struct sk_buff *skb;
-	__le32 *h2c;
-	s8 rssi;
-	int ret;
-
-	if (!RTW89_CHK_FW_FEATURE(BEACON_FILTER, &rtwdev->fw))
-		return -EINVAL;
-
-	if (!phy_ppdu)
-		return -EINVAL;
-
-	skb = rtw89_fw_h2c_alloc_skb_with_hdr(rtwdev, H2C_RSSI_OFLD_LEN);
-	if (!skb) {
-		rtw89_err(rtwdev, "failed to alloc skb for h2c rssi\n");
-		return -ENOMEM;
-	}
-
-	rssi = phy_ppdu->rssi_avg >> RSSI_FACTOR;
-	skb_put(skb, H2C_RSSI_OFLD_LEN);
-	h2c = (__le32 *)skb->data;
-
-	h2c[0] = le32_encode_bits(phy_ppdu->mac_id, RTW89_H2C_OFLD_RSSI_W0_MACID) |
-		 le32_encode_bits(1, RTW89_H2C_OFLD_RSSI_W0_NUM);
-	h2c[1] = le32_encode_bits(rssi, RTW89_H2C_OFLD_RSSI_W1_VAL);
-
-	rtw89_h2c_pkt_set_hdr(rtwdev, skb, FWCMD_TYPE_H2C,
-			      H2C_CAT_MAC, H2C_CL_MAC_FW_OFLD,
-			      H2C_FUNC_OFLD_RSSI, 0, 1,
-			      H2C_RSSI_OFLD_LEN);
 
 	ret = rtw89_h2c_tx(rtwdev, skb, false);
 	if (ret) {
@@ -2976,6 +2889,7 @@ static int rtw89_fw_write_h2c_reg(struct rtw89_dev *rtwdev,
 				  struct rtw89_mac_h2c_info *info)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	const u32 *h2c_reg = chip->h2c_regs;
 	u8 i, val, len;
 	int ret;
@@ -2995,8 +2909,9 @@ static int rtw89_fw_write_h2c_reg(struct rtw89_dev *rtwdev,
 	for (i = 0; i < RTW89_H2CREG_MAX; i++)
 		rtw89_write32(rtwdev, h2c_reg[i], info->h2creg[i]);
 
-	rtw89_write8_mask_add(rtwdev, chip->h2c_counter_reg.addr,
-			      chip->h2c_counter_reg.mask, 1);
+	fw_info->h2c_counter++;
+	rtw89_write8_mask(rtwdev, chip->h2c_counter_reg.addr,
+			  chip->h2c_counter_reg.mask, fw_info->h2c_counter);
 	rtw89_write8(rtwdev, chip->h2c_ctrl_reg, B_AX_H2CREG_TRIGGER);
 
 	return 0;
@@ -3006,6 +2921,7 @@ static int rtw89_fw_read_c2h_reg(struct rtw89_dev *rtwdev,
 				 struct rtw89_mac_c2h_info *info)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	const u32 *c2h_reg = chip->c2h_regs;
 	u32 ret;
 	u8 i, val;
@@ -3029,8 +2945,9 @@ static int rtw89_fw_read_c2h_reg(struct rtw89_dev *rtwdev,
 	info->content_len = (RTW89_GET_C2H_HDR_LEN(*info->c2hreg) << 2) -
 				RTW89_C2HREG_HDR_LEN;
 
-	rtw89_write8_mask_add(rtwdev, chip->c2h_counter_reg.addr,
-			      chip->c2h_counter_reg.mask, 1);
+	fw_info->c2h_counter++;
+	rtw89_write8_mask(rtwdev, chip->c2h_counter_reg.addr,
+			  chip->c2h_counter_reg.mask, fw_info->c2h_counter);
 
 	return 0;
 }

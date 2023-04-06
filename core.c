@@ -733,9 +733,9 @@ static u16 rtw89_core_get_data_rate(struct rtw89_dev *rtwdev,
 		lowest_rate = RTW89_HW_RATE_OFDM6;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-	if (!sta->supp_rates[chan->band_type])
+	if (!sta || !sta->supp_rates[chan->band_type])
 #else
-	if (!sta->deflink.supp_rates[chan->band_type])
+	if (!sta || !sta->deflink.supp_rates[chan->band_type])
 #endif
 		return lowest_rate;
 

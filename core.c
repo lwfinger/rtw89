@@ -900,27 +900,6 @@ void rtw89_core_tx_kick_off(struct rtw89_dev *rtwdev, u8 qsel)
 	rtw89_hci_tx_kick_off(rtwdev, ch_dma);
 }
 
-static void rtw89_core_free_tx_wait_work(struct work_struct *work)
-{
-	struct rtw89_tx_wait_info *wait =
-			container_of(work, struct rtw89_tx_wait_info, work);
-	struct rtw89_dev *rtwdev = wait->rtwdev;
-	int done, ret;
-
-	/* Wait rtw89_core_tx_kick_off_and_wait() increase 'wait_done' to
-	 * ensure it doesn't use 'wait' anymore. The polling period is larger
-	 * than execution time between wait_for_completion_timeout() and
-	 * atomic_inc() in rtw89_core_tx_kick_off_and_wait().
-	 */
-	ret = read_poll_timeout(atomic_read, done, done, 1000, 100000, false,
-				&wait->wait_done);
-
-	if (ret)
-		rtw89_err(rtwdev, "tx wait timed out, stop polling\n");
-	else
-		kfree(wait);
-}
-
 int rtw89_core_tx_kick_off_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 				    int qsel, unsigned int timeout)
 {
@@ -929,8 +908,7 @@ int rtw89_core_tx_kick_off_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *sk
 	unsigned long time_left;
 	int ret = 0;
 
-	skb_data->wait = kzalloc(sizeof(*wait), GFP_KERNEL);
-	wait = skb_data->wait;
+	wait = kzalloc(sizeof(*wait), GFP_KERNEL);
 	if (!wait) {
 		rtw89_warn(rtwdev, "alloc tx wait info failed\n");
 		rtw89_core_tx_kick_off(rtwdev, qsel);
@@ -938,8 +916,7 @@ int rtw89_core_tx_kick_off_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *sk
 	}
 
 	init_completion(&wait->completion);
-	INIT_WORK(&wait->work, rtw89_core_free_tx_wait_work);
-	wait->rtwdev = rtwdev;
+	rcu_assign_pointer(skb_data->wait, wait);
 
 	rtw89_core_tx_kick_off(rtwdev, qsel);
 	time_left = wait_for_completion_timeout(&wait->completion,
@@ -949,7 +926,8 @@ int rtw89_core_tx_kick_off_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *sk
 	else if (!wait->tx_done)
 		ret = -EAGAIN;
 
-	atomic_inc(&wait->wait_done);
+	rcu_assign_pointer(skb_data->wait, NULL);
+	kfree_rcu(wait, rcu_head);
 
 	return ret;
 }
@@ -2124,9 +2102,6 @@ static void rtw89_core_txq_check_agg(struct rtw89_dev *rtwdev,
 	struct ieee80211_txq *txq = rtw89_txq_to_txq(rtwtxq);
 	struct ieee80211_sta *sta = txq->sta;
 	struct rtw89_sta *rtwsta = sta ? (struct rtw89_sta *)sta->drv_priv : NULL;
-
-	if (test_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags))
-		return;
 
 	if (test_bit(RTW89_TXQ_F_FORBID_BA, &rtwtxq->flags))
 		return;
@@ -3568,9 +3543,6 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 	rtwdev->txq_wq = alloc_workqueue("rtw89_tx_wq", WQ_UNBOUND | WQ_HIGHPRI, 0);
 	if (!rtwdev->txq_wq)
 		return -ENOMEM;
-	rtwdev->gc_wq = alloc_workqueue("rtw89_gc_wq", WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
-	if (!rtwdev->gc_wq)
-		return -ENOMEM;
 	spin_lock_init(&rtwdev->ba_lock);
 	spin_lock_init(&rtwdev->rpwm_lock);
 	mutex_init(&rtwdev->mutex);
@@ -3612,7 +3584,6 @@ void rtw89_core_deinit(struct rtw89_dev *rtwdev)
 	rtw89_fw_free_all_early_h2c(rtwdev);
 
 	destroy_workqueue(rtwdev->txq_wq);
-	destroy_workqueue(rtwdev->gc_wq);
 	mutex_destroy(&rtwdev->rf_mutex);
 	mutex_destroy(&rtwdev->mutex);
 }

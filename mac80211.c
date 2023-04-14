@@ -1130,8 +1130,8 @@ const struct ieee80211_ops rtw89_ops = {
 	.change_chanctx		= rtw89_ops_change_chanctx,
 	.assign_vif_chanctx	= rtw89_ops_assign_vif_chanctx,
 	.unassign_vif_chanctx	= rtw89_ops_unassign_vif_chanctx,
-	.remain_on_channel	= rtw89_ops_remain_on_channel,
-	.cancel_remain_on_channel = rtw89_ops_cancel_remain_on_channel,
+	.remain_on_channel		= rtw89_ops_remain_on_channel,
+	.cancel_remain_on_channel	= rtw89_ops_cancel_remain_on_channel,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	.set_sar_specs		= rtw89_ops_set_sar_specs,
 #endif

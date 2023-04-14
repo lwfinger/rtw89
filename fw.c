@@ -361,7 +361,6 @@ out:
 	release_firmware(firmware);
 	return NULL;
 }
-#endif
 
 int rtw89_fw_recognize(struct rtw89_dev *rtwdev)
 {

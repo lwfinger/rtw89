@@ -2628,15 +2628,13 @@ struct rtw89_phy_rate_pattern {
 };
 
 struct rtw89_tx_wait_info {
-	struct rtw89_dev *rtwdev;
+	struct rcu_head rcu_head;
 	struct completion completion;
-	struct work_struct work;
-	atomic_t wait_done;
 	bool tx_done;
 };
 
 struct rtw89_tx_skb_data {
-	struct rtw89_tx_wait_info *wait;
+	struct rtw89_tx_wait_info __rcu *wait;
 	u8 hci_priv[];
 };
 
@@ -4039,7 +4037,6 @@ struct rtw89_dev {
 	/* used to protect rf read write */
 	struct mutex rf_mutex;
 	struct workqueue_struct *txq_wq;
-	struct workqueue_struct *gc_wq;
 	struct work_struct txq_work;
 	struct delayed_work txq_reinvoke_work;
 	/* used to protect ba_list and forbid_ba_list */
@@ -4923,12 +4920,22 @@ static inline struct sk_buff *rtw89_alloc_skb_for_rx(struct rtw89_dev *rtwdev,
 }
 
 static inline void rtw89_core_tx_wait_complete(struct rtw89_dev *rtwdev,
-					       struct rtw89_tx_wait_info *wait,
+					       struct rtw89_tx_skb_data *skb_data,
 					       bool tx_done)
 {
+	struct rtw89_tx_wait_info *wait;
+
+	rcu_read_lock();
+
+	wait = rcu_dereference(skb_data->wait);
+	if (!wait)
+		goto out;
+
 	wait->tx_done = tx_done;
 	complete(&wait->completion);
-	queue_work(rtwdev->gc_wq, &wait->work);
+
+out:
+	rcu_read_unlock();
 }
 
 int rtw89_core_tx_write(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,

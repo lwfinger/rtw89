@@ -3800,7 +3800,11 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 
 	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS |
 			    WIPHY_FLAG_TDLS_EXTERNAL_SETUP |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 			    WIPHY_FLAG_AP_UAPSD | WIPHY_FLAG_SPLIT_SCAN_6GHZ;
+#else
+			    WIPHY_FLAG_AP_UAPSD;
+#endif
 	hw->wiphy->features |= NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
 
 	hw->wiphy->max_scan_ssids = RTW89_SCANOFLD_MAX_SSID;
@@ -3893,9 +3897,6 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	struct rtw89_dev *rtwdev;
 	struct ieee80211_ops *ops;
 	u32 driver_data_size;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
-	u32 early_feat_map = 0;
-#endif
 	int fw_format = -1;
 	bool no_chanctx;
 

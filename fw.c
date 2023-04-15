@@ -313,7 +313,6 @@ rtw89_early_fw_feature_recognize(struct device *device,
 	u32 ver_code;
 	int ret;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	/* If SECURITY_LOADPIN_ENFORCE is enabled, reading partial files will
 	 * be denied (-EPERM). Then, we don't get right firmware things as
 	 * expected. So, in this case, we have to request full firmware here.
@@ -325,19 +324,22 @@ rtw89_early_fw_feature_recognize(struct device *device,
 		rtw89_fw_get_filename(fw_name, sizeof(fw_name),
 				      chip->fw_basename, fw_format);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		if (full_req)
 			ret = request_firmware(&firmware, fw_name, device);
 		else
 			ret = request_partial_firmware_into_buf(&firmware, fw_name,
 								device, &buf, sizeof(buf),
 								0);
-		if (!ret) {
+#else
+		ret = request_firmware(&firmware, fw_name, device);
+#endif
+	if (!ret) {
 			dev_info(device, "loaded firmware %s\n", fw_name);
 			*used_fw_format = fw_format;
 			break;
 		}
 	}
-#endif
 
 	if (ret) {
 		dev_err(device, "failed to early request firmware: %d\n", ret);
@@ -3120,6 +3122,7 @@ static int rtw89_update_6ghz_rnr_chan(struct rtw89_dev *rtwdev,
 				      struct cfg80211_scan_request *req,
 				      struct rtw89_mac_chinfo *ch_info)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	struct ieee80211_vif *vif = rtwdev->scan_info.scanning_vif;
 	struct list_head *pkt_list = rtwdev->scan_info.pkt_list;
 	struct rtw89_vif *rtwvif = vif_to_rtwvif_safe(vif);
@@ -3185,6 +3188,9 @@ static int rtw89_update_6ghz_rnr_chan(struct rtw89_dev *rtwdev,
 
 out:
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 static void rtw89_hw_scan_add_chan(struct rtw89_dev *rtwdev, int chan_type,

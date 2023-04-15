@@ -334,7 +334,7 @@ rtw89_early_fw_feature_recognize(struct device *device,
 #else
 		ret = request_firmware(&firmware, fw_name, device);
 #endif
-	if (!ret) {
+		if (!ret) {
 			dev_info(device, "loaded firmware %s\n", fw_name);
 			*used_fw_format = fw_format;
 			break;
@@ -1185,7 +1185,7 @@ static void __rtw89_fw_h2c_set_tx_path(struct rtw89_dev *rtwdev,
 		ntx_path = hal->antenna_tx ? hal->antenna_tx : RF_B;
 		map_b = hal->antenna_tx == RF_AB ? 1 : 0;
 	}
- 
+
 	SET_CMC_TBL_NTX_PATH_EN(skb->data, ntx_path);
 	SET_CMC_TBL_PATH_MAP_A(skb->data, 0);
 	SET_CMC_TBL_PATH_MAP_B(skb->data, map_b);

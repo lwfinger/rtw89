@@ -39,6 +39,7 @@ rtw89core-y +=  core.o \
 		efuse.o \
 		regd.o \
 		sar.o \
+		acpi.o \
 		coex.o \
 		ps.o \
 		debug.o \

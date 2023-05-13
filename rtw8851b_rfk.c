@@ -12,6 +12,10 @@
 #include "rtw8851b_rfk_table.h"
 #include "rtw8851b_table.h"
 
+static const u32 dpk_kip_reg[DPK_KIP_REG_NUM_8851B] = {
+	0x813c, 0x8124, 0xc0ec, 0xc0e8, 0xc0c4, 0xc0d4, 0xc0d8};
+static const u32 dpk_rf_reg[DPK_RF_REG_NUM_8851B] = {0xde, 0x8f, 0x5, 0x10005};
+
 static u8 _kpath(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx)
 {
 	return RF_A;
@@ -42,6 +46,28 @@ enum rf_mode {
 	RF_RXK1 = 0x6,
 	RF_RXK2 = 0x7,
 };
+
+void rtw8851b_dpk(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy_idx)
+{
+	u8 phy_map = rtw89_btc_phymap(rtwdev, phy_idx, 0);
+	u32 tx_en;
+
+	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_DPK, BTC_WRFK_START);
+	rtw89_chip_stop_sch_tx(rtwdev, phy_idx, &tx_en, RTW89_SCH_TX_SEL_ALL);
+	_wait_rx_mode(rtwdev, _kpath(rtwdev, phy_idx));
+
+	rtwdev->dpk.is_dpk_enable = true;
+	rtwdev->dpk.is_dpk_reload_en = false;
+	_dpk(rtwdev, phy_idx, false);
+
+	rtw89_chip_resume_sch_tx(rtwdev, phy_idx, tx_en);
+	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_DPK, BTC_WRFK_STOP);
+}
+
+void rtw8851b_dpk_track(struct rtw89_dev *rtwdev)
+{
+	_dpk_track(rtwdev);
+}
 
 static void _bw_setting(struct rtw89_dev *rtwdev, enum rtw89_rf_path path,
 			enum rtw89_bandwidth bw, bool dav)

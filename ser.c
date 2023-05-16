@@ -341,6 +341,8 @@ static void ser_reset_mac_binding(struct rtw89_dev *rtwdev)
 	rtw89_core_release_all_bits_map(rtwdev->mac_id_map, RTW89_MAX_MAC_ID_NUM);
 	rtw89_for_each_rtwvif(rtwdev, rtwvif)
 		ser_reset_vif(rtwdev, rtwvif);
+
+	rtwdev->total_sta_assoc = 0;
 }
 
 /* hal function */

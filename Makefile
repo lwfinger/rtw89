@@ -55,7 +55,17 @@ rtw_8852a-y := rtw8852a.o \
 obj-m += rtw_8852ae.o
 rtw_8852ae-y := rtw8852ae.o
 
-obj-m += rtw_8852b.o
+obj-m += rtw_8851b.o
+rtw_8851b-y := rtw8851b.o \
+		    rtw8851b_table.o \
+		    rtw8851b_rfk.o \
+		    rtw8851b_rfk_table.o
+
+obj-m += rtw_8851b.o
+
+obj-m += rtw_8851be.o
+rtw_8851be-y := rtw8851be.o
+
 rtw_8852b-y := rtw8852b.o \
 		    rtw8852b_table.o \
 		    rtw8852b_rfk.o \

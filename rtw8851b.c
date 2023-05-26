@@ -17,7 +17,6 @@
 
 #define RTW8851B_FW_FORMAT_MAX 0
 #define RTW8851B_FW_BASENAME "rtw89/rtw8851b_fw"
-
 #define RTW8851B_MODULE_FIRMWARE \
 	RTW8851B_FW_BASENAME ".bin"
 
@@ -2318,6 +2317,15 @@ static const struct rtw89_chip_ops rtw8851b_chip_ops = {
 	.btc_set_policy		= rtw89_btc_set_policy_v1,
 };
 
+#ifdef CONFIG_PM
+static const struct wiphy_wowlan_support rtw_wowlan_stub_8851b = {
+	.flags = WIPHY_WOWLAN_MAGIC_PKT | WIPHY_WOWLAN_DISCONNECT,
+	.n_patterns = RTW89_MAX_PATTERN_NUM,
+	.pattern_max_len = RTW89_MAX_PATTERN_SIZE,
+	.pattern_min_len = 1,
+};
+#endif
+
 const struct rtw89_chip_info rtw8851b_chip_info = {
 	.chip_id		= RTL8851B,
 	.ops			= &rtw8851b_chip_ops,
@@ -2325,10 +2333,13 @@ const struct rtw89_chip_info rtw8851b_chip_info = {
 	.fw_format_max		= RTW8851B_FW_FORMAT_MAX,
 	.try_ce_fw		= true,
 	.fifo_size		= 196608,
+	.small_fifo_size	= true,
 	.dle_scc_rsvd_size	= 98304,
 	.max_amsdu_limit	= 3500,
 	.dis_2g_40m_ul_ofdma	= true,
 	.rsvd_ple_ofst		= 0x2f800,
+	.hfc_param_ini		= rtw8851b_hfc_param_ini_pcie,
+	.dle_mem		= rtw8851b_dle_mem_pcie,
 	.wde_qempty_acq_num     = 4,
 	.wde_qempty_mgq_sel     = 4,
 	.rf_base_addr		= {0xe000},
@@ -2338,6 +2349,7 @@ const struct rtw89_chip_info rtw8851b_chip_info = {
 	.bb_gain_table		= &rtw89_8851b_phy_bb_gain_table,
 	.rf_table		= {&rtw89_8851b_phy_radioa_table,},
 	.nctl_table		= &rtw89_8851b_phy_nctl_table,
+	.nctl_post_table	= &rtw8851b_nctl_post_defs_tbl,
 	.byr_table		= &rtw89_8851b_byr_table,
 	.dflt_parms		= &rtw89_8851b_dflt_parms,
 	.rfe_parms_conf		= rtw89_8851b_rfe_parms_conf,
@@ -2361,7 +2373,7 @@ const struct rtw89_chip_info rtw8851b_chip_info = {
 	.scam_num		= 128,
 	.bacam_num		= 2,
 	.bacam_dynamic_num	= 4,
-	.bacam_v1		= false,
+	.bacam_ver		= RTW89_BACAM_V0,
 	.sec_ctrl_efuse_size	= 4,
 	.physical_efuse_size	= 1216,
 	.logical_efuse_size	= 2048,
@@ -2411,6 +2423,10 @@ const struct rtw89_chip_info rtw8851b_chip_info = {
 				  BIT(RTW89_DMA_ACH6) | BIT(RTW89_DMA_ACH7) |
 				  BIT(RTW89_DMA_B1MG) | BIT(RTW89_DMA_B1HI),
 	.edcca_lvl_reg		= R_SEG0R_EDCCA_LVL_V1,
+#ifdef CONFIG_PM
+	.wowlan_stub		= &rtw_wowlan_stub_8851b,
+#endif
+	.xtal_info		= &rtw8851b_xtal_info,
 };
 EXPORT_SYMBOL(rtw8851b_chip_info);
 

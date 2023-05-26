@@ -18,25 +18,25 @@
 	RTW8852B_FW_BASENAME "-" __stringify(RTW8852B_FW_FORMAT_MAX) ".bin"
 
 static const struct rtw89_hfc_ch_cfg rtw8852b_hfc_chcfg_pcie[] = {
-	{5, 341, grp_0}, /* ACH 0 */
-	{5, 341, grp_0}, /* ACH 1 */
-	{4, 342, grp_0}, /* ACH 2 */
-	{4, 342, grp_0}, /* ACH 3 */
+	{5, 343, grp_0}, /* ACH 0 */
+	{5, 343, grp_0}, /* ACH 1 */
+	{5, 343, grp_0}, /* ACH 2 */
+	{5, 343, grp_0}, /* ACH 3 */
 	{0, 0, grp_0}, /* ACH 4 */
 	{0, 0, grp_0}, /* ACH 5 */
 	{0, 0, grp_0}, /* ACH 6 */
 	{0, 0, grp_0}, /* ACH 7 */
-	{4, 342, grp_0}, /* B0MGQ */
-	{4, 342, grp_0}, /* B0HIQ */
+	{4, 344, grp_0}, /* B0MGQ */
+	{4, 344, grp_0}, /* B0HIQ */
 	{0, 0, grp_0}, /* B1MGQ */
 	{0, 0, grp_0}, /* B1HIQ */
 	{40, 0, 0} /* FWCMDQ */
 };
 
 static const struct rtw89_hfc_pub_cfg rtw8852b_hfc_pubcfg_pcie = {
-	446, /* Group 0 */
+	448, /* Group 0 */
 	0, /* Group 1 */
-	446, /* Public Max */
+	448, /* Public Max */
 	0 /* WP threshold */
 };
 
@@ -49,13 +49,13 @@ static const struct rtw89_hfc_param_ini rtw8852b_hfc_param_ini_pcie[] = {
 };
 
 static const struct rtw89_dle_mem rtw8852b_dle_mem_pcie[] = {
-	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &rtw89_mac_size.wde_size7,
-			   &rtw89_mac_size.ple_size6, &rtw89_mac_size.wde_qt7,
-			   &rtw89_mac_size.wde_qt7, &rtw89_mac_size.ple_qt18,
+	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &rtw89_mac_size.wde_size6,
+			   &rtw89_mac_size.ple_size6, &rtw89_mac_size.wde_qt6,
+			   &rtw89_mac_size.wde_qt6, &rtw89_mac_size.ple_qt18,
 			   &rtw89_mac_size.ple_qt58},
-	[RTW89_QTA_WOW] = {RTW89_QTA_WOW, &rtw89_mac_size.wde_size7,
-			   &rtw89_mac_size.ple_size6, &rtw89_mac_size.wde_qt7,
-			   &rtw89_mac_size.wde_qt7, &rtw89_mac_size.ple_qt18,
+	[RTW89_QTA_WOW] = {RTW89_QTA_WOW, &rtw89_mac_size.wde_size6,
+			   &rtw89_mac_size.ple_size6, &rtw89_mac_size.wde_qt6,
+			   &rtw89_mac_size.wde_qt6, &rtw89_mac_size.ple_qt18,
 			   &rtw89_mac_size.ple_qt_52b_wow},
 	[RTW89_QTA_DLFW] = {RTW89_QTA_DLFW, &rtw89_mac_size.wde_size9,
 			    &rtw89_mac_size.ple_size8, &rtw89_mac_size.wde_qt4,
@@ -2507,6 +2507,7 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 	.fw_format_max		= RTW8852B_FW_FORMAT_MAX,
 	.try_ce_fw		= true,
 	.fifo_size		= 196608,
+	.small_fifo_size	= true,
 	.dle_scc_rsvd_size	= 98304,
 	.max_amsdu_limit	= 3500,
 	.dis_2g_40m_ul_ofdma	= true,
@@ -2523,6 +2524,7 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 	.rf_table		= {&rtw89_8852b_phy_radioa_table,
 				   &rtw89_8852b_phy_radiob_table,},
 	.nctl_table		= &rtw89_8852b_phy_nctl_table,
+	.nctl_post_table	= NULL,
 	.byr_table		= &rtw89_8852b_byr_table,
 	.dflt_parms		= &rtw89_8852b_dflt_parms,
 	.rfe_parms_conf		= NULL,
@@ -2546,7 +2548,7 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 	.scam_num		= 128,
 	.bacam_num		= 2,
 	.bacam_dynamic_num	= 4,
-	.bacam_v1		= false,
+	.bacam_ver		= RTW89_BACAM_V0,
 	.sec_ctrl_efuse_size	= 4,
 	.physical_efuse_size	= 1216,
 	.logical_efuse_size	= 2048,
@@ -2600,6 +2602,7 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 #ifdef CONFIG_PM
 	.wowlan_stub		= &rtw_wowlan_stub_8852b,
 #endif
+	.xtal_info		= NULL,
 };
 EXPORT_SYMBOL(rtw8852b_chip_info);
 

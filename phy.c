@@ -2638,7 +2638,6 @@ static void rtw89_phy_cfo_init(struct rtw89_dev *rtwdev)
 static void rtw89_phy_cfo_crystal_cap_adjust(struct rtw89_dev *rtwdev,
 					     s32 curr_cfo)
 {
-	const struct rtw89_chip_info *chip = rtwdev->chip;
 	struct rtw89_cfo_tracking_info *cfo = &rtwdev->cfo_tracking;
 	s8 crystal_cap = cfo->crystal_cap;
 	s32 cfo_abs = abs(curr_cfo);

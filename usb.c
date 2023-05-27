@@ -20,7 +20,7 @@ struct rtw89_usb_txcb {
 	struct sk_buff_head tx_ack_queue;
 };
 
-static void rtw89_usb_fill_tx_checksum(struct rtw_usb *rtwusb,
+static void rtw89_usb_fill_tx_checksum(struct rtw89_usb *rtwusb,
 				     struct sk_buff *skb, int agg_num)
 {
 	struct rtw89_dev *rtwdev = rtwusb->rtwdev;
@@ -76,7 +76,7 @@ static u32 rtw89_usb_read32(struct rtw89_dev *rtwdev, u32 addr)
 
 static void rtw89_usb_write(struct rtw89_dev *rtwdev, u32 addr, u32 val, int len)
 {
-	struct rtw89_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
 	unsigned long flags;
 	__le32 *data;
@@ -277,7 +277,7 @@ static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 qsel, struct sk_buf
 	return ret;
 }
 
-static bool rtw89_usb_tx_agg_skb(struct rtw_usb *rtwusb, struct sk_buff_head *list)
+static bool rtw89_usb_tx_agg_skb(struct rtw89_usb *rtwusb, struct sk_buff_head *list)
 {
 	struct rtw89_dev *rtwdev = rtwusb->rtwdev;
 	struct rtw89_usb_txcb *txcb;
@@ -346,7 +346,7 @@ queue:
 
 static void rtw89_usb_tx_handler(struct work_struct *work)
 {
-	struct rtw89_usb *rtwusb = container_of(work, struct rtw_usb, tx_work);
+	struct rtw89_usb *rtwusb = container_of(work, struct rtw89_usb, tx_work);
 	int i, limit;
 
 	for (i = ARRAY_SIZE(rtwusb->tx_queue) - 1; i >= 0; i--) {
@@ -359,7 +359,7 @@ static void rtw89_usb_tx_handler(struct work_struct *work)
 	}
 }
 
-static void rtw89_usb_tx_queue_purge(struct rtw_usb *rtwusb)
+static void rtw89_usb_tx_queue_purge(struct rtw89_usb *rtwusb)
 {
 	int i;
 
@@ -493,7 +493,7 @@ static void rtw89_usb_tx_kick_off(struct rtw89_dev *rtwdev)
 
 static void rtw89_usb_rx_handler(struct work_struct *work)
 {
-	struct rtw89_usb *rtwusb = container_of(work, struct rtw_usb, rx_work);
+	struct rtw89_usb *rtwusb = container_of(work, struct rtw89_usb, rx_work);
 	struct rtw89_dev *rtwdev = rtwusb->rtwdev;
 	const struct rtw_chip_info *chip = rtwdev->chip;
 	struct rtw_rx_pkt_stat pkt_stat;
@@ -536,7 +536,7 @@ static void rtw89_usb_rx_handler(struct work_struct *work)
 
 static void rtw89_usb_read_port_complete(struct urb *urb);
 
-static void rtw89_usb_rx_resubmit(struct rtw_usb *rtwusb, struct rx_usb_ctrl_block *rxcb)
+static void rtw89_usb_rx_resubmit(struct rtw89_usb *rtwusb, struct rx_usb_ctrl_block *rxcb)
 {
 	struct rtw89_dev *rtwdev = rtwusb->rtwdev;
 	int error;
@@ -601,7 +601,7 @@ static void rtw89_usb_read_port_complete(struct urb *urb)
 	}
 }
 
-static void rtw89_usb_cancel_rx_bufs(struct rtw_usb *rtwusb)
+static void rtw89_usb_cancel_rx_bufs(struct rtw89_usb *rtwusb)
 {
 	struct rx_usb_ctrl_block *rxcb;
 	int i;
@@ -627,7 +627,7 @@ static void rtw89_usb_free_rx_bufs(struct rtw89_usb *rtwusb)
 	}
 }
 
-static int rtw89_usb_alloc_rx_bufs(struct rtw_usb *rtwusb)
+static int rtw89_usb_alloc_rx_bufs(struct rtw89_usb *rtwusb)
 {
 	int i;
 
@@ -797,31 +797,62 @@ static void rtw89_usb_intf_deinit(struct rtw89_dev *rtwdev,
 int rtw89_usb_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {
 	struct rtw89_dev *rtwdev;
-	struct ieee80211_hw *hw;
-	struct rtw89_usb *rtwusb;
-	int drv_data_size;
+	const struct rtw89_driver_info *info;
+	const struct rtw89_usb_info *usb_info;
 	int ret;
+
+	info = (const struct rtw89_driver_info *)id->driver_data;
+
+	rtwdev = rtw89_alloc_ieee80211_hw(&pdev->dev,
+					  sizeof(struct rtw89_usb),
+					  info->chip);
+	if (!rtwdev) {
+		dev_err(&pdev->dev, "failed to allocate hw\n");
+		return -ENOMEM;
+	}
 
 	drv_data_size = sizeof(struct rtw89_dev) + sizeof(struct rtw89_usb);
 	hw = ieee80211_alloc_hw(drv_data_size, &rtw_ops);
 	if (!hw)
 		return -ENOMEM;
 
+	usb_info = info->bus.usb;
+
+	rtwdev->usb_info = info->bus.pci;
+	rtwdev->hci.ops = &rtw89_usb_ops;
+	rtwdev->hci.type = RTW89_HCI_TYPE_USB;
+	rtwdev->hci.rpwm_addr = usb_info->rpwm_addr;
+	rtwdev->hci.cpwm_addr = usb_info->cpwm_addr;
+
+	SET_IEEE80211_DEV(rtwdev->hw, &pdev->dev);
+
+	ret = rtw89_core_init(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to initialise core\n");
+		goto err_release_hw;
+	}
+
+	ret = rtw89_pci_claim_device(rtwdev, pdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to claim pci device\n");
+		goto err_core_deinit;
+	}
+
 	rtwdev = hw->priv;
 	rtwdev->hw = hw;
 	rtwdev->dev = &intf->dev;
 	rtwdev->chip = (struct rtw_chip_info *)id->driver_info;
 	rtwdev->rtw89_hci.ops = &rtw89_usb_ops;
-	rtwdev->hci.type = RTW_HCI_TYPE_USB;
+	rtwdev->hci.type = RTW89_HCI_TYPE_USB;
 
 	rtwusb = rtw_get_usb_priv(rtwdev);
 	rtwusb->rtwdev = rtwdev;
 
-	ret = rtw89_usb_alloc_rx_bufs(rtwusb);
+	ret = rtw89_usb_alloc_rx_bufs(&rtwusb);
 	if (ret)
 		return ret;
 
-	ret = rtw_core_init(rtwdev);
+	ret = rtw89_core_init(rtwdev);
 	if (ret)
 		goto err_release_hw;
 

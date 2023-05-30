@@ -3915,7 +3915,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 		goto err_free_supported_band;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	hw->wiphy->sar_capa = &rtw89_sar_capa;
+#endif
 
 	ret = ieee80211_register_hw(hw);
 	if (ret) {

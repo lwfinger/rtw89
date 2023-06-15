@@ -165,10 +165,12 @@ int rtw89_mfw_recognize(struct rtw89_dev *rtwdev, enum rtw89_fw_type type,
 	int i;
 
 	if (mfw_hdr->sig != RTW89_MFW_SIG) {
-		rtw89_debug(rtwdev, RTW89_DBG_FW, "use legacy firmware\n");
+		pr_info("***** use legacy firmware\n");
 		/* legacy firmware support normal type only */
-		if (type != RTW89_FW_NORMAL)
+		if (type != RTW89_FW_NORMAL) {
+			pr_info("***** type is wrong for legacy firmware\n");
 			return -EINVAL;
+		}
 		fw_suit->data = mfw;
 		fw_suit->size = mfw_len;
 		return 0;
@@ -176,6 +178,7 @@ int rtw89_mfw_recognize(struct rtw89_dev *rtwdev, enum rtw89_fw_type type,
 
 	for (i = 0; i < mfw_hdr->fw_nr; i++) {
 		mfw_info = &mfw_hdr->info[i];
+		pr_info("***** mfw_info->cv %d, rtwdev->hal.cv %d, mfw_info->type %d, type %d, mfw_info->mp %d\n", mfw_info->cv, rtwdev->hal.cv, mfw_info->type, type, mfw_info->mp);
 		if (mfw_info->cv != rtwdev->hal.cv ||
 		    mfw_info->type != type ||
 		    mfw_info->mp)
@@ -322,13 +325,16 @@ rtw89_early_fw_feature_recognize(struct device *device,
 	 * be denied (-EPERM). Then, we don't get right firmware things as
 	 * expected. So, in this case, we have to request full firmware here.
 	 */
-	if (IS_ENABLED(CONFIG_SECURITY_LOADPIN_ENFORCE))
+	if (IS_ENABLED(CONFIG_SECURITY_LOADPIN_ENFORCE)) {
 		full_req = true;
+		pr_info("***** CONFIG_SECURITY_LOADPIN_ENFORCE is enabled.\n");
+	}
 
 	for (fw_format = chip->fw_format_max; fw_format >= 0; fw_format--) {
 		rtw89_fw_get_filename(fw_name, sizeof(fw_name),
 				      chip->fw_basename, fw_format);
 
+		pr_info("***** fw_name is %s\n", fw_name);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 		if (full_req)
 			ret = request_firmware(&firmware, fw_name, device);
@@ -340,14 +346,14 @@ rtw89_early_fw_feature_recognize(struct device *device,
 		ret = request_firmware(&firmware, fw_name, device);
 #endif
 		if (!ret) {
-			dev_info(device, "loaded firmware %s\n", fw_name);
+			pr_info("***** loaded firmware %s, used format %d\n", fw_name, fw_format);
 			*used_fw_format = fw_format;
 			break;
 		}
 	}
 
 	if (ret) {
-		dev_err(device, "failed to early request firmware: %d\n", ret);
+		pr_err("***** failed to early request firmware: %d\n", ret);
 		return NULL;
 	}
 

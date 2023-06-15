@@ -3435,6 +3435,7 @@ static inline u32 rtw89_compat_fw_hdr_ver_code(const void *fw_buf)
 {
 	const union rtw89_compat_fw_hdr *compat = (typeof(compat))fw_buf;
 
+	pr_info("***** compat->mfw_hdr.sig %d\n", compat->mfw_hdr.sig);
 	if (compat->mfw_hdr.sig == RTW89_MFW_SIG)
 		return RTW89_MFW_HDR_VER_CODE(&compat->mfw_hdr);
 	else

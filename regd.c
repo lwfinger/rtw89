@@ -469,6 +469,7 @@ exit:
 	mutex_unlock(&rtwdev->mutex);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
 static void __rtw89_reg_6ghz_power_recalc(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_regulatory_info *regulatory = &rtwdev->regulatory;
@@ -531,3 +532,4 @@ void rtw89_reg_6ghz_power_recalc(struct rtw89_dev *rtwdev,
 
 	__rtw89_reg_6ghz_power_recalc(rtwdev);
 }
+#endif

@@ -256,7 +256,7 @@ static int rtw8852c_pwr_on_func(struct rtw89_dev *rtwdev)
 	rtw89_write32_set(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_ISO_EB2CORE);
 	rtw89_write32_clr(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B15);
 
-	fsleep_alt(1000);
+	fsleep(1000);
 
 	rtw89_write32_clr(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B14);
 	rtw89_write32_clr(rtwdev, R_AX_PMC_DBG_CTRL2, B_AX_SYSON_DIS_PMCR_AX_WRMSK);
@@ -1474,7 +1474,7 @@ static void rtw8852c_bb_reset_en(struct rtw89_dev *rtwdev, enum rtw89_band band,
 				      B_S0_HW_SI_DIS_W_R_TRIG, 0x7, phy_idx);
 		rtw89_phy_write32_idx(rtwdev, R_S1_HW_SI_DIS,
 				      B_S1_HW_SI_DIS_W_R_TRIG, 0x7, phy_idx);
-		fsleep_alt(1);
+		fsleep(1);
 		rtw89_phy_write32_idx(rtwdev, R_RSTB_ASYNC, B_RSTB_ASYNC_ALL, 0,
 				      phy_idx);
 	}
@@ -1754,7 +1754,7 @@ static void rtw8852c_set_channel_help(struct rtw89_dev *rtwdev, bool enter,
 		rtw8852c_dfs_en(rtwdev, false);
 		rtw8852c_tssi_cont_en_phyidx(rtwdev, false, phy_idx);
 		rtw8852c_adc_en(rtwdev, false);
-		fsleep_alt(40);
+		fsleep(40);
 		rtw8852c_bb_reset_en(rtwdev, chan->band_type, phy_idx, false);
 	} else {
 		rtw89_mac_cfg_ppdu_status(rtwdev, mac_idx, true);
@@ -2304,7 +2304,7 @@ static u8 rtw8852c_get_thermal(struct rtw89_dev *rtwdev, enum rtw89_rf_path rf_p
 	rtw89_write_rf(rtwdev, rf_path, RR_TM, RR_TM_TRI, 0x0);
 	rtw89_write_rf(rtwdev, rf_path, RR_TM, RR_TM_TRI, 0x1);
 
-	fsleep_alt(200);
+	fsleep(200);
 
 	return rtw89_read_rf(rtwdev, rf_path, RR_TM, RR_TM_VAL);
 }

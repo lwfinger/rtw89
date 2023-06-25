@@ -776,7 +776,7 @@ static void _iqk_rxk_setting(struct rtw89_dev *rtwdev, u8 path)
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_OFF, 0x13);
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x1);
-	fsleep_alt(128);
+	fsleep(128);
 }
 
 static bool _iqk_check_cal(struct rtw89_dev *rtwdev, u8 path, u8 ktype)
@@ -1212,7 +1212,7 @@ static bool _iqk_lok(struct rtw89_dev *rtwdev,
 	rtw89_phy_write32_mask(rtwdev, R_KIP_IQP + (path << 8), MASKDWORD, itqt);
 	tmp = _iqk_one_shot(rtwdev, phy_idx, path, ID_FLOK_COARSE);
 	iqk_info->lok_cor_fail[0][path] = tmp;
-	fsleep_alt(10);
+	fsleep(10);
 	rtw89_phy_write32_mask(rtwdev, R_KIP_IQP + (path << 8), MASKDWORD, itqt);
 	tmp = _iqk_one_shot(rtwdev, phy_idx, path, ID_FLOK_FINE);
 	iqk_info->lok_fin_fail[0][path] = tmp;
@@ -1717,7 +1717,7 @@ static void _set_rx_dck(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 	rtw89_write_rf(rtwdev, path, RR_DCK, RR_DCK_LV, 0x0);
 	rtw89_write_rf(rtwdev, path, RR_DCK, RR_DCK_LV, 0x1);
 
-	fsleep_alt(600);
+	fsleep(600);
 
 	rtw89_btc_ntfy_wl_rfk(rtwdev, phy_map, BTC_WRFKT_RXDCK, BTC_WRFK_ONESHOT_STOP);
 
@@ -2011,7 +2011,7 @@ static void _dpk_lbk_rxiqk(struct rtw89_dev *rtwdev,
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x0);
 	rtw89_write_rf(rtwdev, path, RR_RXKPLL, RR_RXKPLL_POW, 0x1);
 
-	fsleep_alt(70);
+	fsleep(70);
 
 	rtw89_write_rf(rtwdev, path, RR_RXIQGEN, RR_RXIQGEN_ATTL, 0x1f);
 

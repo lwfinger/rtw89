@@ -1890,7 +1890,7 @@ __get_target(struct rtw89_dev *rtwdev, u16 *target, enum rtw89_pcie_phy phy_rate
 	if (ret)
 		return ret;
 
-	fsleep_alt(300);
+	fsleep(300);
 
 	ret = rtw89_read16_mdio(rtwdev, RAC_CTRL_PPR_V1, phy_rate, &tar);
 	if (ret)

@@ -59,7 +59,7 @@ static void rtw89_enable_efuse_pwr_cut_ddv(struct rtw89_dev *rtwdev)
 	rtw89_write8_set(rtwdev, R_AX_PMC_DBG_CTRL2, B_AX_SYSON_DIS_PMCR_AX_WRMSK);
 	rtw89_write16_set(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B14);
 
-	fsleep_alt(1000);
+	fsleep(1000);
 
 	rtw89_write16_set(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B15);
 	rtw89_write16_clr(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_ISO_EB2CORE);
@@ -81,7 +81,7 @@ static void rtw89_disable_efuse_pwr_cut_ddv(struct rtw89_dev *rtwdev)
 	rtw89_write16_set(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_ISO_EB2CORE);
 	rtw89_write16_clr(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B15);
 
-	fsleep_alt(1000);
+	fsleep(1000);
 
 	rtw89_write16_clr(rtwdev, R_AX_SYS_ISO_CTRL, B_AX_PWC_EV2EF_B14);
 	rtw89_write8_clr(rtwdev, R_AX_PMC_DBG_CTRL2, B_AX_SYSON_DIS_PMCR_AX_WRMSK);

@@ -5170,8 +5170,11 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 #define SUSE 0
 #endif
 
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 /* see Documentation/timers/timers-howto.rst for the thresholds */
-static inline void fsleep_alt(unsigned long usecs)
+static inline void fsleep(unsigned long usecs)
 {
 	if (usecs <= 10)
 		udelay(usecs);
@@ -5180,8 +5183,6 @@ static inline void fsleep_alt(unsigned long usecs)
 	else
 		msleep(DIV_ROUND_UP(usecs, 1000));
 }
-#else
-#define fsleep_alt fsleep
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && (SUSE == 0)

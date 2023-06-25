@@ -374,7 +374,7 @@ static void _addck(struct rtw89_dev *rtwdev)
 	rtw89_phy_write32_mask(rtwdev, R_ADDCK0, B_ADDCK0_RST, 0x1);
 	rtw89_phy_write32_mask(rtwdev, R_ADDCK0, B_ADDCK0_EN, 0x1);
 	rtw89_phy_write32_mask(rtwdev, R_ADDCK0, B_ADDCK0_EN, 0x0);
-	fsleep_alt(1);
+	fsleep(1);
 	rtw89_phy_write32_mask(rtwdev, R_ADDCK0, B_ADDCK0, 0x1);
 
 	ret = read_poll_timeout_atomic(rtw89_phy_read32_mask, val, val,
@@ -770,7 +770,7 @@ static bool _iqk_one_shot(struct rtw89_dev *rtwdev,
 	}
 
 	rtw89_phy_write32_mask(rtwdev, R_NCTL_CFG, MASKDWORD, iqk_cmd + 1);
-	fsleep_alt(15);
+	fsleep(15);
 	fail = _iqk_check_cal(rtwdev, path, ktype);
 	rtw89_phy_write32_mask(rtwdev, addr_rfc_ctl, 0x00000002, 0x0);
 
@@ -814,7 +814,7 @@ static bool _rxk_group_sel(struct rtw89_dev *rtwdev,
 		break;
 	}
 
-	fsleep_alt(10);
+	fsleep(10);
 
 	for (gp = 0; gp < RXK_GROUP_NR; gp++) {
 		switch (iqk_info->iqk_band[path]) {
@@ -899,7 +899,7 @@ static bool _iqk_nbrxk(struct rtw89_dev *rtwdev,
 		break;
 	}
 
-	fsleep_alt(10);
+	fsleep(10);
 
 	switch (iqk_info->iqk_band[path]) {
 	case RTW89_BAND_2G:
@@ -1223,7 +1223,7 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 		rtw89_write_rf(rtwdev, path, RR_LUTWE, RR_LUTWE_LOK, 0x1);
 		rtw89_write_rf(rtwdev, path, RR_MOD, RFREG_MASK,
 			       0x403e0 | iqk_info->syn1to2);
-		fsleep_alt(10);
+		fsleep(10);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR0, 0x0);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR1, 0x6);
 		break;
@@ -1235,7 +1235,7 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 		rtw89_write_rf(rtwdev, path, RR_LUTWE, RR_LUTWE_LOK, 0x1);
 		rtw89_write_rf(rtwdev, path, RR_MOD, RFREG_MASK,
 			       0x403e0 | iqk_info->syn1to2);
-		fsleep_alt(10);
+		fsleep(10);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR0, 0x0);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR1, 0x6);
 		break;
@@ -1247,7 +1247,7 @@ static void _iqk_txk_setting(struct rtw89_dev *rtwdev, u8 path)
 		rtw89_write_rf(rtwdev, path, RR_LUTWE, RR_LUTWE_LOK, 0x1);
 		rtw89_write_rf(rtwdev, path, RR_MOD, RFREG_MASK,
 			       0x403e0  | iqk_info->syn1to2);
-		fsleep_alt(10);
+		fsleep(10);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR0, 0x0);
 		rtw89_write_rf(rtwdev, path, RR_TXIG, RR_TXIG_GR1, 0x6);
 		break;
@@ -1382,7 +1382,7 @@ static void _iqk_restore(struct rtw89_dev *rtwdev, u8 path)
 			       iqk_info->nb_rxcfir[path]);
 	rtw89_phy_write32_mask(rtwdev, R_NCTL_CFG, MASKDWORD,
 			       0x00001219 + (path << 4));
-	fsleep_alt(200);
+	fsleep(200);
 	fail = _iqk_check_cal(rtwdev, path, 0x12);
 	rtw89_debug(rtwdev, RTW89_DBG_RFK, "[IQK] restore fail  = %x\n", fail);
 
@@ -2476,7 +2476,7 @@ static void _dpk_idl_mpa(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 		_dpk_set_mdpd_para(rtwdev, 0x0);
 
 	rtw89_phy_write32_mask(rtwdev, R_DPK_IDL, B_DPK_IDL, 0x0);
-	fsleep_alt(1000);
+	fsleep(1000);
 
 	_dpk_one_shot(rtwdev, phy, path, D_MDPK_IDL);
 	rtw89_phy_write32_mask(rtwdev, R_KIP_RPT1, B_KIP_RPT1_SEL, 0x0);
@@ -3868,7 +3868,7 @@ static void _ctrl_bw(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,
 			tmp = rtw89_read_rf(rtwdev, RF_PATH_A, RR_CFGCH, RFREG_MASK);
 			rtw89_write_rf(rtwdev, RF_PATH_B, RR_APK, RR_APK_MOD, 0x3);
 			rtw89_write_rf(rtwdev, RF_PATH_B, RR_CFGCH, RFREG_MASK, tmp);
-			fsleep_alt(100);
+			fsleep(100);
 			rtw89_write_rf(rtwdev, RF_PATH_B, RR_RSV1, RR_RSV1_RST, 0x1);
 		}
 	}
@@ -3907,7 +3907,7 @@ static void _ch_setting(struct rtw89_dev *rtwdev, enum rtw89_rf_path path,
 		break;
 	}
 	rtw89_write_rf(rtwdev, path, reg_reg18_addr, RFREG_MASK, rf_reg18);
-	fsleep_alt(100);
+	fsleep(100);
 }
 
 static void _ctrl_ch(struct rtw89_dev *rtwdev, enum rtw89_phy_idx phy,

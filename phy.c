@@ -568,6 +568,12 @@ static bool __check_rate_pattern(struct rtw89_phy_rate_pattern *next,
 	return true;
 }
 
+#define RTW89_HW_RATE_BY_CHIP_GEN(rate) \
+	{ \
+		[RTW89_CHIP_AX] = RTW89_HW_RATE_ ## rate, \
+		[RTW89_CHIP_BE] = RTW89_HW_RATE_V1_ ## rate, \
+	}
+
 void rtw89_phy_rate_pattern_vif(struct rtw89_dev *rtwdev,
 				struct ieee80211_vif *vif,
 				const struct cfg80211_bitrate_mask *mask)

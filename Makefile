@@ -133,6 +133,8 @@ else
 endif
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89core.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw89pci.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8851b.ko
+	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8851be.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852a.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852ae.ko
 	@$(KSRC)/scripts/sign-file sha256 MOK.priv MOK.der rtw_8852b.ko

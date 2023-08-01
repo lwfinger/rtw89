@@ -315,9 +315,7 @@ int __rtw89_fw_recognize(struct rtw89_dev *rtwdev, enum rtw89_fw_type type,
 	if (ret)
 		return ret;
 
-	rtw89_fw_update_ver(rtwdev, type, fw_suit);
-
-	return 0;
+	return rtw89_fw_update_ver(rtwdev, type, fw_suit);
 }
 
 static

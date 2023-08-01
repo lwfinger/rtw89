@@ -3401,6 +3401,13 @@ struct rtw89_fw_req_info {
 	struct completion completion;
 };
 
+struct rtw89_fw_elm_info {
+	struct rtw89_phy_table *bb_tbl;
+	struct rtw89_phy_table *bb_gain;
+	struct rtw89_phy_table *rf_radio[RF_PATH_MAX];
+	struct rtw89_phy_table *rf_nctl;
+};
+
 struct rtw89_fw_info {
 	struct rtw89_fw_req_info req;
 	int fw_format;
@@ -3412,6 +3419,7 @@ struct rtw89_fw_info {
 	struct rtw89_fw_suit wowlan;
 	bool fw_log_enable;
 	u32 feature_map;
+	struct rtw89_fw_elm_info elm_info;
 };
 
 #define RTW89_CHK_FW_FEATURE(_feat, _fw) \

@@ -3199,6 +3199,26 @@ struct rtw89_fw_c2h_log_fmt {
 #define RTW89_C2H_FW_LOG_SIGNATURE 0xA5A5
 #define RTW89_C2H_FW_LOG_STR_BUF_SIZE 512
 
+struct rtw89_fw_c2h_log_fmt {
+	__le16 signature;
+	u8 feature;
+	u8 syntax;
+	__le32 fmt_id;
+	u8 file_num;
+	__le16 line_num;
+	u8 argc;
+	union {
+		DECLARE_FLEX_ARRAY(u8, raw);
+		DECLARE_FLEX_ARRAY(__le32, argv);
+	} __packed u;
+} __packed;
+
+#define RTW89_C2H_FW_FORMATTED_LOG_MIN_LEN 11
+#define RTW89_C2H_FW_LOG_FEATURE_PARA_INT BIT(2)
+#define RTW89_C2H_FW_LOG_MAX_PARA_NUM 16
+#define RTW89_C2H_FW_LOG_SIGNATURE 0xA5A5
+#define RTW89_C2H_FW_LOG_STR_BUF_SIZE 512
+
 struct rtw89_c2h_mac_bcnfltr_rpt {
 	__le32 w0;
 	__le32 w1;
@@ -3397,6 +3417,12 @@ struct rtw89_fw_element_hdr {
 			} __packed regs[];
 		} __packed reg2;
 	} __packed u;
+} __packed;
+
+struct rtw89_fw_logsuit_hdr {
+	__le32 rsvd;
+	__le32 count;
+	__le32 ids[];
 } __packed;
 
 struct rtw89_fw_logsuit_hdr {

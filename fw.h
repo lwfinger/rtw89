@@ -475,6 +475,22 @@ struct rtw89_fw_hdr {
 #define FW_HDR_W7_DYN_HDR BIT(16)
 #define FW_HDR_W7_CMD_VERSERION GENMASK(31, 24)
 
+struct rtw89_fw_hdr_section_v1 {
+	__le32 w0;
+	__le32 w1;
+	__le32 w2;
+	__le32 w3;
+} __packed;
+
+#define FWSECTION_HDR_V1_W0_DL_ADDR GENMASK(31, 0)
+#define FWSECTION_HDR_V1_W1_METADATA GENMASK(31, 24)
+#define FWSECTION_HDR_V1_W1_SECTIONTYPE GENMASK(27, 24)
+#define FWSECTION_HDR_V1_W1_SEC_SIZE GENMASK(23, 0)
+#define FWSECTION_HDR_V1_W1_CHECKSUM BIT(28)
+#define FWSECTION_HDR_V1_W1_REDL BIT(29)
+#define FWSECTION_HDR_V1_W2_MSSC GENMASK(7, 0)
+#define FWSECTION_HDR_V1_W2_BBMCU_IDX GENMASK(27, 24)
+
 struct rtw89_fw_hdr_v1 {
 	__le32 w0;
 	__le32 w1;
@@ -488,6 +504,7 @@ struct rtw89_fw_hdr_v1 {
 	__le32 w9;
 	__le32 w10;
 	__le32 w11;
+	struct rtw89_fw_hdr_section_v1 sections[];
 } __packed;
 
 #define FW_HDR_V1_W1_MAJOR_VERSION GENMASK(7, 0)
@@ -3199,26 +3216,6 @@ struct rtw89_fw_c2h_log_fmt {
 #define RTW89_C2H_FW_LOG_SIGNATURE 0xA5A5
 #define RTW89_C2H_FW_LOG_STR_BUF_SIZE 512
 
-struct rtw89_fw_c2h_log_fmt {
-	__le16 signature;
-	u8 feature;
-	u8 syntax;
-	__le32 fmt_id;
-	u8 file_num;
-	__le16 line_num;
-	u8 argc;
-	union {
-		DECLARE_FLEX_ARRAY(u8, raw);
-		DECLARE_FLEX_ARRAY(__le32, argv);
-	} __packed u;
-} __packed;
-
-#define RTW89_C2H_FW_FORMATTED_LOG_MIN_LEN 11
-#define RTW89_C2H_FW_LOG_FEATURE_PARA_INT BIT(2)
-#define RTW89_C2H_FW_LOG_MAX_PARA_NUM 16
-#define RTW89_C2H_FW_LOG_SIGNATURE 0xA5A5
-#define RTW89_C2H_FW_LOG_STR_BUF_SIZE 512
-
 struct rtw89_c2h_mac_bcnfltr_rpt {
 	__le32 w0;
 	__le32 w1;
@@ -3238,16 +3235,24 @@ struct rtw89_c2h_ra_rpt {
 
 #define RTW89_C2H_RA_RPT_W2_MACID GENMASK(15, 0)
 #define RTW89_C2H_RA_RPT_W2_RETRY_RATIO GENMASK(23, 16)
+#define RTW89_C2H_RA_RPT_W2_MCSNSS_B7 BIT(31)
 #define RTW89_C2H_RA_RPT_W3_MCSNSS GENMASK(6, 0)
 #define RTW89_C2H_RA_RPT_W3_MD_SEL GENMASK(9, 8)
 #define RTW89_C2H_RA_RPT_W3_GILTF GENMASK(12, 10)
 #define RTW89_C2H_RA_RPT_W3_BW GENMASK(14, 13)
+#define RTW89_C2H_RA_RPT_W3_MD_SEL_B2 BIT(15)
+#define RTW89_C2H_RA_RPT_W3_BW_B2 BIT(16)
 
-/* VHT, HE, HT-old: [6:4]: NSS, [3:0]: MCS
- * HT-new: [6:5]: NA, [4:0]: MCS
+/* For WiFi 6 chips:
+ *   VHT, HE, HT-old: [6:4]: NSS, [3:0]: MCS
+ *   HT-new: [6:5]: NA, [4:0]: MCS
+ * For WiFi 7 chips (V1):
+ *   HT, VHT, HE, EHT: [7:5]: NSS, [4:0]: MCS
  */
 #define RTW89_RA_RATE_MASK_NSS GENMASK(6, 4)
 #define RTW89_RA_RATE_MASK_MCS GENMASK(3, 0)
+#define RTW89_RA_RATE_MASK_NSS_V1 GENMASK(7, 5)
+#define RTW89_RA_RATE_MASK_MCS_V1 GENMASK(4, 0)
 #define RTW89_RA_RATE_MASK_HT_MCS GENMASK(4, 0)
 #define RTW89_MK_HT_RATE(nss, mcs) (FIELD_PREP(GENMASK(4, 3), nss) | \
 				    FIELD_PREP(GENMASK(2, 0), mcs))
@@ -3389,11 +3394,26 @@ struct rtw89_mfw_hdr {
 	struct rtw89_mfw_info info[];
 } __packed;
 
+struct rtw89_fw_logsuit_hdr {
+	__le32 rsvd;
+	__le32 count;
+	__le32 ids[];
+} __packed;
+
 #define RTW89_FW_ELEMENT_ALIGN 16
 
 enum rtw89_fw_element_id {
 	RTW89_FW_ELEMENT_ID_BBMCU0 = 0,
 	RTW89_FW_ELEMENT_ID_BBMCU1 = 1,
+	RTW89_FW_ELEMENT_ID_BB_REG = 2,
+	RTW89_FW_ELEMENT_ID_BB_GAIN = 3,
+	RTW89_FW_ELEMENT_ID_RADIO_A = 4,
+	RTW89_FW_ELEMENT_ID_RADIO_B = 5,
+	RTW89_FW_ELEMENT_ID_RADIO_C = 6,
+	RTW89_FW_ELEMENT_ID_RADIO_D = 7,
+	RTW89_FW_ELEMENT_ID_RF_NCTL = 8,
+
+	RTW89_FW_ELEMENT_ID_NUM,
 };
 
 struct rtw89_fw_element_hdr {
@@ -3417,18 +3437,6 @@ struct rtw89_fw_element_hdr {
 			} __packed regs[];
 		} __packed reg2;
 	} __packed u;
-} __packed;
-
-struct rtw89_fw_logsuit_hdr {
-	__le32 rsvd;
-	__le32 count;
-	__le32 ids[];
-} __packed;
-
-struct rtw89_fw_logsuit_hdr {
-	__le32 rsvd;
-	__le32 count;
-	__le32 ids[];
 } __packed;
 
 struct fwcmd_hdr {

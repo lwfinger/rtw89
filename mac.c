@@ -758,11 +758,8 @@ static int hfc_reset_param(struct rtw89_dev *rtwdev)
 	if (param_ini.pub_cfg)
 		param->pub_cfg = *param_ini.pub_cfg;
 
-	if (param_ini.prec_cfg) {
+	if (param_ini.prec_cfg)
 		param->prec_cfg = *param_ini.prec_cfg;
-		rtwdev->hal.sw_amsdu_max_size =
-				param->prec_cfg.wp_ch07_prec * HFC_PAGE_UNIT;
-	}
 
 	if (param_ini.ch_cfg)
 		param->ch_cfg = param_ini.ch_cfg;
@@ -1467,6 +1464,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.wde_size4 = {RTW89_WDE_PG_64, 0, 4096,},
 	/* PCIE 64 */
 	.wde_size6 = {RTW89_WDE_PG_64, 512, 0,},
+	/* 8852B PCIE SCC */
+	.wde_size7 = {RTW89_WDE_PG_64, 510, 2,},
 	/* DLFW */
 	.wde_size9 = {RTW89_WDE_PG_64, 0, 1024,},
 	/* 8852C DLFW */
@@ -1491,6 +1490,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.wde_qt4 = {0, 0, 0, 0,},
 	/* PCIE 64 */
 	.wde_qt6 = {448, 48, 0, 16,},
+	/* 8852B PCIE SCC */
+	.wde_qt7 = {446, 48, 0, 16,},
 	/* 8852C DLFW */
 	.wde_qt17 = {0, 0, 0,  0,},
 	/* 8852C PCIE SCC */
@@ -1537,7 +1538,6 @@ static const struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 		return NULL;
 	}
 
-	mac->dle_info.wde_pg_size = cfg->wde_size->pge_size;
 	mac->dle_info.ple_pg_size = cfg->ple_size->pge_size;
 	mac->dle_info.qta_mode = mode;
 	mac->dle_info.c0_rx_qta = cfg->ple_min_qt->cma0_dma;

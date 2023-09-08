@@ -2932,6 +2932,8 @@ int rtw89_core_sta_add(struct rtw89_dev *rtwdev,
 			rtw89_warn(rtwdev, "failed to send h2c role info\n");
 			return ret;
 		}
+
+		rtw89_queue_chanctx_change(rtwdev, RTW89_CHANCTX_REMOTE_STA_CHANGE);
 	}
 
 	return 0;
@@ -3097,6 +3099,8 @@ int rtw89_core_sta_remove(struct rtw89_dev *rtwdev,
 			rtw89_warn(rtwdev, "failed to send h2c role info\n");
 			return ret;
 		}
+
+		rtw89_queue_chanctx_change(rtwdev, RTW89_CHANCTX_REMOTE_STA_CHANGE);
 	}
 
 	return 0;

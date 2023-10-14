@@ -3019,7 +3019,9 @@ static void rtw89_track_work(struct work_struct *work)
 	rtw89_phy_tx_path_div_track(rtwdev);
 	rtw89_phy_antdiv_track(rtwdev);
 	rtw89_phy_ul_tb_ctrl_track(rtwdev);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	rtw89_tas_track(rtwdev);
+#endif
 	rtw89_chanctx_track(rtwdev);
 
 	if (rtwdev->lps_enabled && !rtwdev->btc.lps)
@@ -3897,7 +3899,9 @@ int rtw89_core_start(struct rtw89_dev *rtwdev)
 	rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
 	rtw89_mac_update_rts_threshold(rtwdev, RTW89_MAC_0);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	rtw89_tas_reset(rtwdev);
+#endif
 
 	ret = rtw89_hci_start(rtwdev);
 	if (ret) {
@@ -4017,7 +4021,9 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 
 	rtw89_ser_init(rtwdev);
 	rtw89_entity_init(rtwdev);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	rtw89_tas_init(rtwdev);
+#endif
 
 	return 0;
 }

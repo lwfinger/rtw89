@@ -619,10 +619,10 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	seq_puts(m, "[SAR]\n");
 	rtw89_print_sar(m, rtwdev, chan->freq);
-#endif
 
 	seq_puts(m, "[TAS]\n");
 	rtw89_print_tas(m, rtwdev);
+#endif
 
 	seq_puts(m, "\n[TX power byrate]\n");
 	ret = __print_txpwr_map(m, rtwdev, &__txpwr_map_byr);

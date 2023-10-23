@@ -1786,12 +1786,12 @@ s8 rtw89_phy_read_txpwr_limit(struct rtw89_dev *rtwdev, u8 band,
 	const struct rtw89_txpwr_rule_5ghz *rule_5ghz = &rfe_parms->rule_5ghz;
 	const struct rtw89_txpwr_rule_6ghz *rule_6ghz = &rfe_parms->rule_6ghz;
 	struct rtw89_regulatory_info *regulatory = &rtwdev->regulatory;
-	enum nl80211_band nl_band = rtw89_hw_to_nl80211_band(band);
-	u32 freq = ieee80211_channel_to_frequency(ch, nl_band);
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, band, ch);
 	u8 regd = rtw89_regd_get(rtwdev, band);
 	u8 reg6 = regulatory->reg_6ghz_power;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	enum nl80211_band nl_band = rtw89_hw_to_nl80211_band(band);
+	u32 freq = ieee80211_channel_to_frequency(ch, nl_band);
 	s8 lmt = 0, sar;
 #else
 	s8 lmt = 0;
@@ -2051,12 +2051,12 @@ static s8 rtw89_phy_read_txpwr_limit_ru(struct rtw89_dev *rtwdev, u8 band,
 	const struct rtw89_txpwr_rule_5ghz *rule_5ghz = &rfe_parms->rule_5ghz;
 	const struct rtw89_txpwr_rule_6ghz *rule_6ghz = &rfe_parms->rule_6ghz;
 	struct rtw89_regulatory_info *regulatory = &rtwdev->regulatory;
-	enum nl80211_band nl_band = rtw89_hw_to_nl80211_band(band);
-	u32 freq = ieee80211_channel_to_frequency(ch, nl_band);
 	u8 ch_idx = rtw89_channel_to_idx(rtwdev, band, ch);
 	u8 regd = rtw89_regd_get(rtwdev, band);
 	u8 reg6 = regulatory->reg_6ghz_power;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	enum nl80211_band nl_band = rtw89_hw_to_nl80211_band(band);
+	u32 freq = ieee80211_channel_to_frequency(ch, nl_band);
 	s8 lmt_ru = 0, sar;
 #else
 	s8 lmt_ru = 0;

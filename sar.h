@@ -10,6 +10,7 @@
 #define RTW89_SAR_TXPWR_MAC_MAX S8_MAX
 #define RTW89_SAR_TXPWR_MAC_MIN S8_MIN
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 struct rtw89_sar_handler {
 	const char *descr_sar_source;
 	u8 txpwr_factor_sar;
@@ -26,5 +27,7 @@ int rtw89_ops_set_sar_specs(struct ieee80211_hw *hw,
 void rtw89_tas_init(struct rtw89_dev *rtwdev);
 void rtw89_tas_reset(struct rtw89_dev *rtwdev);
 void rtw89_tas_track(struct rtw89_dev *rtwdev);
+
+#endif
 
 #endif

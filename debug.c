@@ -2,6 +2,8 @@
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
 
+#include <linux/vmalloc.h>
+
 #include "coex.h"
 #include "debug.h"
 #include "fw.h"
@@ -55,7 +57,9 @@ static const u16 rtw89_rate_info_bw_to_mhz_map[] = {
 	[RATE_INFO_BW_40] = 40,
 	[RATE_INFO_BW_80] = 80,
 	[RATE_INFO_BW_160] = 160,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	[RATE_INFO_BW_320] = 320,
+#endif
 };
 
 static u16 rtw89_rate_info_bw_to_mhz(enum rate_info_bw bw)
@@ -134,7 +138,7 @@ rtw89_debug_priv_read_reg_select(struct file *filp,
 	struct seq_file *m = (struct seq_file *)filp->private_data;
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	u32 addr, len;
 	int num;
@@ -211,7 +215,7 @@ static ssize_t rtw89_debug_priv_write_reg_set(struct file *filp,
 {
 	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	u32 addr, val, len;
 	int num;
@@ -256,7 +260,7 @@ rtw89_debug_priv_read_rf_select(struct file *filp,
 	struct seq_file *m = (struct seq_file *)filp->private_data;
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	u32 addr, mask;
 	u8 path;
@@ -310,7 +314,7 @@ static ssize_t rtw89_debug_priv_write_rf_set(struct file *filp,
 {
 	struct rtw89_debugfs_priv *debugfs_priv = filp->private_data;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	u32 addr, val, mask;
 	u8 path;
@@ -832,11 +836,15 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 	seq_puts(m, "[Regulatory] ");
 	__print_regd(m, rtwdev, chan);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	seq_puts(m, "[SAR]\n");
 	rtw89_print_sar(m, rtwdev, chan->freq);
+#endif
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	seq_puts(m, "[TAS]\n");
 	rtw89_print_tas(m, rtwdev);
+#endif
 
 	tbl = dbgfs_txpwr_tables[chip_gen];
 	if (!tbl) {
@@ -873,7 +881,7 @@ rtw89_debug_priv_mac_reg_dump_select(struct file *filp,
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
 	const struct rtw89_chip_info *chip = rtwdev->chip;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	int sel;
 	int ret;
@@ -989,7 +997,7 @@ rtw89_debug_priv_mac_mem_dump_select(struct file *filp,
 	struct seq_file *m = (struct seq_file *)filp->private_data;
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	u32 sel, start_addr, len;
 	int num;
@@ -1099,7 +1107,7 @@ rtw89_debug_priv_mac_dbg_port_dump_select(struct file *filp,
 	struct seq_file *m = (struct seq_file *)filp->private_data;
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
-	char buf[32];
+	char buf[32] = {0};
 	size_t buf_size;
 	int sel, set;
 	int num;
@@ -3465,11 +3473,13 @@ static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
 		[NL80211_RATE_INFO_HE_GI_1_6] = "1.6",
 		[NL80211_RATE_INFO_HE_GI_3_2] = "3.2",
 	};
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	static const char * const eht_gi_str[] = {
 		[NL80211_RATE_INFO_EHT_GI_0_8] = "0.8",
 		[NL80211_RATE_INFO_EHT_GI_1_6] = "1.6",
 		[NL80211_RATE_INFO_EHT_GI_3_2] = "3.2",
 	};
+#endif
 	struct rtw89_sta *rtwsta = (struct rtw89_sta *)sta->drv_priv;
 	struct rate_info *rate = &rtwsta->ra_report.txrate;
 	struct ieee80211_rx_status *status = &rtwsta->rx_status;
@@ -3495,17 +3505,23 @@ static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
 		seq_printf(m, "HE %dSS MCS-%d GI:%s", rate->nss, rate->mcs,
 			   rate->he_gi <= NL80211_RATE_INFO_HE_GI_3_2 ?
 			   he_gi_str[rate->he_gi] : "N/A");
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	else if (rate->flags & RATE_INFO_FLAGS_EHT_MCS)
 		seq_printf(m, "EHT %dSS MCS-%d GI:%s", rate->nss, rate->mcs,
 			   rate->eht_gi < ARRAY_SIZE(eht_gi_str) ?
 			   eht_gi_str[rate->eht_gi] : "N/A");
+#endif
 	else
 		seq_printf(m, "Legacy %d", rate->legacy);
 	seq_printf(m, "%s", rtwsta->ra_report.might_fallback_legacy ? " FB_G" : "");
 	seq_printf(m, " BW:%u", rtw89_rate_info_bw_to_mhz(rate->bw));
 	seq_printf(m, "\t(hw_rate=0x%x)", rtwsta->ra_report.hw_rate);
 	seq_printf(m, "\t==> agg_wait=%d (%d)\n", rtwsta->max_agg_wait,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		   sta->deflink.agg.max_rc_amsdu_len);
+#else
 		   sta->max_rc_amsdu_len);
+#endif
 
 	seq_printf(m, "RX rate [%d]: ", rtwsta->mac_id);
 
@@ -3527,11 +3543,13 @@ static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
 			   status->he_gi <= NL80211_RATE_INFO_HE_GI_3_2 ?
 			   he_gi_str[rate->he_gi] : "N/A");
 		break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	case RX_ENC_EHT:
 		seq_printf(m, "EHT %dSS MCS-%d GI:%s", status->nss, status->rate_idx,
 			   status->eht.gi < ARRAY_SIZE(eht_gi_str) ?
 			   eht_gi_str[status->eht.gi] : "N/A");
 		break;
+#endif
 	}
 	seq_printf(m, " BW:%u", rtw89_rate_info_bw_to_mhz(status->bw));
 	seq_printf(m, "\t(hw_rate=0x%x)\n", rtwsta->rx_hw_rate);

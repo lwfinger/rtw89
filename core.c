@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
+#include <linux/version.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
 
 #include "cam.h"
 #include "chan.h"
@@ -80,6 +83,7 @@ static struct ieee80211_channel rtw89_channels_5ghz[] = {
 	RTW89_DEF_CHAN_5G(5885, 177),
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 static struct ieee80211_channel rtw89_channels_6ghz[] = {
 	RTW89_DEF_CHAN_6G(5955, 1),
 	RTW89_DEF_CHAN_6G(5975, 5),
@@ -141,6 +145,7 @@ static struct ieee80211_channel rtw89_channels_6ghz[] = {
 	RTW89_DEF_CHAN_6G(7095, 229),
 	RTW89_DEF_CHAN_6G(7115, 233),
 };
+#endif
 
 static struct ieee80211_rate rtw89_bitrates[] = {
 	{ .bitrate = 10,  .hw_value = 0x00, },
@@ -234,6 +239,7 @@ static const struct ieee80211_supported_band rtw89_sband_5ghz = {
 	.vht_cap	= {0},
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 static const struct ieee80211_supported_band rtw89_sband_6ghz = {
 	.band		= NL80211_BAND_6GHZ,
 	.channels	= rtw89_channels_6ghz,
@@ -243,6 +249,7 @@ static const struct ieee80211_supported_band rtw89_sband_6ghz = {
 	.bitrates	= rtw89_bitrates + 4,
 	.n_bitrates	= ARRAY_SIZE(rtw89_bitrates) - 4,
 };
+#endif
 
 static void rtw89_traffic_stats_accu(struct rtw89_dev *rtwdev,
 				     struct rtw89_traffic_stats *stats,
@@ -324,10 +331,12 @@ void rtw89_get_channel_params(const struct cfg80211_chan_def *chandef,
 	case NL80211_BAND_5GHZ:
 		band = RTW89_BAND_5G;
 		break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	case NL80211_BAND_6GHZ:
 		band = RTW89_BAND_6G;
 		break;
 	}
+#endif
 
 	rtw89_chan_create(chan, center_chan, channel->hw_value, band, bandwidth);
 }
@@ -478,10 +487,18 @@ rtw89_core_tx_update_ampdu_info(struct rtw89_dev *rtwdev,
 
 	ampdu_num = (u8)((rtwsta->ampdu_params[tid].agg_num ?
 			  rtwsta->ampdu_params[tid].agg_num :
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 			  4 << sta->ht_cap.ampdu_factor) - 1);
+#else
+			  4 << sta->deflink.ht_cap.ampdu_factor) - 1);
+#endif
 
 	desc_info->agg_en = true;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	desc_info->ampdu_density = sta->ht_cap.ampdu_density;
+#else
+	desc_info->ampdu_density = sta->deflink.ht_cap.ampdu_density;
+#endif
 	desc_info->ampdu_num = ampdu_num;
 }
 
@@ -693,7 +710,11 @@ __rtw89_core_tx_check_he_qos_htc(struct rtw89_dev *rtwdev,
 	if (pkt_type < PACKET_MAX)
 		return false;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	if (!sta || !sta->he_cap.has_he)
+#else
+	if (!sta || !sta->deflink.he_cap.has_he)
+#endif
 		return false;
 
 	if (!ieee80211_is_data_qos(fc))
@@ -783,10 +804,18 @@ static u16 rtw89_core_get_data_rate(struct rtw89_dev *rtwdev,
 	else
 		lowest_rate = RTW89_HW_RATE_OFDM6;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+	if (!sta || !sta->supp_rates[chan->band_type])
+#else
 	if (!sta || !sta->deflink.supp_rates[chan->band_type])
+#endif
 		return lowest_rate;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+	return __ffs(sta->supp_rates[chan->band_type]) + lowest_rate;
+#else
 	return __ffs(sta->deflink.supp_rates[chan->band_type]) + lowest_rate;
+#endif
 }
 
 static void
@@ -1619,6 +1648,7 @@ static void rtw89_core_rx_process_phy_sts(struct rtw89_dev *rtwdev,
 					  phy_ppdu);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 static u8 rtw89_rxdesc_to_nl_he_eht_gi(struct rtw89_dev *rtwdev,
 				       u8 desc_info_gi,
 				       bool rx_status, bool eht)
@@ -1644,7 +1674,9 @@ static u8 rtw89_rxdesc_to_nl_he_eht_gi(struct rtw89_dev *rtwdev,
 		return U8_MAX;
 	}
 }
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 static
 bool rtw89_check_rx_statu_gi_match(struct ieee80211_rx_status *status, u8 gi_ltf,
 				   bool eht)
@@ -1654,14 +1686,37 @@ bool rtw89_check_rx_statu_gi_match(struct ieee80211_rx_status *status, u8 gi_ltf
 
 	return status->he_gi == gi_ltf;
 }
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+static u8 rtw89_rxdesc_to_nl_he_gi(struct rtw89_dev *rtwdev,
+				   const struct rtw89_rx_desc_info *desc_info,
+				   bool rx_status)
+{
+	switch (desc_info->gi_ltf) {
+	case RTW89_GILTF_SGI_4XHE08:
+	case RTW89_GILTF_2XHE08:
+	case RTW89_GILTF_1XHE08:
+		return NL80211_RATE_INFO_HE_GI_0_8;
+	case RTW89_GILTF_2XHE16:
+	case RTW89_GILTF_1XHE16:
+		return NL80211_RATE_INFO_HE_GI_1_6;
+	case RTW89_GILTF_LGI_4XHE32:
+		return NL80211_RATE_INFO_HE_GI_3_2;
+	default:
+		rtw89_warn(rtwdev, "invalid gi_ltf=%d", desc_info->gi_ltf);
+		return rx_status ? NL80211_RATE_INFO_HE_GI_3_2 : U8_MAX;
+	}
+}
+#endif
 
 static bool rtw89_core_rx_ppdu_match(struct rtw89_dev *rtwdev,
 				     struct rtw89_rx_desc_info *desc_info,
 				     struct ieee80211_rx_status *status)
 {
 	u8 band = desc_info->bb_sel ? RTW89_PHY_1 : RTW89_PHY_0;
-	u8 data_rate_mode, bw, rate_idx = MASKBYTE0, gi_ltf;
+	u8 data_rate_mode, bw, rate_idx = MASKBYTE0, gi_ltf = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	bool eht = false;
+#endif
 	u16 data_rate;
 	bool ret;
 
@@ -1680,13 +1735,30 @@ static bool rtw89_core_rx_ppdu_match(struct rtw89_dev *rtwdev,
 		rtw89_warn(rtwdev, "invalid RX rate mode %d\n", data_rate_mode);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	eht = data_rate_mode == DATA_RATE_MODE_EHT;
+#endif
 	bw = rtw89_hw_to_rate_info_bw(desc_info->bw);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	gi_ltf = rtw89_rxdesc_to_nl_he_eht_gi(rtwdev, desc_info->gi_ltf, false, eht);
+#else
+	gi_ltf = 0;
+#endif
 	ret = rtwdev->ppdu_sts.curr_rx_ppdu_cnt[band] == desc_info->ppdu_cnt &&
 	      status->rate_idx == rate_idx &&
 	      rtw89_check_rx_statu_gi_match(status, gi_ltf, eht) &&
 	      status->bw == bw;
+#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	gi_ltf = rtw89_rxdesc_to_nl_he_gi(rtwdev, desc_info, false);
+#endif
+	ret = rtwdev->ppdu_sts.curr_rx_ppdu_cnt[band] == desc_info->ppdu_cnt &&
+	      status->rate_idx == rate_idx &&
+	      status->he_gi == gi_ltf &&
+	      status->bw == bw;
+
+#endif
 
 	return ret;
 }
@@ -1699,6 +1771,7 @@ struct rtw89_vif_rx_stats_iter_data {
 	const u8 *bssid;
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 static void rtw89_stats_trigger_frame(struct rtw89_dev *rtwdev,
 				      struct ieee80211_vif *vif,
 				      struct sk_buff *skb)
@@ -1723,7 +1796,11 @@ static void rtw89_stats_trigger_frame(struct rtw89_dev *rtwdev,
 	while (end - pos >= RTW89_TF_BASIC_USER_INFO_SZ) {
 		aid = RTW89_GET_TF_USER_INFO_AID12(pos);
 		tf_rua = RTW89_GET_TF_USER_INFO_RUA(pos);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 		tf_bw = le64_get_bits(tf->common_info, IEEE80211_TRIGGER_ULBW_MASK);
+#else
+		tf_bw = 0;
+#endif
 		rtw89_debug(rtwdev, RTW89_DBG_TXRX,
 			    "[TF] aid: %d, ul_mcs: %d, rua: %d, bw: %d\n",
 			    aid, RTW89_GET_TF_USER_INFO_UL_MCS(pos),
@@ -1732,20 +1809,25 @@ static void rtw89_stats_trigger_frame(struct rtw89_dev *rtwdev,
 		if (aid == RTW89_TF_PAD)
 			break;
 
-		if (aid == vif->bss_conf.aid) {
+		if (aid == vif->cfg.aid) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 			enum nl80211_he_ru_alloc rua = rtw89_he_rua_to_ru_alloc(tf_rua >> 1);
+#endif
 
 			rtwvif->stats.rx_tf_acc++;
 			rtwdev->stats.rx_tf_acc++;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 			if (tf_bw == IEEE80211_TRIGGER_ULBW_160_80P80MHZ &&
 			    rua <= NL80211_RATE_INFO_HE_RU_ALLOC_106)
 				rtwvif->pwr_diff_en = true;
+#endif
 			break;
 		}
 
 		pos += RTW89_TF_BASIC_USER_INFO_SZ;
 	}
 }
+#endif
 
 static void rtw89_cancel_6ghz_probe_work(struct work_struct *work)
 {
@@ -1828,6 +1910,7 @@ static void rtw89_vif_rx_stats_iter(void *data, u8 *mac,
 	     ieee80211_is_probe_resp(hdr->frame_control)))
 		rtw89_core_cancel_6ghz_probe_tx(rtwdev, skb);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 	if (!vif->bss_conf.bssid)
 		return;
 
@@ -1835,6 +1918,7 @@ static void rtw89_vif_rx_stats_iter(void *data, u8 *mac,
 		rtw89_stats_trigger_frame(rtwdev, vif, skb);
 		return;
 	}
+#endif
 
 	if (!ether_addr_equal(vif->bss_conf.bssid, bssid))
 		return;
@@ -1905,6 +1989,7 @@ static void rtw89_core_hw_to_sband_rate(struct ieee80211_rx_status *rx_status)
 	rx_status->rate_idx -= 4;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 static const u8 rx_status_bw_to_radiotap_eht_usig[] = {
 	[RATE_INFO_BW_20] = IEEE80211_RADIOTAP_EHT_USIG_COMMON_BW_20MHZ,
 	[RATE_INFO_BW_5] = U8_MAX,
@@ -1970,6 +2055,7 @@ static void rtw89_core_update_radiotap_eht(struct rtw89_dev *rtwdev,
 		le32_encode_bits(1, IEEE80211_RADIOTAP_EHT_USIG_COMMON_BW_KNOWN) |
 		le32_encode_bits(bw, IEEE80211_RADIOTAP_EHT_USIG_COMMON_BW);
 }
+#endif
 
 static void rtw89_core_update_radiotap(struct rtw89_dev *rtwdev,
 				       struct sk_buff *skb,
@@ -1989,8 +2075,10 @@ static void rtw89_core_update_radiotap(struct rtw89_dev *rtwdev,
 		rx_status->flag |= RX_FLAG_RADIOTAP_HE;
 		he = skb_push(skb, sizeof(*he));
 		*he = known_he;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 	} else if (rx_status->encoding == RX_ENC_EHT) {
 		rtw89_core_update_radiotap_eht(rtwdev, skb, rx_status);
+#endif
 	}
 }
 
@@ -2252,8 +2340,10 @@ static void rtw89_core_update_rx_status(struct rtw89_dev *rtwdev,
 		rtw89_chandef_get(rtwdev, RTW89_SUB_ENTITY_0);
 	u16 data_rate;
 	u8 data_rate_mode;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	bool eht = false;
 	u8 gi;
+#endif
 
 	/* currently using single PHY */
 	rx_status->freq = chandef->chan->center_freq;
@@ -2301,21 +2391,29 @@ static void rtw89_core_update_rx_status(struct rtw89_dev *rtwdev,
 		rx_status->encoding = RX_ENC_HE;
 		rx_status->rate_idx = rtw89_get_data_mcs(rtwdev, data_rate);
 		rx_status->nss = rtw89_get_data_nss(rtwdev, data_rate) + 1;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	} else if (data_rate_mode == DATA_RATE_MODE_EHT) {
 		rx_status->encoding = RX_ENC_EHT;
 		rx_status->rate_idx = rtw89_get_data_mcs(rtwdev, data_rate);
 		rx_status->nss = rtw89_get_data_nss(rtwdev, data_rate) + 1;
 		eht = true;
+#endif
 	} else {
 		rtw89_warn(rtwdev, "invalid RX rate mode %d\n", data_rate_mode);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	/* he_gi is used to match ppdu, so we always fill it. */
 	gi = rtw89_rxdesc_to_nl_he_eht_gi(rtwdev, desc_info->gi_ltf, true, eht);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	if (eht)
 		rx_status->eht.gi = gi;
 	else
 		rx_status->he_gi = gi;
+#else
+	rx_status->he_gi = gi;
+#endif
+#endif
 	rx_status->flag |= RX_FLAG_MACTIME_START;
 	rx_status->mactime = desc_info->free_run_cnt;
 
@@ -2410,8 +2508,13 @@ EXPORT_SYMBOL(rtw89_core_napi_stop);
 void rtw89_core_napi_init(struct rtw89_dev *rtwdev)
 {
 	init_dummy_netdev(&rtwdev->netdev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
+		       rtwdev->hci.ops->napi_poll);
+#else
 	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
 		       rtwdev->hci.ops->napi_poll, NAPI_POLL_WEIGHT);
+#endif
 }
 EXPORT_SYMBOL(rtw89_core_napi_init);
 
@@ -2773,7 +2876,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 	struct sk_buff *skb;
 	int ret, qsel;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 3, 0)
 	if (vif->type != NL80211_IFTYPE_STATION || !vif->cfg.assoc)
+#else
+	if (vif->type != NL80211_IFTYPE_STATION || !vif->bss_conf.assoc)
+#endif
 		return 0;
 
 	rcu_read_lock();
@@ -2783,7 +2890,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 		goto out;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, -1, qos);
+#else
+	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, qos);
+#endif
 	if (!skb) {
 		ret = -ENOMEM;
 		goto out;
@@ -3067,7 +3178,9 @@ static void rtw89_track_work(struct work_struct *work)
 	rtw89_phy_tx_path_div_track(rtwdev);
 	rtw89_phy_antdiv_track(rtwdev);
 	rtw89_phy_ul_tb_ctrl_track(rtwdev);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	rtw89_tas_track(rtwdev);
+#endif
 	rtw89_chanctx_track(rtwdev);
 
 	if (rtwdev->lps_enabled && !rtwdev->btc.lps)
@@ -3406,11 +3519,16 @@ int rtw89_core_sta_assoc(struct rtw89_dev *rtwdev,
 	rtw89_mac_bf_monitor_calc(rtwdev, sta, false);
 
 	if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0)
 		struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
 
 		if (bss_conf->he_support &&
 		    !(bss_conf->he_oper.params & IEEE80211_HE_OPERATION_ER_SU_DISABLE))
 			rtwsta->er_cap = true;
+#else
+			rtwsta->er_cap = false;
+#endif
+
 
 		rtw89_btc_ntfy_role_info(rtwdev, rtwvif, rtwsta,
 					 BTC_ROLE_MSTS_STA_CONN_END);
@@ -3455,6 +3573,7 @@ int rtw89_core_sta_remove(struct rtw89_dev *rtwdev,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0)
 static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 				       struct ieee80211_sta *sta,
 				       struct cfg80211_tid_cfg *tid_conf)
@@ -3497,7 +3616,9 @@ static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 		}
 	}
 }
+#endif
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0)
 void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sta *sta,
 			       struct cfg80211_tid_config *tid_config)
@@ -3508,6 +3629,7 @@ void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 		_rtw89_core_set_tid_config(rtwdev, sta,
 					   &tid_config->tid_conf[i]);
 }
+#endif
 
 static void rtw89_init_ht_cap(struct rtw89_dev *rtwdev,
 			      struct ieee80211_sta_ht_cap *ht_cap)
@@ -3637,17 +3759,24 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 		phy_cap_info = he_cap->he_cap_elem.phy_cap_info;
 
 		he_cap->has_he = true;
-		if (i == NL80211_IFTYPE_AP)
-			mac_cap_info[0] = IEEE80211_HE_MAC_CAP0_HTC_HE;
+		mac_cap_info[0] = IEEE80211_HE_MAC_CAP0_HTC_HE;
 		if (i == NL80211_IFTYPE_STATION)
 			mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
 		mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
 				  IEEE80211_HE_MAC_CAP2_BSR;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_VHT_2;
+#else
 		mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_EXT_2;
+#endif
 		if (i == NL80211_IFTYPE_AP)
 			mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 		mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+				  IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU;
+#else
 				  IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
+#endif
 		if (i == NL80211_IFTYPE_STATION)
 			mac_cap_info[5] = IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
 		if (band == NL80211_BAND_2GHZ) {
@@ -3666,12 +3795,24 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP2_STBC_TX_UNDER_80MHZ |
 				  IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ |
 				  IEEE80211_HE_PHY_CAP2_DOPPLER_TX;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		phy_cap_info[3] = IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
 		phy_cap_info[3] = IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM;
+#endif
 		if (i == NL80211_IFTYPE_STATION)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA |
+#else
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
+#endif
 					   IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_2;
 		if (i == NL80211_IFTYPE_AP)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+#else
 			phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
+#endif
 		phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
 				  IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
 		if (chip->support_bw160)
@@ -3681,9 +3822,17 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
 		phy_cap_info[6] = IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
 				  IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+				  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB |
+#else
 				  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
+#endif
 				  IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,13,0)
+		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_AR |
+#else
 		phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
+#endif
 				  IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
 				  IEEE80211_HE_PHY_CAP7_MAX_NC_1;
 		phy_cap_info[8] = IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
@@ -3696,7 +3845,12 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 				  IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU |
 				  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
 				  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB |
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 				  IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_16US;
+#else
+				  u8_encode_bits(IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_16US,
+						 IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_MASK);
+#endif
 		if (i == NL80211_IFTYPE_STATION)
 			phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU;
 		he_cap->he_mcs_nss_supp.rx_mcs_80 = cpu_to_le16(mcs_map);
@@ -3706,6 +3860,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			he_cap->he_mcs_nss_supp.tx_mcs_160 = cpu_to_le16(mcs_map);
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 		if (band == NL80211_BAND_6GHZ) {
 			__le16 capa;
 
@@ -3717,12 +3872,17 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 						IEEE80211_HE_6GHZ_CAP_MAX_MPDU_LEN);
 			iftype_data[idx].he_6ghz_capa.capa = capa;
 		}
+#endif
 
 		idx++;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	_ieee80211_set_sband_iftype_data(sband, iftype_data, idx);
+#else
 	sband->iftype_data = iftype_data;
 	sband->n_iftype_data = idx;
+#endif
 }
 
 static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
@@ -3752,6 +3912,7 @@ static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
 		hw->wiphy->bands[NL80211_BAND_5GHZ] = sband_5ghz;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	if (support_bands & BIT(NL80211_BAND_6GHZ)) {
 		sband_6ghz = kmemdup(&rtw89_sband_6ghz, size, GFP_KERNEL);
 		if (!sband_6ghz)
@@ -3759,19 +3920,22 @@ static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
 		rtw89_init_he_cap(rtwdev, NL80211_BAND_6GHZ, sband_6ghz);
 		hw->wiphy->bands[NL80211_BAND_6GHZ] = sband_6ghz;
 	}
+#endif
 
 	return 0;
 
 err:
 	hw->wiphy->bands[NL80211_BAND_2GHZ] = NULL;
 	hw->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	hw->wiphy->bands[NL80211_BAND_6GHZ] = NULL;
+#endif
 	if (sband_2ghz)
-		kfree(sband_2ghz->iftype_data);
+		kfree((__force void *)sband_2ghz->iftype_data);
 	if (sband_5ghz)
-		kfree(sband_5ghz->iftype_data);
+		kfree((__force void *)sband_5ghz->iftype_data);
 	if (sband_6ghz)
-		kfree(sband_6ghz->iftype_data);
+		kfree((__force void *)sband_6ghz->iftype_data);
 	kfree(sband_2ghz);
 	kfree(sband_5ghz);
 	kfree(sband_6ghz);
@@ -3783,17 +3947,23 @@ static void rtw89_core_clr_supported_band(struct rtw89_dev *rtwdev)
 	struct ieee80211_hw *hw = rtwdev->hw;
 
 	if (hw->wiphy->bands[NL80211_BAND_2GHZ])
-		kfree(hw->wiphy->bands[NL80211_BAND_2GHZ]->iftype_data);
+		kfree((__force void *)hw->wiphy->bands[NL80211_BAND_2GHZ]->iftype_data);
 	if (hw->wiphy->bands[NL80211_BAND_5GHZ])
-		kfree(hw->wiphy->bands[NL80211_BAND_5GHZ]->iftype_data);
+		kfree((__force void *)hw->wiphy->bands[NL80211_BAND_5GHZ]->iftype_data);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	if (hw->wiphy->bands[NL80211_BAND_6GHZ])
-		kfree(hw->wiphy->bands[NL80211_BAND_6GHZ]->iftype_data);
+		kfree((__force void *)hw->wiphy->bands[NL80211_BAND_6GHZ]->iftype_data);
+#endif
 	kfree(hw->wiphy->bands[NL80211_BAND_2GHZ]);
 	kfree(hw->wiphy->bands[NL80211_BAND_5GHZ]);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	kfree(hw->wiphy->bands[NL80211_BAND_6GHZ]);
+#endif
 	hw->wiphy->bands[NL80211_BAND_2GHZ] = NULL;
 	hw->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	hw->wiphy->bands[NL80211_BAND_6GHZ] = NULL;
+#endif
 }
 
 static void rtw89_core_ppdu_sts_init(struct rtw89_dev *rtwdev)
@@ -3911,7 +4081,9 @@ int rtw89_core_start(struct rtw89_dev *rtwdev)
 	rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
 	rtw89_mac_update_rts_threshold(rtwdev, RTW89_MAC_0);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	rtw89_tas_reset(rtwdev);
+#endif
 
 	ret = rtw89_hci_start(rtwdev);
 	if (ret) {
@@ -4031,7 +4203,9 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 
 	rtw89_ser_init(rtwdev);
 	rtw89_entity_init(rtwdev);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	rtw89_tas_init(rtwdev);
+#endif
 
 	return 0;
 }
@@ -4283,7 +4457,11 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 
 	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS |
 			    WIPHY_FLAG_TDLS_EXTERNAL_SETUP |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 			    WIPHY_FLAG_AP_UAPSD | WIPHY_FLAG_SPLIT_SCAN_6GHZ;
+#else
+			    WIPHY_FLAG_AP_UAPSD;
+#endif
 	hw->wiphy->features |= NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
 
 	hw->wiphy->max_scan_ssids = RTW89_SCANOFLD_MAX_SSID;
@@ -4293,10 +4471,12 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 	hw->wiphy->wowlan = rtwdev->chip->wowlan_stub;
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
+#endif
 	hw->wiphy->max_remain_on_channel_duration = 1000;
 
 	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
@@ -4313,7 +4493,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 		goto err_free_supported_band;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	hw->wiphy->sar_capa = &rtw89_sar_capa;
+#endif
 
 	ret = ieee80211_register_hw(hw);
 	if (ret) {

@@ -237,13 +237,21 @@ struct rtw89_btc_btf_set_report {
 struct rtw89_btc_btf_set_slot_table {
 	u8 fver;
 	u8 tbl_num;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct rtw89_btc_fbtc_slot tbls[] __counted_by(tbl_num);
+#else
+	u8 buf[];
+#endif
 } __packed;
 
 struct rtw89_btc_btf_set_mon_reg {
 	u8 fver;
 	u8 reg_num;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct rtw89_btc_fbtc_mreg regs[] __counted_by(reg_num);
+#else
+	u8 buf[];
+#endif
 } __packed;
 
 enum btc_btf_set_cx_policy {
@@ -1822,16 +1830,28 @@ static void rtw89_btc_fw_set_slots(struct rtw89_dev *rtwdev, u8 num,
 				   struct rtw89_btc_fbtc_slot *s)
 {
 	struct rtw89_btc_btf_set_slot_table *tbl;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
+	u8 *ptr = NULL;
+#endif
 	u16 n;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	n = struct_size(tbl, tbls, num);
+#else
+	n = sizeof(*s) * num + sizeof(*tbl);
+#endif
 	tbl = kmalloc(n, GFP_KERNEL);
 	if (!tbl)
 		return;
 
 	tbl->fver = BTF_SET_SLOT_TABLE_VER;
 	tbl->tbl_num = num;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	memcpy(tbl->tbls, s, flex_array_size(tbl, tbls, num));
+#else
+	ptr = &tbl->buf[0];
+	memcpy(ptr, s, num * sizeof(*s));
+#endif
 
 	_send_fw_cmd(rtwdev, BTFC_SET, SET_SLOT_TABLE, tbl, n);
 
@@ -1844,6 +1864,9 @@ static void btc_fw_set_monreg(struct rtw89_dev *rtwdev)
 	const struct rtw89_btc_ver *ver = rtwdev->btc.ver;
 	struct rtw89_btc_btf_set_mon_reg *monreg = NULL;
 	u8 n, ulen, cxmreg_max;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
+	u8 *ptr = NULL;
+#endif
 	u16 sz = 0;
 
 	n = chip->mon_reg_num;
@@ -1864,15 +1887,25 @@ static void btc_fw_set_monreg(struct rtw89_dev *rtwdev)
 		return;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	ulen = sizeof(monreg->regs[0]);
 	sz = struct_size(monreg, regs, n);
+#else
+	ulen = sizeof(struct rtw89_btc_fbtc_mreg);
+	sz = (ulen * n) + sizeof(*monreg);
+#endif
 	monreg = kmalloc(sz, GFP_KERNEL);
 	if (!monreg)
 		return;
 
 	monreg->fver = ver->fcxmreg;
 	monreg->reg_num = n;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	memcpy(monreg->regs, chip->mon_reg, flex_array_size(monreg, regs, n));
+#else
+	ptr = &monreg->buf[0];
+	memcpy(ptr, chip->mon_reg, n * ulen);
+#endif
 	rtw89_debug(rtwdev, RTW89_DBG_BTC,
 		    "[BTC], %s(): sz=%d ulen=%d n=%d\n",
 		    __func__, sz, ulen, n);
@@ -5693,6 +5726,7 @@ void rtw89_btc_ntfy_role_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif
 
 		rtw89_debug(rtwdev, RTW89_DBG_BTC,
 			    "[BTC], STA support HE=%d VHT=%d HT=%d\n",
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,19,0)
 			    sta->he_cap.has_he,
 			    sta->vht_cap.vht_supported,
 			    sta->ht_cap.ht_supported);
@@ -5702,6 +5736,17 @@ void rtw89_btc_ntfy_role_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif
 			mode |= BIT(BTC_WL_MODE_VHT);
 		if (sta->ht_cap.ht_supported)
 			mode |= BIT(BTC_WL_MODE_HT);
+#else
+			    sta->deflink.he_cap.has_he,
+			    sta->deflink.vht_cap.vht_supported,
+			    sta->deflink.ht_cap.ht_supported);
+		if (sta->deflink.he_cap.has_he)
+			mode |= BIT(BTC_WL_MODE_HE);
+		if (sta->deflink.vht_cap.vht_supported)
+			mode |= BIT(BTC_WL_MODE_VHT);
+		if (sta->deflink.ht_cap.ht_supported)
+			mode |= BIT(BTC_WL_MODE_HT);
+#endif
 
 		r.mode = mode;
 	}

@@ -3210,8 +3210,13 @@ struct rtw89_fw_c2h_log_fmt {
 	__le16 line_num;
 	u8 argc;
 	union {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0)
 		DECLARE_FLEX_ARRAY(u8, raw);
 		DECLARE_FLEX_ARRAY(__le32, argv);
+#else
+		u8 raw[4];
+		__le32 argv[1];
+#endif
 	} __packed u;
 } __packed;
 

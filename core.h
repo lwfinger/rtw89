@@ -11,6 +11,7 @@
 #include <linux/iopoll.h>
 #include <linux/workqueue.h>
 #include <net/mac80211.h>
+#include <linux/version.h>
 
 struct rtw89_dev;
 struct rtw89_pci_info;
@@ -38,6 +39,7 @@ extern const struct ieee80211_ops rtw89_ops;
 #define RTW89_RSSI_RAW_TO_DBM(rssi) ((s8)((rssi) >> RSSI_FACTOR) - MAX_RSSI)
 #define RTW89_TX_DIV_RSSI_RAW_TH (2 << RSSI_FACTOR)
 #define RTW89_RADIOTAP_ROOM_HE sizeof(struct ieee80211_radiotap_he)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 #define RTW89_RADIOTAP_ROOM_EHT \
 	(sizeof(struct ieee80211_radiotap_tlv) + \
 	 ALIGN(struct_size((struct ieee80211_radiotap_eht *)0, user_info, 1), 4) + \
@@ -45,6 +47,9 @@ extern const struct ieee80211_ops rtw89_ops;
 	 ALIGN(sizeof(struct ieee80211_radiotap_eht_usig), 4))
 #define RTW89_RADIOTAP_ROOM \
 	ALIGN(max(RTW89_RADIOTAP_ROOM_HE, RTW89_RADIOTAP_ROOM_EHT), 64)
+#else
+#define RTW89_RADIOTAP_ROOM ALIGN(sizeof(struct ieee80211_radiotap_he), 64)
+#endif
 
 #define RTW89_HTC_MASK_VARIANT GENMASK(1, 0)
 #define RTW89_HTC_VARIANT_HE 3
@@ -5153,8 +5158,10 @@ enum nl80211_band rtw89_hw_to_nl80211_band(enum rtw89_band hw_band)
 		return NL80211_BAND_2GHZ;
 	case RTW89_BAND_5G:
 		return NL80211_BAND_5GHZ;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	case RTW89_BAND_6G:
 		return NL80211_BAND_6GHZ;
+#endif
 	}
 }
 
@@ -5450,7 +5457,11 @@ void rtw89_chip_cfg_txpwr_ul_tb_offset(struct rtw89_dev *rtwdev,
 	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (!vif->bss_conf.he_support || !vif->cfg.assoc)
+#else
 	if (!vif->bss_conf.he_support || !vif->bss_conf.assoc)
+#endif
 		return;
 
 	if (chip->ops->set_txpwr_ul_tb_offset)
@@ -5568,11 +5579,21 @@ static inline u8 *get_hdr_bssid(struct ieee80211_hdr *hdr)
 
 static inline bool rtw89_sta_has_beamformer_cap(struct ieee80211_sta *sta)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,19,0)
 	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
 	    (sta->he_cap.he_cap_elem.phy_cap_info[3] & IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
 	    (sta->he_cap.he_cap_elem.phy_cap_info[4] & IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
 		return true;
+#else
+	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
+	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
+	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
+			IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
+	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[4] &
+			IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
+		return true;
+#endif
 	return false;
 }
 
@@ -5683,9 +5704,11 @@ int rtw89_core_sta_disconnect(struct rtw89_dev *rtwdev,
 int rtw89_core_sta_remove(struct rtw89_dev *rtwdev,
 			  struct ieee80211_vif *vif,
 			  struct ieee80211_sta *sta);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0)
 void rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sta *sta,
 			       struct cfg80211_tid_config *tid_config);
+#endif
 int rtw89_core_init(struct rtw89_dev *rtwdev);
 void rtw89_core_deinit(struct rtw89_dev *rtwdev);
 int rtw89_core_register(struct rtw89_dev *rtwdev);
@@ -5722,6 +5745,179 @@ void rtw89_complete_cond(struct rtw89_wait_info *wait, unsigned int cond,
 			 const struct rtw89_completion_data *data);
 int rtw89_core_start(struct rtw89_dev *rtwdev);
 void rtw89_core_stop(struct rtw89_dev *rtwdev);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+/**
+ * read_poll_timeout_atomic - Periodically poll an address until a condition is
+ * 				met or a timeout occurs
+ * @op: accessor function (takes @args as its arguments)
+ * @val: Variable to read the value into
+ * @cond: Break condition (usually involving @val)
+ * @delay_us: Time to udelay between reads in us (0 tight-loops).  Should
+ *            be less than ~10us since udelay is used (see
+ *            Documentation/timers/timers-howto.rst).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @delay_before_read: if it is true, delay @delay_us before read.
+ * @args: arguments for @op poll
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val.
+ *
+ * When available, you'll probably want to use one of the specialized
+ * macros defined below rather than this macro directly.
+ */
+#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
+					delay_before_read, args...) \
+({ \
+	u64 __timeout_us = (timeout_us); \
+	unsigned long __delay_us = (delay_us); \
+	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
+	if (delay_before_read && __delay_us) \
+		udelay(__delay_us); \
+	for (;;) { \
+		(val) = op(args); \
+		if (cond) \
+			break; \
+		if (__timeout_us && \
+		    ktime_compare(ktime_get(), __timeout) > 0) { \
+			(val) = op(args); \
+			break; \
+		} \
+		if (__delay_us) \
+			udelay(__delay_us); \
+	} \
+	(cond) ? 0 : -ETIMEDOUT; \
+})
+
+#if defined(CONFIG_SUSE_VERSION)
+#if CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
+#define SUSE 1
+#else
+#define SUSE 0
+#endif
+#else
+#define SUSE 0
+#endif
+
+/* see Documentation/timers/timers-howto.rst for the thresholds */
+static inline void fsleep(unsigned long usecs)
+{
+	if (usecs <= 10)
+		udelay(usecs);
+	else if (usecs <= 20000)
+		usleep_range(usecs, 2 * usecs);
+	else
+		msleep(DIV_ROUND_UP(usecs, 1000));
+}
+#else
+#define fsleep_alt fsleep
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && (SUSE == 0)
+static inline struct sk_buff *ieee80211_tx_dequeue_ni(struct ieee80211_hw *hw,
+                                                      struct ieee80211_txq *txq)
+{
+        struct sk_buff *skb;
+
+        local_bh_disable();
+        skb = ieee80211_tx_dequeue(hw, txq);
+        local_bh_enable();
+
+        return skb;
+}
+#endif
+
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+/**
+ * read_poll_timeout_atomic - Periodically poll an address until a condition is
+ * 				met or a timeout occurs
+ * @op: accessor function (takes @args as its arguments)
+ * @val: Variable to read the value into
+ * @cond: Break condition (usually involving @val)
+ * @delay_us: Time to udelay between reads in us (0 tight-loops).  Should
+ *            be less than ~10us since udelay is used (see
+ *            Documentation/timers/timers-howto.rst).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @delay_before_read: if it is true, delay @delay_us before read.
+ * @args: arguments for @op poll
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val.
+ *
+ * When available, you'll probably want to use one of the specialized
+ * macros defined below rather than this macro directly.
+ */
+#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
+					delay_before_read, args...) \
+({ \
+	u64 __timeout_us = (timeout_us); \
+	unsigned long __delay_us = (delay_us); \
+	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
+	if (delay_before_read && __delay_us) \
+		udelay(__delay_us); \
+	for (;;) { \
+		(val) = op(args); \
+		if (cond) \
+			break; \
+		if (__timeout_us && \
+		    ktime_compare(ktime_get(), __timeout) > 0) { \
+			(val) = op(args); \
+			break; \
+		} \
+		if (__delay_us) \
+			udelay(__delay_us); \
+	} \
+	(cond) ? 0 : -ETIMEDOUT; \
+})
+
+/**
+ * read_poll_timeout - Periodically poll an address until a condition is
+ *			met or a timeout occurs
+ * @op: accessor function (takes @args as its arguments)
+ * @val: Variable to read the value into
+ * @cond: Break condition (usually involving @val)
+ * @sleep_us: Maximum time to sleep between reads in us (0
+ *            tight-loops).  Should be less than ~20ms since usleep_range
+ *            is used (see Documentation/timers/timers-howto.rst).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @sleep_before_read: if it is true, sleep @sleep_us before read.
+ * @args: arguments for @op poll
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val. Must not
+ * be called from atomic context if sleep_us or timeout_us are used.
+ *
+ * When available, you'll probably want to use one of the specialized
+ * macros defined below rather than this macro directly.
+ */
+#define read_poll_timeout(op, val, cond, sleep_us, timeout_us, \
+				sleep_before_read, args...) \
+({ \
+	u64 __timeout_us = (timeout_us); \
+	unsigned long __sleep_us = (sleep_us); \
+	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
+	might_sleep_if((__sleep_us) != 0); \
+	if (sleep_before_read && __sleep_us) \
+		usleep_range((__sleep_us >> 2) + 1, __sleep_us); \
+	for (;;) { \
+		(val) = op(args); \
+		if (cond) \
+			break; \
+		if (__timeout_us && \
+		    ktime_compare(ktime_get(), __timeout) > 0) { \
+			(val) = op(args); \
+			break; \
+		} \
+		if (__sleep_us) \
+			usleep_range((__sleep_us >> 2) + 1, __sleep_us); \
+	} \
+	(cond) ? 0 : -ETIMEDOUT; \
+})
+
+#define BSS_CHANGED_HE_BSS_COLOR        1<<29
+
+#endif
 void rtw89_core_update_beacon_work(struct work_struct *work);
 void rtw89_roc_work(struct work_struct *work);
 void rtw89_roc_start(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif);

@@ -2112,7 +2112,11 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.dig_table		= &rtw89_8852a_phy_dig_table,
 	.dig_regs		= &rtw8852a_dig_regs,
 	.tssi_dbw_table		= NULL,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	.support_chanctx_num	= 1,
+#else
+	.support_chanctx_num	= 0,
+#endif
 	.support_bands		= BIT(NL80211_BAND_2GHZ) |
 				  BIT(NL80211_BAND_5GHZ),
 	.support_bw160		= false,

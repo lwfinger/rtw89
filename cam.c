@@ -608,21 +608,31 @@ int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
 				  struct rtw89_vif *rtwvif,
 				  struct rtw89_sta *rtwsta, u8 *cmd)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
+#endif
 	struct rtw89_bssid_cam_entry *bssid_cam = rtw89_get_bssid_cam_of(rtwvif, rtwsta);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
+#else
+	u8 bss_color = 0;
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	u8 bss_mask;
 
 	if (vif->bss_conf.nontransmitted)
 		bss_mask = RTW89_BSSID_MATCH_5_BYTES;
 	else
 		bss_mask = RTW89_BSSID_MATCH_ALL;
+#endif
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);
 	FWCMD_SET_ADDR_BSSID_OFFSET(cmd, bssid_cam->offset);
 	FWCMD_SET_ADDR_BSSID_LEN(cmd, bssid_cam->len);
 	FWCMD_SET_ADDR_BSSID_VALID(cmd, bssid_cam->valid);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	FWCMD_SET_ADDR_BSSID_MASK(cmd, bss_mask);
+#endif
 	FWCMD_SET_ADDR_BSSID_BB_SEL(cmd, bssid_cam->phy_idx);
 	FWCMD_SET_ADDR_BSSID_BSS_COLOR(cmd, bss_color);
 
@@ -710,7 +720,11 @@ void rtw89_cam_fill_addr_cam_info(struct rtw89_dev *rtwdev,
 	FWCMD_SET_ADDR_FRM_TGT_IND(cmd, rtwvif->frm_tgt_ind);
 	FWCMD_SET_ADDR_MACID(cmd, rtwsta ? rtwsta->mac_id : rtwvif->mac_id);
 	if (rtwvif->net_type == RTW89_NET_TYPE_INFRA)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		FWCMD_SET_ADDR_AID12(cmd, vif->cfg.aid & 0xfff);
+#else
 		FWCMD_SET_ADDR_AID12(cmd, vif->bss_conf.aid & 0xfff);
+#endif
 	else if (rtwvif->net_type == RTW89_NET_TYPE_AP_MODE)
 		FWCMD_SET_ADDR_AID12(cmd, sta ? sta->aid & 0xfff : 0);
 	FWCMD_SET_ADDR_WOL_PATTERN(cmd, rtwvif->wowlan_pattern);

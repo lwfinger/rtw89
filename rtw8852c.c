@@ -2538,7 +2538,7 @@ do {								\
 	default:
 		val = arg.gnt_bt.data;
 		break;
-	};
+	}
 
 	__write_ctrl(R_AX_PWR_COEXT_CTRL, B_AX_TXAGC_BT_MASK, val,
 		     B_AX_TXAGC_BT_EN, arg.ctrl_gnt_bt != 0xffff);
@@ -2859,10 +2859,16 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.dig_table		= NULL,
 	.dig_regs		= &rtw8852c_dig_regs,
 	.tssi_dbw_table		= &rtw89_8852c_tssi_dbw_table,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	.support_chanctx_num	= 2,
 	.support_bands		= BIT(NL80211_BAND_2GHZ) |
 				  BIT(NL80211_BAND_5GHZ) |
 				  BIT(NL80211_BAND_6GHZ),
+#else
+	.support_chanctx_num	= 0,
+	.support_bands		= BIT(NL80211_BAND_2GHZ) |
+				  BIT(NL80211_BAND_5GHZ),
+#endif
 	.support_bw160		= true,
 	.support_unii4		= true,
 	.ul_tb_waveform_ctrl	= false,

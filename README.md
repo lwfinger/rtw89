@@ -1,13 +1,15 @@
 rtw89
 ===========
-### A repo for the newest Realtek rtlwifi codes.
+### A repo for the newest Realtek rtw89 codes.
+
+This repo is current with wireless-next up to Nov. 2, 2023.
 
 This branch was created from the version merged into the wireless-drivers-next
 repo, which is in the 5.16 kernel. IF YOU USE DRIVERS FROM THIS REPO FOR KERNELS
 5.16+, YOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
 IN ALL MANNER OF STRANGE ERRORS.
 
-This code will build on any kernel 5.7 and newer as long as the distro has not modified
+This code will build on any kernel 5.6 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
 NO, I WILL NOT MODIFY THE SOURCE FOR YOU. YOU ARE ON YOUR OWN!!!!!
 

@@ -2936,7 +2936,7 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 	struct sk_buff *skb;
 	int ret, qsel;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 	if (vif->type != NL80211_IFTYPE_STATION || !vif->cfg.assoc)
 #else
 	if (vif->type != NL80211_IFTYPE_STATION || !vif->bss_conf.assoc)

@@ -46,6 +46,15 @@ rtw89core-y +=  core.o \
 		wow.o \
 		acpi.o
 
+obj-m += rtw_8851b.o
+rtw_8851b-y := rtw8851b.o \
+		    rtw8851b_table.o \
+		    rtw8851b_rfk.o \
+		    rtw8851b_rfk_table.o
+
+obj-m += rtw_8851be.o
+rtw_8851be-y := rtw8851be.o
+
 obj-m += rtw_8852a.o
 rtw_8852a-y := rtw8852a.o \
 		    rtw8852a_table.o \

@@ -33,7 +33,11 @@ struct rtw89_acpi_policy_6ghz {
 	u8 rsvd;
 	u8 policy_mode;
 	u8 country_count;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct rtw89_acpi_country_code country_list[] __counted_by(country_count);
+#else
+	struct rtw89_acpi_country_code country_list[];
+#endif
 } __packed;
 
 struct rtw89_acpi_dsm_result {

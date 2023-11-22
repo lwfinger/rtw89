@@ -319,6 +319,7 @@ static u8 rtw89_regd_get_index(const struct rtw89_regd *regd)
 	return regd - rtw89_regd_map;
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0)
 static u8 rtw89_regd_get_index_by_name(const char *alpha2)
 {
 	const struct rtw89_regd *regd;
@@ -326,6 +327,7 @@ static u8 rtw89_regd_get_index_by_name(const char *alpha2)
 	regd = rtw89_regd_find_reg_by_name(alpha2);
 	return rtw89_regd_get_index(regd);
 }
+#endif
 
 #define rtw89_debug_regd(_dev, _regd, _desc, _argv...) \
 do { \
@@ -388,6 +390,7 @@ bottom:
 	sband->n_channels -= 3;
 }
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0)
 static void __rtw89_regd_setup_policy_6ghz(struct rtw89_dev *rtwdev, bool block,
 					   const char *alpha2)
 {
@@ -512,6 +515,7 @@ bottom:
 	kfree((__force void *)sband->iftype_data);
 	kfree(sband);
 }
+#endif
 
 int rtw89_regd_setup(struct rtw89_dev *rtwdev)
 {
@@ -521,7 +525,9 @@ int rtw89_regd_setup(struct rtw89_dev *rtwdev)
 		return -EINVAL;
 
 	rtw89_regd_setup_unii4(rtwdev, wiphy);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0)
 	rtw89_regd_setup_6ghz(rtwdev, wiphy);
+#endif
 
 	wiphy->reg_notifier = rtw89_regd_notifier;
 	return 0;

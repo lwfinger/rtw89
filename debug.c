@@ -3905,9 +3905,8 @@ void rtw89_debugfs_init(struct rtw89_dev *rtwdev)
 #endif
 
 #ifdef CONFIG_RTW89_DEBUGMSG
-void __rtw89_debug(struct rtw89_dev *rtwdev,
-		   enum rtw89_debug_mask mask,
-		   const char *fmt, ...)
+void rtw89_debug(struct rtw89_dev *rtwdev, enum rtw89_debug_mask mask,
+		 const char *fmt, ...)
 {
 	struct va_format vaf = {
 	.fmt = fmt,
@@ -3923,5 +3922,5 @@ void __rtw89_debug(struct rtw89_dev *rtwdev,
 
 	va_end(args);
 }
-EXPORT_SYMBOL(__rtw89_debug);
+EXPORT_SYMBOL(rtw89_debug);
 #endif

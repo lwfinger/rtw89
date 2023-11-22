@@ -3238,6 +3238,7 @@ static void rtw89_track_work(struct work_struct *work)
 	rtw89_phy_tx_path_div_track(rtwdev);
 	rtw89_phy_antdiv_track(rtwdev);
 	rtw89_phy_ul_tb_ctrl_track(rtwdev);
+	rtw89_phy_edcca_track(rtwdev);
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	rtw89_tas_track(rtwdev);
 #endif

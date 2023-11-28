@@ -113,7 +113,13 @@ sudo cp suspend_rtw89 /usr/lib/systemd/system-sleep/.
 That script will unload the driver before sleep or hibernation, and reload it following resumption.
 
 ##### Option configuration
-If it turns out that your system needs one of the configuration options, then do the following:
+IMPORTANT: If you have an HP or Lenovo laptop, Their BIOS does not handle the PCIe interface correctly.
+To compensate, run the following command:
+sudo cp 70-rtw89.conf /etc/modprobe.d/.
+Then unload the drivers and reload. You should see the options appended to the end of the rtw89_pci
+or rtw89pci load line.
+
+If it turns out that your system needs one of the other configuration options, then do the following:
 ```bash
 sudo nano /etc/modprobe.d/<dev_name>.conf
 ```

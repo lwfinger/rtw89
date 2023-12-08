@@ -676,7 +676,7 @@ static void __rtw89_reg_6ghz_power_recalc(struct rtw89_dev *rtwdev)
 void rtw89_reg_6ghz_power_recalc(struct rtw89_dev *rtwdev,
 				 struct rtw89_vif *rtwvif, bool active)
 {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
 
 	lockdep_assert_held(&rtwdev->mutex);

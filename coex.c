@@ -5902,7 +5902,17 @@ void rtw89_btc_ntfy_role_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif
 
 		rtw89_debug(rtwdev, RTW89_DBG_BTC,
 			    "[BTC], STA support HE=%d VHT=%d HT=%d\n",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,19,0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
+			    sta->deflink.he_cap.has_he,
+                            sta->deflink.vht_cap.vht_supported,
+                            sta->deflink.ht_cap.ht_supported);
+                if (sta->deflink.he_cap.has_he)
+                        mode |= BIT(BTC_WL_MODE_HE);
+                if (sta->deflink.vht_cap.vht_supported)
+                        mode |= BIT(BTC_WL_MODE_VHT);
+                if (sta->deflink.ht_cap.ht_supported)
+                        mode |= BIT(BTC_WL_MODE_HT);
+#else
 			    sta->he_cap.has_he,
 			    sta->vht_cap.vht_supported,
 			    sta->ht_cap.ht_supported);
@@ -5911,16 +5921,6 @@ void rtw89_btc_ntfy_role_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif
 		if (sta->vht_cap.vht_supported)
 			mode |= BIT(BTC_WL_MODE_VHT);
 		if (sta->ht_cap.ht_supported)
-			mode |= BIT(BTC_WL_MODE_HT);
-#else
-			    sta->deflink.he_cap.has_he,
-			    sta->deflink.vht_cap.vht_supported,
-			    sta->deflink.ht_cap.ht_supported);
-		if (sta->deflink.he_cap.has_he)
-			mode |= BIT(BTC_WL_MODE_HE);
-		if (sta->deflink.vht_cap.vht_supported)
-			mode |= BIT(BTC_WL_MODE_VHT);
-		if (sta->deflink.ht_cap.ht_supported)
 			mode |= BIT(BTC_WL_MODE_HT);
 #endif
 

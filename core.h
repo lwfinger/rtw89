@@ -5571,7 +5571,7 @@ void rtw89_chip_cfg_txpwr_ul_tb_offset(struct rtw89_dev *rtwdev,
 	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0))
 	if (!vif->bss_conf.he_support || !vif->cfg.assoc)
 #else
 	if (!vif->bss_conf.he_support || !vif->bss_conf.assoc)
@@ -5693,19 +5693,19 @@ static inline u8 *get_hdr_bssid(struct ieee80211_hdr *hdr)
 
 static inline bool rtw89_sta_has_beamformer_cap(struct ieee80211_sta *sta)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,19,0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) && (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
+	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
+            (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
+            (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
+                        IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
+            (sta->deflink.he_cap.he_cap_elem.phy_cap_info[4] &
+                        IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
+                return true;
+#else
 	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
 	    (sta->he_cap.he_cap_elem.phy_cap_info[3] & IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
 	    (sta->he_cap.he_cap_elem.phy_cap_info[4] & IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
-		return true;
-#else
-	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
-	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
-	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
-			IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
-	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[4] &
-			IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
 		return true;
 #endif
 	return false;
@@ -5902,6 +5902,12 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	} \
 	(cond) ? 0 : -ETIMEDOUT; \
 })
+
+#ifndef RHEL_RELEASE_CODE
+#define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))
+#define RHEL_RELEASE_CODE 0
+#endif
+
 
 #if defined(CONFIG_SUSE_VERSION)
 #if CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3

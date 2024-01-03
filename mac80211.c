@@ -432,7 +432,7 @@ static void rtw89_ops_bss_info_changed(struct ieee80211_hw *hw,
 	rtw89_leave_ps_mode(rtwdev);
 
 	if (changed & BSS_CHANGED_ASSOC) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 		if (vif->cfg.assoc) {
 #else
 		if (conf->assoc) {
@@ -1147,11 +1147,13 @@ const struct ieee80211_ops rtw89_ops = {
 	.change_interface       = rtw89_ops_change_interface,
 	.remove_interface	= rtw89_ops_remove_interface,
 	.configure_filter	= rtw89_ops_configure_filter,
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(10, 0)	
 	.bss_info_changed	= rtw89_ops_bss_info_changed,
 	.start_ap		= rtw89_ops_start_ap,
 	.stop_ap		= rtw89_ops_stop_ap,
+	.conf_tx                = rtw89_ops_conf_tx,
+#endif	
 	.set_tim		= rtw89_ops_set_tim,
-	.conf_tx		= rtw89_ops_conf_tx,
 	.sta_state		= rtw89_ops_sta_state,
 	.set_key		= rtw89_ops_set_key,
 	.ampdu_action		= rtw89_ops_ampdu_action,
@@ -1169,8 +1171,10 @@ const struct ieee80211_ops rtw89_ops = {
 	.add_chanctx		= rtw89_ops_add_chanctx,
 	.remove_chanctx		= rtw89_ops_remove_chanctx,
 	.change_chanctx		= rtw89_ops_change_chanctx,
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 0)    	
 	.assign_vif_chanctx	= rtw89_ops_assign_vif_chanctx,
 	.unassign_vif_chanctx	= rtw89_ops_unassign_vif_chanctx,
+#endif	
 	.remain_on_channel		= rtw89_ops_remain_on_channel,
 	.cancel_remain_on_channel	= rtw89_ops_cancel_remain_on_channel,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)

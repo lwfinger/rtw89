@@ -3518,7 +3518,7 @@ static void rtw89_sta_info_get_iter(void *data, struct ieee80211_sta *sta)
 	seq_printf(m, " BW:%u", rtw89_rate_info_bw_to_mhz(rate->bw));
 	seq_printf(m, "\t(hw_rate=0x%x)", rtwsta->ra_report.hw_rate);
 	seq_printf(m, "\t==> agg_wait=%d (%d)\n", rtwsta->max_agg_wait,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0))
 		   sta->deflink.agg.max_rc_amsdu_len);
 #else
 		   sta->max_rc_amsdu_len);

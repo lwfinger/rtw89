@@ -734,7 +734,7 @@ void rtw89_cam_fill_addr_cam_info(struct rtw89_dev *rtwdev,
 	FWCMD_SET_ADDR_FRM_TGT_IND(cmd, rtwvif->frm_tgt_ind);
 	FWCMD_SET_ADDR_MACID(cmd, rtwsta ? rtwsta->mac_id : rtwvif->mac_id);
 	if (rtwvif->net_type == RTW89_NET_TYPE_INFRA)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 		FWCMD_SET_ADDR_AID12(cmd, vif->cfg.aid & 0xfff);
 #else
 		FWCMD_SET_ADDR_AID12(cmd, vif->bss_conf.aid & 0xfff);

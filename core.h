@@ -34,6 +34,11 @@ extern const struct ieee80211_ops rtw89_ops;
 #define RFREG_MASK 0xfffff
 #define INV_RF_DATA 0xffffffff
 
+#ifndef RHEL_RELEASE_CODE
+#define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))
+#define RHEL_RELEASE_CODE 0
+#endif
+
 #define RTW89_TRACK_WORK_PERIOD	round_jiffies_relative(HZ * 2)
 #define RTW89_FORBID_BA_TIMER round_jiffies_relative(HZ * 4)
 #define CFO_TRACK_MAX_USER 64
@@ -5697,7 +5702,7 @@ static inline u8 *get_hdr_bssid(struct ieee80211_hdr *hdr)
 
 static inline bool rtw89_sta_has_beamformer_cap(struct ieee80211_sta *sta)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) && (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
             (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
             (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
@@ -5906,11 +5911,6 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	} \
 	(cond) ? 0 : -ETIMEDOUT; \
 })
-
-#ifndef RHEL_RELEASE_CODE
-#define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))
-#define RHEL_RELEASE_CODE 0
-#endif
 
 
 #if defined(CONFIG_SUSE_VERSION)

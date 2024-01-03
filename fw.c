@@ -1980,9 +1980,9 @@ static void __get_sta_he_pkt_padding(struct rtw89_dev *rtwdev,
 		u8 pad;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
-		pad = FIELD_GET(IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_MASK,
-#else
 		pad = FIELD_GET(IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_MASK,
+#else
+		pad = FIELD_GET(IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_MASK,
 #endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 				sta->deflink.he_cap.he_cap_elem.phy_cap_info[9]);

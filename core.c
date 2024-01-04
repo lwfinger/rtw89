@@ -490,7 +490,7 @@ rtw89_core_tx_update_ampdu_info(struct rtw89_dev *rtwdev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 			  4 << sta->deflink.ht_cap.ampdu_factor) - 1);
 #else
-			  4 << sta->ht_cap.ampdu_factor - 1;
+			  4 << sta->ht_cap.ampdu_factor) - 1);
 #endif
 
 	desc_info->agg_en = true;

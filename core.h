@@ -33,6 +33,7 @@ extern const struct ieee80211_ops rtw89_ops;
 #define MASKDWORD 0xffffffff
 #define RFREG_MASK 0xfffff
 #define INV_RF_DATA 0xffffffff
+#define BYPASS_CR_DATA 0xbabecafe
 
 #ifndef RHEL_RELEASE_CODE
 #define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))

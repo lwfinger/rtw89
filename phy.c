@@ -1101,7 +1101,7 @@ static void
 rtw89_phy_cfg_bb_gain_error(struct rtw89_dev *rtwdev,
 			    union rtw89_phy_bb_gain_arg arg, u32 data)
 {
-	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain;
+	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain.ax;
 	u8 type = arg.type;
 	u8 path = arg.path;
 	u8 gband = arg.gain_band;
@@ -1140,7 +1140,7 @@ static void
 rtw89_phy_cfg_bb_rpl_ofst(struct rtw89_dev *rtwdev,
 			  union rtw89_phy_bb_gain_arg arg, u32 data)
 {
-	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain;
+	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain.ax;
 	u8 rxsc_start = arg.rxsc_start;
 	u8 bw = arg.bw;
 	u8 path = arg.path;
@@ -1222,7 +1222,7 @@ static void
 rtw89_phy_cfg_bb_gain_bypass(struct rtw89_dev *rtwdev,
 			     union rtw89_phy_bb_gain_arg arg, u32 data)
 {
-	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain;
+	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain.ax;
 	u8 type = arg.type;
 	u8 path = arg.path;
 	u8 gband = arg.gain_band;
@@ -1249,7 +1249,7 @@ static void
 rtw89_phy_cfg_bb_gain_op1db(struct rtw89_dev *rtwdev,
 			    union rtw89_phy_bb_gain_arg arg, u32 data)
 {
-	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain;
+	struct rtw89_phy_bb_gain_info *gain = &rtwdev->bb_gain.ax;
 	u8 type = arg.type;
 	u8 path = arg.path;
 	u8 gband = arg.gain_band;

@@ -1147,7 +1147,7 @@ const struct ieee80211_ops rtw89_ops = {
 	.change_interface       = rtw89_ops_change_interface,
 	.remove_interface	= rtw89_ops_remove_interface,
 	.configure_filter	= rtw89_ops_configure_filter,
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(10, 0)	
+#if (RHEL_RELEASE_CODE == 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 0))
 	.bss_info_changed	= rtw89_ops_bss_info_changed,
 	.start_ap		= rtw89_ops_start_ap,
 	.stop_ap		= rtw89_ops_stop_ap,
@@ -1171,7 +1171,7 @@ const struct ieee80211_ops rtw89_ops = {
 	.add_chanctx		= rtw89_ops_add_chanctx,
 	.remove_chanctx		= rtw89_ops_remove_chanctx,
 	.change_chanctx		= rtw89_ops_change_chanctx,
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 0)    	
+#if (RHEL_RELEASE_CODE == 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 0))
 	.assign_vif_chanctx	= rtw89_ops_assign_vif_chanctx,
 	.unassign_vif_chanctx	= rtw89_ops_unassign_vif_chanctx,
 #endif	

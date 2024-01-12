@@ -3987,6 +3987,7 @@ static void rtw89_init_he_eht_cap(struct rtw89_dev *rtwdev,
 		iftype_data[idx].types_mask = BIT(iftype);
 
 		rtw89_init_he_cap(rtwdev, band, iftype, &iftype_data[idx]);
+		rtw89_init_eht_cap(rtwdev, band, iftype, &iftype_data[idx]);
 
 		idx++;
 	}

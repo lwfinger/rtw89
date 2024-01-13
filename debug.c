@@ -839,9 +839,7 @@ static int rtw89_debug_priv_txpwr_table_get(struct seq_file *m, void *v)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	seq_puts(m, "[SAR]\n");
 	rtw89_print_sar(m, rtwdev, chan->freq);
-#endif
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 	seq_puts(m, "[TAS]\n");
 	rtw89_print_tas(m, rtwdev);
 #endif

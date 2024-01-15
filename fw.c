@@ -2264,6 +2264,7 @@ fail:
 
 	return ret;
 }
+EXPORT_SYMBOL(rtw89_fw_h2c_assoc_cmac_tbl);
 
 static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 				      struct ieee80211_sta *sta, u8 *pads)
@@ -2434,6 +2435,7 @@ fail:
 
 	return ret;
 }
+EXPORT_SYMBOL(rtw89_fw_h2c_assoc_cmac_tbl_g7);
 
 int rtw89_fw_h2c_txtime_cmac_tbl(struct rtw89_dev *rtwdev,
 				 struct rtw89_sta *rtwsta)

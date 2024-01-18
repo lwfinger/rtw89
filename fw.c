@@ -2422,8 +2422,13 @@ int rtw89_fw_h2c_update_beacon_be(struct rtw89_dev *rtwdev,
 	else
 		beacon_rate = RTW89_HW_RATE_OFDM6;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset,
 					      NULL, 0);
+#else
+	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset,
+					      NULL);
+#endif
 	if (!skb_beacon) {
 		rtw89_err(rtwdev, "failed to get beacon skb\n");
 		return -ENOMEM;

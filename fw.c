@@ -1295,6 +1295,46 @@ static u32 __rtw89_fw_download_tweak_hdr_v1(struct rtw89_dev *rtwdev,
 	return (info->section_num - dst_sec_idx) * sizeof(*section);
 }
 
+static u32 __rtw89_fw_download_tweak_hdr_v0(struct rtw89_dev *rtwdev,
+					    struct rtw89_fw_bin_info *info,
+					    struct rtw89_fw_hdr *fw_hdr)
+{
+	le32p_replace_bits(&fw_hdr->w7, FWDL_SECTION_PER_PKT_LEN,
+			   FW_HDR_W7_PART_SIZE);
+
+	return 0;
+}
+
+static u32 __rtw89_fw_download_tweak_hdr_v1(struct rtw89_dev *rtwdev,
+					    struct rtw89_fw_bin_info *info,
+					    struct rtw89_fw_hdr_v1 *fw_hdr)
+{
+	struct rtw89_fw_hdr_section_info *section_info;
+	struct rtw89_fw_hdr_section_v1 *section;
+	u8 dst_sec_idx = 0;
+	u8 sec_idx;
+
+	le32p_replace_bits(&fw_hdr->w7, FWDL_SECTION_PER_PKT_LEN,
+			   FW_HDR_V1_W7_PART_SIZE);
+
+	for (sec_idx = 0; sec_idx < info->section_num; sec_idx++) {
+		section_info = &info->section_info[sec_idx];
+		section = &fw_hdr->sections[sec_idx];
+
+		if (section_info->ignore)
+			continue;
+
+		if (dst_sec_idx != sec_idx)
+			fw_hdr->sections[dst_sec_idx] = *section;
+
+		dst_sec_idx++;
+	}
+
+	le32p_replace_bits(&fw_hdr->w6, dst_sec_idx, FW_HDR_V1_W6_SEC_NUM);
+
+	return (info->section_num - dst_sec_idx) * sizeof(*section);
+}
+
 static int __rtw89_fw_download_hdr(struct rtw89_dev *rtwdev,
 				   const struct rtw89_fw_suit *fw_suit,
 				   struct rtw89_fw_bin_info *info)
@@ -1311,6 +1351,22 @@ static int __rtw89_fw_download_hdr(struct rtw89_dev *rtwdev,
 	if (!skb) {
 		rtw89_err(rtwdev, "failed to alloc skb for fw hdr dl\n");
 		return -ENOMEM;
+	}
+
+	skb_put_data(skb, fw, len);
+
+	switch (fw_suit->hdr_ver) {
+	case 0:
+		fw_hdr = (struct rtw89_fw_hdr *)skb->data;
+		truncated = __rtw89_fw_download_tweak_hdr_v0(rtwdev, info, fw_hdr);
+		break;
+	case 1:
+		fw_hdr_v1 = (struct rtw89_fw_hdr_v1 *)skb->data;
+		truncated = __rtw89_fw_download_tweak_hdr_v1(rtwdev, info, fw_hdr_v1);
+		break;
+	default:
+		ret = -EOPNOTSUPP;
+		goto fail;
 	}
 
 	skb_put_data(skb, fw, len);
@@ -1398,6 +1454,17 @@ static int __rtw89_fw_download_main(struct rtw89_dev *rtwdev,
 			copy_key = true;
 	}
 
+	if (info->ignore)
+		return 0;
+
+	if (info->key_addr && info->key_len) {
+		if (info->len > FWDL_SECTION_PER_PKT_LEN || info->len < info->key_len)
+			rtw89_warn(rtwdev, "ignore to copy key data because of len %d, %d, %d\n",
+				   info->len, FWDL_SECTION_PER_PKT_LEN, info->key_len);
+		else
+			copy_key = true;
+	}
+
 	while (residue_len) {
 		if (residue_len >= FWDL_SECTION_PER_PKT_LEN)
 			pkt_len = FWDL_SECTION_PER_PKT_LEN;
@@ -1410,6 +1477,10 @@ static int __rtw89_fw_download_main(struct rtw89_dev *rtwdev,
 			return -ENOMEM;
 		}
 		skb_put_data(skb, section, pkt_len);
+
+		if (copy_key)
+			memcpy(skb->data + pkt_len - info->key_len,
+			       info->key_addr, info->key_len);
 
 		if (copy_key)
 			memcpy(skb->data + pkt_len - info->key_len,

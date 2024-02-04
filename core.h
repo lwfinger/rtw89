@@ -4248,6 +4248,19 @@ struct rtw89_fw_secure {
 	u8 mss_key_num;
 };
 
+enum rtw89_fw_mss_dev_type {
+	RTW89_FW_MSS_DEV_TYPE_FWSEC_DEF = 0xF,
+	RTW89_FW_MSS_DEV_TYPE_FWSEC_INV = 0xFF,
+};
+
+struct rtw89_fw_secure {
+	bool secure_boot;
+	u32 sb_sel_mgn;
+	u8 mss_dev_type;
+	u8 mss_cust_idx;
+	u8 mss_key_num;
+};
+
 struct rtw89_fw_info {
 	struct rtw89_fw_req_info req;
 	int fw_format;

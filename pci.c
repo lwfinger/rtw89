@@ -3355,6 +3355,8 @@ static int rtw89_pci_alloc_trx_rings(struct rtw89_dev *rtwdev,
 		goto err_free_tx_rings;
 	}
 
+	set_bit(RTW89_FLAG_PROBE_DONE, rtwdev->flags);
+
 	return 0;
 
 err_free_tx_rings:

@@ -388,6 +388,9 @@ static int rtw8922a_pwr_on_func(struct rtw89_dev *rtwdev)
 	if (!test_bit(RTW89_FLAG_PROBE_DONE, rtwdev->flags))
 		rtw89_efuse_read_fw_secure_be(rtwdev);
 
+	if (!test_bit(RTW89_FLAG_PROBE_DONE, rtwdev->flags))
+		rtw89_efuse_read_fw_secure_be(rtwdev);
+
 	return 0;
 }
 

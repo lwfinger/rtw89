@@ -15,6 +15,8 @@
 
 static const u8 mss_signature[] = {0x4D, 0x53, 0x53, 0x4B, 0x50, 0x4F, 0x4F, 0x4C};
 
+static const u8 mss_signature[] = {0x4D, 0x53, 0x53, 0x4B, 0x50, 0x4F, 0x4F, 0x4C};
+
 union rtw89_fw_element_arg {
 	size_t offset;
 	enum rtw89_rf_path rf_path;
@@ -160,6 +162,161 @@ static int rtw89_fw_hdr_parser_v0(struct rtw89_dev *rtwdev, const u8 *fw, u32 le
 	if (fw_end != bin + mssc_len) {
 		rtw89_err(rtwdev, "[ERR]fw bin size\n");
 		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int __get_mssc_key_idx(struct rtw89_dev *rtwdev,
+			      const struct rtw89_fw_mss_pool_hdr *mss_hdr,
+			      u32 rmp_tbl_size, u32 *key_idx)
+{
+	struct rtw89_fw_secure *sec = &rtwdev->fw.sec;
+	u32 sel_byte_idx;
+	u32 mss_sel_idx;
+	u8 sel_bit_idx;
+	int i;
+
+	if (sec->mss_dev_type == RTW89_FW_MSS_DEV_TYPE_FWSEC_DEF) {
+		if (!mss_hdr->defen)
+			return -ENOENT;
+
+		mss_sel_idx = sec->mss_cust_idx * le16_to_cpu(mss_hdr->msskey_num_max) +
+			      sec->mss_key_num;
+	} else {
+		if (mss_hdr->defen)
+			mss_sel_idx = FWDL_MSS_POOL_DEFKEYSETS_SIZE << 3;
+		else
+			mss_sel_idx = 0;
+		mss_sel_idx += sec->mss_dev_type * le16_to_cpu(mss_hdr->msskey_num_max) *
+						   le16_to_cpu(mss_hdr->msscust_max) +
+			       sec->mss_cust_idx * le16_to_cpu(mss_hdr->msskey_num_max) +
+			       sec->mss_key_num;
+	}
+
+	sel_byte_idx = mss_sel_idx >> 3;
+	sel_bit_idx = mss_sel_idx & 0x7;
+
+	if (sel_byte_idx >= rmp_tbl_size)
+		return -EFAULT;
+
+	if (!(mss_hdr->rmp_tbl[sel_byte_idx] & BIT(sel_bit_idx)))
+		return -ENOENT;
+
+	*key_idx = hweight8(mss_hdr->rmp_tbl[sel_byte_idx] & (BIT(sel_bit_idx) - 1));
+
+	for (i = 0; i < sel_byte_idx; i++)
+		*key_idx += hweight8(mss_hdr->rmp_tbl[i]);
+
+	return 0;
+}
+
+static int __parse_formatted_mssc(struct rtw89_dev *rtwdev,
+				  struct rtw89_fw_bin_info *info,
+				  struct rtw89_fw_hdr_section_info *section_info,
+				  const struct rtw89_fw_hdr_section_v1 *section,
+				  const void *content,
+				  u32 *mssc_len)
+{
+	const struct rtw89_fw_mss_pool_hdr *mss_hdr = content + section_info->len;
+	const union rtw89_fw_section_mssc_content *section_content = content;
+	struct rtw89_fw_secure *sec = &rtwdev->fw.sec;
+	u32 rmp_tbl_size;
+	u32 key_sign_len;
+	u32 real_key_idx;
+	u32 sb_sel_ver;
+	int ret;
+
+	if (memcmp(mss_signature, mss_hdr->signature, sizeof(mss_signature)) != 0) {
+		rtw89_err(rtwdev, "[ERR] wrong MSS signature\n");
+		return -ENOENT;
+	}
+
+	if (mss_hdr->rmpfmt == MSS_POOL_RMP_TBL_BITMASK) {
+		rmp_tbl_size = (le16_to_cpu(mss_hdr->msskey_num_max) *
+				le16_to_cpu(mss_hdr->msscust_max) *
+				mss_hdr->mssdev_max) >> 3;
+		if (mss_hdr->defen)
+			rmp_tbl_size += FWDL_MSS_POOL_DEFKEYSETS_SIZE;
+	} else {
+		rtw89_err(rtwdev, "[ERR] MSS Key Pool Remap Table Format Unsupport:%X\n",
+			  mss_hdr->rmpfmt);
+		return -EINVAL;
+	}
+
+	if (rmp_tbl_size + sizeof(*mss_hdr) != le32_to_cpu(mss_hdr->key_raw_offset)) {
+		rtw89_err(rtwdev, "[ERR] MSS Key Pool Format Error:0x%X + 0x%X != 0x%X\n",
+			  rmp_tbl_size, (int)sizeof(*mss_hdr),
+			  le32_to_cpu(mss_hdr->key_raw_offset));
+		return -EINVAL;
+	}
+
+	key_sign_len = le16_to_cpu(section_content->key_sign_len.v) >> 2;
+	if (!key_sign_len)
+		key_sign_len = 512;
+
+	if (info->dsp_checksum)
+		key_sign_len += FWDL_SECURITY_CHKSUM_LEN;
+
+	*mssc_len = sizeof(*mss_hdr) + rmp_tbl_size +
+		    le16_to_cpu(mss_hdr->keypair_num) * key_sign_len;
+
+	if (!sec->secure_boot)
+		goto out;
+
+	sb_sel_ver = le32_to_cpu(section_content->sb_sel_ver.v);
+	if (sb_sel_ver && sb_sel_ver != sec->sb_sel_mgn)
+		goto ignore;
+
+	ret = __get_mssc_key_idx(rtwdev, mss_hdr, rmp_tbl_size, &real_key_idx);
+	if (ret)
+		goto ignore;
+
+	section_info->key_addr = content + section_info->len +
+				le32_to_cpu(mss_hdr->key_raw_offset) +
+				key_sign_len * real_key_idx;
+	section_info->key_len = key_sign_len;
+	section_info->key_idx = real_key_idx;
+
+out:
+	if (info->secure_section_exist) {
+		section_info->ignore = true;
+		return 0;
+	}
+
+	info->secure_section_exist = true;
+
+	return 0;
+
+ignore:
+	section_info->ignore = true;
+
+	return 0;
+}
+
+static int __parse_security_section(struct rtw89_dev *rtwdev,
+				    struct rtw89_fw_bin_info *info,
+				    struct rtw89_fw_hdr_section_info *section_info,
+				    const struct rtw89_fw_hdr_section_v1 *section,
+				    const void *content,
+				    u32 *mssc_len)
+{
+	int ret;
+
+	section_info->mssc =
+		le32_get_bits(section->w2, FWSECTION_HDR_V1_W2_MSSC);
+
+	if (section_info->mssc == FORMATTED_MSSC) {
+		ret = __parse_formatted_mssc(rtwdev, info, section_info,
+					     section, content, mssc_len);
+		if (ret)
+			return -EINVAL;
+	} else {
+		*mssc_len = section_info->mssc * FWDL_SECURITY_SIGLEN;
+		if (info->dsp_checksum)
+			*mssc_len += section_info->mssc * FWDL_SECURITY_CHKSUM_LEN;
+
+		info->secure_section_exist = true;
 	}
 
 	return 0;

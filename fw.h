@@ -619,6 +619,39 @@ union rtw89_fw_section_mssc_content {
 	} __packed key_sign_len;
 } __packed;
 
+enum rtw89_fw_mss_pool_rmp_tbl_type {
+	MSS_POOL_RMP_TBL_BITMASK = 0x0,
+	MSS_POOL_RMP_TBL_RECORD = 0x1,
+};
+
+#define FWDL_MSS_POOL_DEFKEYSETS_SIZE 8
+
+struct rtw89_fw_mss_pool_hdr {
+	u8 signature[8]; /* equal to mss_signature[] */
+	__le32 rmp_tbl_offset;
+	__le32 key_raw_offset;
+	u8 defen;
+	u8 rsvd[3];
+	u8 rmpfmt; /* enum rtw89_fw_mss_pool_rmp_tbl_type */
+	u8 mssdev_max;
+	__le16 keypair_num;
+	__le16 msscust_max;
+	__le16 msskey_num_max;
+	__le32 rsvd3;
+	u8 rmp_tbl[];
+} __packed;
+
+union rtw89_fw_section_mssc_content {
+	struct {
+		u8 pad[58];
+		__le32 v;
+	} __packed sb_sel_ver;
+	struct {
+		u8 pad[60];
+		__le16 v;
+	} __packed key_sign_len;
+} __packed;
+
 static inline void SET_CTRL_INFO_MACID(void *table, u32 val)
 {
 	le32p_replace_bits((__le32 *)(table) + 0, val, GENMASK(6, 0));

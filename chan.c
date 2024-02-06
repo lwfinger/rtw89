@@ -2426,12 +2426,7 @@ int rtw89_chanctx_ops_add(struct rtw89_dev *rtwdev,
 		return -ENOENT;
 
 	rtw89_config_entity_chandef(rtwdev, idx, &ctx->def);
-<<<<<<< found
 	cfg->idx = idx;
-||||||| expected
-	rtw89_set_channel(rtwdev);
-=======
->>>>>>> replacement
 	cfg->ref_count = 0;
 	hal->sub[idx].cfg = cfg;
 	return 0;
@@ -2471,6 +2466,17 @@ int rtw89_chanctx_ops_assign_vif(struct rtw89_dev *rtwdev,
 	cfg->ref_count++;
 	cfg->ref_count++;
 
+	if (cfg->idx == RTW89_SUB_ENTITY_0)
+		goto out;
+
+	rtw89_entity_calculate_weight(rtwdev, &w);
+	if (w.active_chanctxs != 1)
+		goto out;
+
+	/* put the first active chanctx at RTW89_SUB_ENTITY_0 */
+	rtw89_swap_sub_entity(rtwdev, cfg->idx, RTW89_SUB_ENTITY_0);
+
+out:
 	if (cfg->idx == RTW89_SUB_ENTITY_0)
 		goto out;
 

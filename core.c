@@ -367,7 +367,7 @@ void rtw89_core_set_chip_txpwr(struct rtw89_dev *rtwdev)
 		break;
 	default:
 		WARN(1, "Invalid ent mode: %d\n", mode);
-		return;
+		return -EINVAL;
 	}
 
 	roc_idx = atomic_read(&hal->roc_entity_idx);

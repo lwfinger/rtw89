@@ -2426,7 +2426,12 @@ int rtw89_chanctx_ops_add(struct rtw89_dev *rtwdev,
 		return -ENOENT;
 
 	rtw89_config_entity_chandef(rtwdev, idx, &ctx->def);
+<<<<<<< found
 	cfg->idx = idx;
+||||||| expected
+	rtw89_set_channel(rtwdev);
+=======
+>>>>>>> replacement
 	cfg->ref_count = 0;
 	hal->sub[idx].cfg = cfg;
 	return 0;
@@ -2530,3 +2535,4 @@ out:
 
 	rtw89_set_channel(rtwdev);
 }
+

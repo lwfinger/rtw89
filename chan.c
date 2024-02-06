@@ -252,6 +252,8 @@ enum rtw89_entity_mode rtw89_entity_recalc(struct rtw89_dev *rtwdev)
 
 	bitmap_copy(recalc_map, hal->entity_map, NUM_OF_RTW89_SUB_ENTITY);
 
+	bitmap_copy(recalc_map, hal->entity_map, NUM_OF_RTW89_SUB_ENTITY);
+
 	rtw89_entity_calculate_weight(rtwdev, &w);
 	switch (w.active_chanctxs) {
 	default:

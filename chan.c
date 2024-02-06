@@ -238,6 +238,32 @@ static void rtw89_entity_calculate_weight(struct rtw89_dev *rtwdev,
 	}
 }
 
+static void rtw89_entity_calculate_weight(struct rtw89_dev *rtwdev,
+					  struct rtw89_entity_weight *w)
+{
+	struct rtw89_hal *hal = &rtwdev->hal;
+	const struct rtw89_chanctx_cfg *cfg;
+	struct rtw89_vif *rtwvif;
+	int idx;
+
+	for_each_set_bit(idx, hal->entity_map, NUM_OF_RTW89_SUB_ENTITY) {
+		cfg = hal->sub[idx].cfg;
+		if (!cfg) {
+			/* doesn't run with chanctx ops; one channel at most */
+			w->active_chanctxs = 1;
+			break;
+		}
+
+		if (cfg->ref_count > 0)
+			w->active_chanctxs++;
+	}
+
+	rtw89_for_each_rtwvif(rtwdev, rtwvif) {
+		if (rtwvif->chanctx_assigned)
+			w->active_roles++;
+	}
+}
+
 enum rtw89_entity_mode rtw89_entity_recalc(struct rtw89_dev *rtwdev)
 {
 	DECLARE_BITMAP(recalc_map, NUM_OF_RTW89_SUB_ENTITY) = {};
@@ -249,8 +275,6 @@ enum rtw89_entity_mode rtw89_entity_recalc(struct rtw89_dev *rtwdev)
 	u8 idx;
 
 	lockdep_assert_held(&rtwdev->mutex);
-
-	bitmap_copy(recalc_map, hal->entity_map, NUM_OF_RTW89_SUB_ENTITY);
 
 	bitmap_copy(recalc_map, hal->entity_map, NUM_OF_RTW89_SUB_ENTITY);
 
@@ -2439,6 +2463,7 @@ int rtw89_chanctx_ops_assign_vif(struct rtw89_dev *rtwdev,
 
 	rtwvif->sub_entity_idx = cfg->idx;
 	rtwvif->chanctx_assigned = true;
+	cfg->ref_count++;
 	cfg->ref_count++;
 
 	if (cfg->idx == RTW89_SUB_ENTITY_0)

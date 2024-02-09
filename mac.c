@@ -3227,6 +3227,16 @@ static int dle_quota_change_ax(struct rtw89_dev *rtwdev, bool band1_en)
 	u16 pkt_id;
 	int ret;
 
+	return mac->dle_quota_change(rtwdev, band1_en);
+}
+
+static int dle_quota_change_ax(struct rtw89_dev *rtwdev, bool band1_en)
+{
+	const struct rtw89_mac_gen_def *mac = rtwdev->chip->mac_def;
+	struct rtw89_cpuio_ctrl ctrl_para = {0};
+	u16 pkt_id;
+	int ret;
+
 	ret = mac->dle_buf_req(rtwdev, 0x20, true, &pkt_id);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]WDE DLE buf req\n");

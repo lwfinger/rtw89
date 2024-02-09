@@ -1521,6 +1521,71 @@ static int dle_quota_change_be(struct rtw89_dev *rtwdev, bool band1_en)
 	return 0;
 }
 
+static int dle_upd_qta_aval_page_be(struct rtw89_dev *rtwdev,
+				    enum rtw89_mac_dle_ctrl_type type,
+				    enum rtw89_mac_dle_ple_quota_id quota_id)
+{
+	u32 val;
+
+	if (type == DLE_CTRL_TYPE_WDE) {
+		rtw89_write32_mask(rtwdev, R_BE_WDE_BUFMGN_CTL,
+				   B_BE_WDE_AVAL_UPD_QTAID_MASK, quota_id);
+		rtw89_write32_set(rtwdev, R_BE_WDE_BUFMGN_CTL, B_BE_WDE_AVAL_UPD_REQ);
+
+		return read_poll_timeout(rtw89_read32, val,
+					 !(val & B_BE_WDE_AVAL_UPD_REQ),
+					 1, 2000, false, rtwdev, R_BE_WDE_BUFMGN_CTL);
+	} else if (type == DLE_CTRL_TYPE_PLE) {
+		rtw89_write32_mask(rtwdev, R_BE_PLE_BUFMGN_CTL,
+				   B_BE_PLE_AVAL_UPD_QTAID_MASK, quota_id);
+		rtw89_write32_set(rtwdev, R_BE_PLE_BUFMGN_CTL, B_BE_PLE_AVAL_UPD_REQ);
+
+		return read_poll_timeout(rtw89_read32, val,
+					 !(val & B_BE_PLE_AVAL_UPD_REQ),
+					 1, 2000, false, rtwdev, R_BE_PLE_BUFMGN_CTL);
+	}
+
+	rtw89_warn(rtwdev, "%s wrong type %d\n", __func__, type);
+	return -EINVAL;
+}
+
+static int dle_quota_change_be(struct rtw89_dev *rtwdev, bool band1_en)
+{
+	int ret;
+
+	if (band1_en) {
+		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
+					       PLE_QTAID_B0_TXPL);
+		if (ret) {
+			rtw89_err(rtwdev, "update PLE B0 TX avail page fail %d\n", ret);
+			return ret;
+		}
+
+		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
+					       PLE_QTAID_CMAC0_RX);
+		if (ret) {
+			rtw89_err(rtwdev, "update PLE CMAC0 RX avail page fail %d\n", ret);
+			return ret;
+		}
+	} else {
+		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
+					       PLE_QTAID_B1_TXPL);
+		if (ret) {
+			rtw89_err(rtwdev, "update PLE B1 TX avail page fail %d\n", ret);
+			return ret;
+		}
+
+		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
+					       PLE_QTAID_CMAC1_RX);
+		if (ret) {
+			rtw89_err(rtwdev, "update PLE CMAC1 RX avail page fail %d\n", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int preload_init_be(struct rtw89_dev *rtwdev, u8 mac_idx,
 			   enum rtw89_qta_mode mode)
 {

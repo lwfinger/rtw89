@@ -959,6 +959,13 @@ static int rx_fltr_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 
 static int cca_ctrl_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 {
+	u32 set = B_BE_FEN_BB1PLAT_RSTB | B_BE_FEN_BB1_IP_RSTN;
+
+	if (bb1_en)
+		rtw89_write32_set(rtwdev, R_BE_FEN_RST_ENABLE, set);
+	else
+		rtw89_write32_clr(rtwdev, R_BE_FEN_RST_ENABLE, set);
+
 	return 0;
 }
 

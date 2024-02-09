@@ -3316,6 +3316,7 @@ struct rtw89_scan_option {
 
 enum rtw89_qta_mode {
 	RTW89_QTA_SCC,
+	RTW89_QTA_DBCC,
 	RTW89_QTA_DLFW,
 	RTW89_QTA_WOW,
 

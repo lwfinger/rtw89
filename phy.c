@@ -20,6 +20,13 @@ static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
 	return phy->phy0_phy1_offset(rtwdev, addr);
 }
 
+static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
+{
+	const struct rtw89_phy_gen_def *phy = rtwdev->chip->phy_def;
+
+	return phy->phy0_phy1_offset(rtwdev, addr);
+}
+
 static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 			     const struct rtw89_ra_report *report)
 {

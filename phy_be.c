@@ -96,6 +96,24 @@ static u32 rtw89_phy0_phy1_offset_be(struct rtw89_dev *rtwdev, u32 addr)
 	return ofst;
 }
 
+static u32 rtw89_phy0_phy1_offset_be(struct rtw89_dev *rtwdev, u32 addr)
+{
+	u32 phy_page = addr >> 8;
+	u32 ofst = 0;
+
+	if ((phy_page >= 0x4 && phy_page <= 0xF) ||
+	    (phy_page >= 0x20 && phy_page <= 0x2B) ||
+	    (phy_page >= 0x40 && phy_page <= 0x4f) ||
+	    (phy_page >= 0x60 && phy_page <= 0x6f) ||
+	    (phy_page >= 0xE4 && phy_page <= 0xE5) ||
+	    (phy_page >= 0xE8 && phy_page <= 0xED))
+		ofst = 0x1000;
+	else
+		ofst = 0x0;
+
+	return ofst;
+}
+
 union rtw89_phy_bb_gain_arg_be {
 	u32 addr;
 	struct {

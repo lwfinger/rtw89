@@ -983,6 +983,9 @@ static int nav_ctrl_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 
 	rtw89_write32(rtwdev, reg, val32);
 
+	reg = rtw89_mac_reg_by_idx(rtwdev, R_BE_BSSID_SRC_CTRL, mac_idx);
+	rtw89_write8_set(rtwdev, reg, B_BE_PLCP_SRC_EN);
+
 	return 0;
 }
 

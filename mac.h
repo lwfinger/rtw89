@@ -419,6 +419,11 @@ enum rtw89_mac_c2h_mrc_func {
 	NUM_OF_RTW89_MAC_C2H_FUNC_MRC,
 };
 
+enum rtw89_mac_c2h_mrc_func {
+	RTW89_MAC_C2H_FUNC_MRC_TSF_RPT = 0,
+	RTW89_MAC_C2H_FUNC_MRC_STATUS_RPT = 1,
+};
+
 enum rtw89_mac_c2h_class {
 	RTW89_MAC_C2H_CLASS_INFO = 0x0,
 	RTW89_MAC_C2H_CLASS_OFLD = 0x1,
@@ -453,6 +458,12 @@ enum rtw89_mac_mcc_status {
 	RTW89_MAC_MCC_SWITCH_CH_FAIL = 25,
 	RTW89_MAC_MCC_TXNULL0_FAIL = 26,
 	RTW89_MAC_MCC_TXNULL1_FAIL = 27,
+};
+
+enum rtw89_mac_mrc_status {
+	RTW89_MAC_MRC_START_SCH_OK = 0,
+	RTW89_MAC_MRC_STOP_SCH_OK = 1,
+	RTW89_MAC_MRC_DEL_SCH_OK = 2,
 };
 
 enum rtw89_mac_mrc_status {

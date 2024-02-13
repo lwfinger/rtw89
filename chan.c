@@ -355,6 +355,13 @@ static bool rtw89_concurrent_via_mrc(struct rtw89_dev *rtwdev)
 	return chip_gen == RTW89_CHIP_BE;
 }
 
+static bool rtw89_concurrent_via_mrc(struct rtw89_dev *rtwdev)
+{
+	enum rtw89_chip_gen chip_gen = rtwdev->chip->chip_gen;
+
+	return chip_gen == RTW89_CHIP_BE;
+}
+
 /* This function centrally manages how MCC roles are sorted and iterated.
  * And, it guarantees that ordered_idx is less than NUM_OF_RTW89_MCC_ROLES.
  * So, if data needs to pass an array for ordered_idx, the array can declare
@@ -462,6 +469,61 @@ static int __mrc_fw_req_tsf(struct rtw89_dev *rtwdev, u64 *tsf_ref, u64 *tsf_aux
 	return 0;
 }
 
+static int __mcc_fw_req_tsf(struct rtw89_dev *rtwdev, u64 *tsf_ref, u64 *tsf_aux)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_role *aux = &mcc->role_aux;
+	struct rtw89_mac_mcc_tsf_rpt rpt = {};
+	struct rtw89_fw_mcc_tsf_req req = {};
+	int ret;
+
+	req.group = mcc->group;
+	req.macid_x = ref->rtwvif->mac_id;
+	req.macid_y = aux->rtwvif->mac_id;
+	ret = rtw89_fw_h2c_mcc_req_tsf(rtwdev, &req, &rpt);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MCC h2c failed to request tsf: %d\n", ret);
+		return ret;
+	}
+
+	*tsf_ref = (u64)rpt.tsf_x_high << 32 | rpt.tsf_x_low;
+	*tsf_aux = (u64)rpt.tsf_y_high << 32 | rpt.tsf_y_low;
+
+	return 0;
+}
+
+static int __mrc_fw_req_tsf(struct rtw89_dev *rtwdev, u64 *tsf_ref, u64 *tsf_aux)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_role *aux = &mcc->role_aux;
+	struct rtw89_fw_mrc_req_tsf_arg arg = {};
+	struct rtw89_mac_mrc_tsf_rpt rpt = {};
+	int ret;
+
+	BUILD_BUG_ON(RTW89_MAC_MRC_MAX_REQ_TSF_NUM < NUM_OF_RTW89_MCC_ROLES);
+
+	arg.num = 2;
+	arg.infos[0].band = ref->rtwvif->mac_idx;
+	arg.infos[0].port = ref->rtwvif->port;
+	arg.infos[1].band = aux->rtwvif->mac_idx;
+	arg.infos[1].port = aux->rtwvif->port;
+
+	ret = rtw89_fw_h2c_mrc_req_tsf(rtwdev, &arg, &rpt);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MRC h2c failed to request tsf: %d\n", ret);
+		return ret;
+	}
+
+	*tsf_ref = rpt.tsfs[0];
+	*tsf_aux = rpt.tsfs[1];
+
+	return 0;
+}
+
 static u16 rtw89_mcc_get_bcn_ofst(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
@@ -500,6 +562,28 @@ void rtw89_mcc_role_fw_macid_bitmap_set_bit(struct rtw89_mcc_role *mcc_role,
 		return;
 
 	mcc_role->macid_bitmap[idx] |= BIT(pos);
+}
+
+static
+u32 rtw89_mcc_role_fw_macid_bitmap_to_u32(struct rtw89_mcc_role *mcc_role)
+{
+	unsigned int macid;
+	unsigned int i, j;
+	u32 bitmap = 0;
+
+	for (i = 0; i < ARRAY_SIZE(mcc_role->macid_bitmap); i++) {
+		for (j = 0; j < 8; j++) {
+			macid = i * 8 + j;
+			if (macid >= 32)
+				goto out;
+
+			if (mcc_role->macid_bitmap[i] & BIT(j))
+				bitmap |= BIT(macid);
+		}
+	}
+
+out:
+	return bitmap;
 }
 
 static
@@ -1467,6 +1551,37 @@ void __mrc_fw_add_role(struct rtw89_dev *rtwdev, struct rtw89_mcc_role *role,
 		rtw89_mcc_role_fw_macid_bitmap_to_u32(role);
 }
 
+static
+void __mrc_fw_add_role(struct rtw89_dev *rtwdev, struct rtw89_mcc_role *role,
+		       struct rtw89_fw_mrc_add_arg *arg, u8 slot_idx)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_policy *policy = &role->policy;
+	struct rtw89_fw_mrc_add_slot_arg *slot_arg;
+	const struct rtw89_chan *chan;
+
+	slot_arg = &arg->slots[slot_idx];
+	role->slot_idx = slot_idx;
+
+	slot_arg->duration = role->duration;
+	slot_arg->role_num = 1;
+
+	chan = rtw89_chan_get(rtwdev, role->rtwvif->sub_entity_idx);
+
+	slot_arg->roles[0].role_type = RTW89_H2C_MRC_ROLE_WIFI;
+	slot_arg->roles[0].is_master = role == ref;
+	slot_arg->roles[0].band = chan->band_type;
+	slot_arg->roles[0].bw = chan->band_width;
+	slot_arg->roles[0].central_ch = chan->channel;
+	slot_arg->roles[0].primary_ch = chan->primary_channel;
+	slot_arg->roles[0].en_tx_null = !policy->dis_tx_null;
+	slot_arg->roles[0].null_early = policy->tx_null_early;
+	slot_arg->roles[0].macid = role->rtwvif->mac_id;
+	slot_arg->roles[0].macid_main_bitmap =
+		rtw89_mcc_role_fw_macid_bitmap_to_u32(role);
+}
+
 static int __mcc_fw_add_bt_role(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
@@ -1486,6 +1601,20 @@ static int __mcc_fw_add_bt_role(struct rtw89_dev *rtwdev)
 	}
 
 	return 0;
+}
+
+static
+void __mrc_fw_add_bt_role(struct rtw89_dev *rtwdev,
+			  struct rtw89_fw_mrc_add_arg *arg, u8 slot_idx)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_bt_role *bt_role = &mcc->bt_role;
+	struct rtw89_fw_mrc_add_slot_arg *slot_arg = &arg->slots[slot_idx];
+
+	slot_arg->duration = bt_role->duration;
+	slot_arg->role_num = 1;
+
+	slot_arg->roles[0].role_type = RTW89_H2C_MRC_ROLE_BT;
 }
 
 static
@@ -1711,6 +1840,130 @@ static int __mrc_fw_start(struct rtw89_dev *rtwdev, bool replace)
 	return 0;
 }
 
+static void __mrc_fw_add_courtesy(struct rtw89_dev *rtwdev,
+				  struct rtw89_fw_mrc_add_arg *arg)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_role *aux = &mcc->role_aux;
+	struct rtw89_mcc_config *config = &mcc->config;
+	struct rtw89_mcc_pattern *pattern = &config->pattern;
+	struct rtw89_mcc_courtesy *courtesy = &pattern->courtesy;
+	struct rtw89_fw_mrc_add_slot_arg *slot_arg_src;
+	u8 slot_idx_tgt;
+
+	if (!courtesy->enable)
+		return;
+
+	if (courtesy->macid_src == ref->rtwvif->mac_id) {
+		slot_arg_src = &arg->slots[ref->slot_idx];
+		slot_idx_tgt = aux->slot_idx;
+	} else {
+		slot_arg_src = &arg->slots[aux->slot_idx];
+		slot_idx_tgt = ref->slot_idx;
+	}
+
+	slot_arg_src->courtesy_target = slot_idx_tgt;
+	slot_arg_src->courtesy_period = courtesy->slot_num;
+	slot_arg_src->courtesy_en = true;
+}
+
+static int __mrc_fw_start(struct rtw89_dev *rtwdev, bool replace)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_role *aux = &mcc->role_aux;
+	struct rtw89_mcc_config *config = &mcc->config;
+	struct rtw89_mcc_pattern *pattern = &config->pattern;
+	struct rtw89_mcc_sync *sync = &config->sync;
+	struct rtw89_fw_mrc_start_arg start_arg = {};
+	struct rtw89_fw_mrc_add_arg add_arg = {};
+	int ret;
+
+	BUILD_BUG_ON(RTW89_MAC_MRC_MAX_ADD_SLOT_NUM <
+		     NUM_OF_RTW89_MCC_ROLES + 1 /* bt role */);
+
+	if (replace) {
+		start_arg.old_sch_idx = mcc->group;
+		start_arg.action = RTW89_H2C_MRC_START_ACTION_REPLACE_OLD;
+		mcc->group = RTW89_MCC_NEXT_GROUP(mcc->group);
+	}
+
+	add_arg.sch_idx = mcc->group;
+	add_arg.sch_type = RTW89_H2C_MRC_SCH_BAND0_ONLY;
+
+	switch (pattern->plan) {
+	case RTW89_MCC_PLAN_TAIL_BT:
+		__mrc_fw_add_role(rtwdev, ref, &add_arg, 0);
+		__mrc_fw_add_role(rtwdev, aux, &add_arg, 1);
+		__mrc_fw_add_bt_role(rtwdev, &add_arg, 2);
+
+		add_arg.slot_num = 3;
+		add_arg.btc_in_sch = true;
+		break;
+	case RTW89_MCC_PLAN_MID_BT:
+		__mrc_fw_add_role(rtwdev, ref, &add_arg, 0);
+		__mrc_fw_add_bt_role(rtwdev, &add_arg, 1);
+		__mrc_fw_add_role(rtwdev, aux, &add_arg, 2);
+
+		add_arg.slot_num = 3;
+		add_arg.btc_in_sch = true;
+		break;
+	case RTW89_MCC_PLAN_NO_BT:
+		__mrc_fw_add_role(rtwdev, ref, &add_arg, 0);
+		__mrc_fw_add_role(rtwdev, aux, &add_arg, 1);
+
+		add_arg.slot_num = 2;
+		add_arg.btc_in_sch = false;
+		break;
+	default:
+		rtw89_warn(rtwdev, "MCC unknown plan: %d\n", pattern->plan);
+		return -EFAULT;
+	}
+
+	__mrc_fw_add_courtesy(rtwdev, &add_arg);
+
+	ret = rtw89_fw_h2c_mrc_add(rtwdev, &add_arg);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MRC h2c failed to trigger add: %d\n", ret);
+		return ret;
+	}
+
+	if (sync->enable) {
+		struct rtw89_fw_mrc_sync_arg sync_arg = {
+			.offset = sync->offset,
+			.src = {
+				.band = sync->band_src,
+				.port = sync->port_src,
+			},
+			.dest = {
+				.band = sync->band_tgt,
+				.port = sync->port_tgt,
+			},
+		};
+
+		ret = rtw89_fw_h2c_mrc_sync(rtwdev, &sync_arg);
+		if (ret) {
+			rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+				    "MRC h2c failed to trigger sync: %d\n", ret);
+			return ret;
+		}
+	}
+
+	start_arg.sch_idx = mcc->group;
+	start_arg.start_tsf = config->start_tsf;
+
+	ret = rtw89_fw_h2c_mrc_start(rtwdev, &start_arg);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MRC h2c failed to trigger start: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int __mcc_fw_set_duration_no_bt(struct rtw89_dev *rtwdev, bool sync_changed)
 {
 	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
@@ -1746,6 +1999,60 @@ static int __mcc_fw_set_duration_no_bt(struct rtw89_dev *rtwdev, bool sync_chang
 	if (ret) {
 		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
 			    "MCC h2c failed to trigger sync: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int __mrc_fw_set_duration_no_bt(struct rtw89_dev *rtwdev, bool sync_changed)
+{
+	struct rtw89_mcc_info *mcc = &rtwdev->mcc;
+	struct rtw89_mcc_config *config = &mcc->config;
+	struct rtw89_mcc_sync *sync = &config->sync;
+	struct rtw89_mcc_role *ref = &mcc->role_ref;
+	struct rtw89_mcc_role *aux = &mcc->role_aux;
+	struct rtw89_fw_mrc_upd_duration_arg dur_arg = {
+		.sch_idx = mcc->group,
+		.start_tsf = config->start_tsf,
+		.slot_num = 2,
+		.slots[0] = {
+			.slot_idx = ref->slot_idx,
+			.duration = ref->duration,
+		},
+		.slots[1] = {
+			.slot_idx = aux->slot_idx,
+			.duration = aux->duration,
+		},
+	};
+	struct rtw89_fw_mrc_sync_arg sync_arg = {
+		.offset = sync->offset,
+		.src = {
+			.band = sync->band_src,
+			.port = sync->port_src,
+		},
+		.dest = {
+			.band = sync->band_tgt,
+			.port = sync->port_tgt,
+		},
+
+	};
+	int ret;
+
+	ret = rtw89_fw_h2c_mrc_upd_duration(rtwdev, &dur_arg);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MRC h2c failed to update duration: %d\n", ret);
+		return ret;
+	}
+
+	if (!sync->enable || !sync_changed)
+		return 0;
+
+	ret = rtw89_fw_h2c_mrc_sync(rtwdev, &sync_arg);
+	if (ret) {
+		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
+			    "MRC h2c failed to trigger sync: %d\n", ret);
 		return ret;
 	}
 

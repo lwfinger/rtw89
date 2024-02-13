@@ -5084,6 +5084,9 @@ struct rtw89_mcc_role {
 	/* only valid when running with FW MRC mechanism */
 	u8 slot_idx;
 
+	/* only valid when running with FW MRC mechanism */
+	u8 slot_idx;
+
 	/* byte-array in LE order for FW */
 	u8 macid_bitmap[BITS_TO_BYTES(RTW89_MAX_MAC_ID_NUM)];
 
@@ -5102,7 +5105,11 @@ struct rtw89_mcc_courtesy {
 	bool enable;
 	u8 slot_num;
 	u8 macid_src;
+	u8 band_src;
+	u8 port_src;
 	u8 macid_tgt;
+	u8 band_tgt;
+	u8 port_tgt;
 };
 
 enum rtw89_mcc_plan {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /* Copyright(c) 2019-2020  Realtek Corporation
  */
-#include <linux/version.h>
 #include <linux/ip.h>
 #include <linux/udp.h>
+#include <linux/ieee80211.h>
 
 #include "cam.h"
 #include "chan.h"
@@ -713,7 +713,7 @@ __rtw89_core_tx_check_he_qos_htc(struct rtw89_dev *rtwdev,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if (!sta || !sta->deflink.he_cap.has_he)
-#else		
+#else
 	if (!sta || !sta->he_cap.has_he)
 #endif
 		return false;
@@ -807,14 +807,14 @@ static u16 rtw89_core_get_data_rate(struct rtw89_dev *rtwdev,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if (!sta || !sta->deflink.supp_rates[chan->band_type])
-#else		
+#else
 	if (!sta || !sta->supp_rates[chan->band_type])
 #endif
 		return lowest_rate;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	return __ffs(sta->deflink.supp_rates[chan->band_type]) + lowest_rate;
-#else	
+#else
 	return __ffs(sta->supp_rates[chan->band_type]) + lowest_rate;
 #endif
 }
@@ -1770,7 +1770,7 @@ static bool rtw89_core_rx_ppdu_match(struct rtw89_dev *rtwdev,
 				     struct ieee80211_rx_status *status)
 {
 	u8 band = desc_info->bb_sel ? RTW89_PHY_1 : RTW89_PHY_0;
-	u8 data_rate_mode, bw, rate_idx = MASKBYTE0, gi_ltf = 0;
+	u8 data_rate_mode, bw, rate_idx = MASKBYTE0, gi_ltf;
 	bool eht = false;
 	u16 data_rate;
 	bool ret;
@@ -3878,115 +3878,96 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 	}
 }
 
-static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
-			      enum nl80211_band band,
-			      enum nl80211_iftype iftype,
-			      struct ieee80211_sband_iftype_data *iftype_data)
+static void rtw89_init_eht_cap(struct rtw89_dev *rtwdev,
+			       enum nl80211_band band,
+			       enum nl80211_iftype iftype,
+			       struct ieee80211_sband_iftype_data *iftype_data)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
+	struct ieee80211_eht_cap_elem_fixed *eht_cap_elem;
+	struct ieee80211_eht_mcs_nss_supp *eht_nss;
+	struct ieee80211_sta_eht_cap *eht_cap;
 	struct rtw89_hal *hal = &rtwdev->hal;
-	bool no_ng16 = (chip->chip_id == RTL8852A && hal->cv == CHIP_CBV) ||
-		       (chip->chip_id == RTL8852B && hal->cv == CHIP_CAV);
-	struct ieee80211_sta_he_cap *he_cap;
-	int nss = hal->rx_nss;
-	u8 *mac_cap_info;
-	u8 *phy_cap_info;
-	u16 mcs_map = 0;
-	int i;
+	bool support_320mhz = false;
+	int sts = 3;
+	u8 val;
 
-	for (i = 0; i < 8; i++) {
-		if (i < nss)
-			mcs_map |= IEEE80211_HE_MCS_SUPPORT_0_11 << (i * 2);
-		else
-			mcs_map |= IEEE80211_HE_MCS_NOT_SUPPORTED << (i * 2);
-	}
+	if (chip->chip_gen == RTW89_CHIP_AX)
+		return;
 
-	he_cap = &iftype_data->he_cap;
-	mac_cap_info = he_cap->he_cap_elem.mac_cap_info;
-	phy_cap_info = he_cap->he_cap_elem.phy_cap_info;
+	if (band == NL80211_BAND_6GHZ &&
+	    chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_320))
+		support_320mhz = true;
 
-	he_cap->has_he = true;
-	mac_cap_info[0] = IEEE80211_HE_MAC_CAP0_HTC_HE;
-	if (iftype == NL80211_IFTYPE_STATION)
-		mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
-	mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
-			  IEEE80211_HE_MAC_CAP2_BSR;
-	mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_EXT_2;
-	if (iftype == NL80211_IFTYPE_AP)
-		mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
-	mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |
-			  IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
-	if (iftype == NL80211_IFTYPE_STATION)
-		mac_cap_info[5] = IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
-	if (band == NL80211_BAND_2GHZ) {
-		phy_cap_info[0] =
-			IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
-	} else {
-		phy_cap_info[0] =
-			IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
-		if (chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_160))
-			phy_cap_info[0] |= IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
-	}
-	phy_cap_info[1] = IEEE80211_HE_PHY_CAP1_DEVICE_CLASS_A |
-			  IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD |
-			  IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US;
-	phy_cap_info[2] = IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
-			  IEEE80211_HE_PHY_CAP2_STBC_TX_UNDER_80MHZ |
-			  IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ |
-			  IEEE80211_HE_PHY_CAP2_DOPPLER_TX;
-	phy_cap_info[3] = IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM;
-	if (iftype == NL80211_IFTYPE_STATION)
-		phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
-				   IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_2;
-	if (iftype == NL80211_IFTYPE_AP)
-		phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
-	phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
-			  IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
-	if (chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_160))
-		phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_4;
-	phy_cap_info[5] = no_ng16 ? 0 :
-			  IEEE80211_HE_PHY_CAP5_NG16_SU_FEEDBACK |
-			  IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
-	phy_cap_info[6] = IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
-			  IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
-			  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
-			  IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
-	phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
-			  IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
-			  IEEE80211_HE_PHY_CAP7_MAX_NC_1;
-	phy_cap_info[8] = IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
-			  IEEE80211_HE_PHY_CAP8_HE_ER_SU_1XLTF_AND_08_US_GI |
-			  IEEE80211_HE_PHY_CAP8_DCM_MAX_RU_996;
-	if (chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_160))
-		phy_cap_info[8] |= IEEE80211_HE_PHY_CAP8_20MHZ_IN_160MHZ_HE_PPDU |
-				   IEEE80211_HE_PHY_CAP8_80MHZ_IN_160MHZ_HE_PPDU;
-	phy_cap_info[9] = IEEE80211_HE_PHY_CAP9_LONGER_THAN_16_SIGB_OFDM_SYM |
-			  IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU |
-			  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
-			  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB |
-			  u8_encode_bits(IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_16US,
-					 IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_MASK);
-	if (iftype == NL80211_IFTYPE_STATION)
-		phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU;
-	he_cap->he_mcs_nss_supp.rx_mcs_80 = cpu_to_le16(mcs_map);
-	he_cap->he_mcs_nss_supp.tx_mcs_80 = cpu_to_le16(mcs_map);
-	if (chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_160)) {
-		he_cap->he_mcs_nss_supp.rx_mcs_160 = cpu_to_le16(mcs_map);
-		he_cap->he_mcs_nss_supp.tx_mcs_160 = cpu_to_le16(mcs_map);
-	}
+	eht_cap = &iftype_data->eht_cap;
+	eht_cap_elem = &eht_cap->eht_cap_elem;
+	eht_nss = &eht_cap->eht_mcs_nss_supp;
 
-	if (band == NL80211_BAND_6GHZ) {
-		__le16 capa;
+	eht_cap->has_eht = true;
 
-		capa = le16_encode_bits(IEEE80211_HT_MPDU_DENSITY_NONE,
-					IEEE80211_HE_6GHZ_CAP_MIN_MPDU_START) |
-		       le16_encode_bits(IEEE80211_VHT_MAX_AMPDU_1024K,
-					IEEE80211_HE_6GHZ_CAP_MAX_AMPDU_LEN_EXP) |
-		       le16_encode_bits(IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454,
-					IEEE80211_HE_6GHZ_CAP_MAX_MPDU_LEN);
-		iftype_data->he_6ghz_capa.capa = capa;
+	eht_cap_elem->mac_cap_info[0] =
+		u8_encode_bits(IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_7991,
+			       IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_MASK);
+	eht_cap_elem->mac_cap_info[1] = 0;
+
+	eht_cap_elem->phy_cap_info[0] =
+		IEEE80211_EHT_PHY_CAP0_NDP_4_EHT_LFT_32_GI |
+		IEEE80211_EHT_PHY_CAP0_SU_BEAMFORMEE;
+	if (support_320mhz)
+		eht_cap_elem->phy_cap_info[0] |=
+			IEEE80211_EHT_PHY_CAP0_320MHZ_IN_6GHZ;
+
+	eht_cap_elem->phy_cap_info[0] |=
+		u8_encode_bits(u8_get_bits(sts - 1, BIT(0)),
+			       IEEE80211_EHT_PHY_CAP0_BEAMFORMEE_SS_80MHZ_MASK);
+	eht_cap_elem->phy_cap_info[1] =
+		u8_encode_bits(u8_get_bits(sts - 1, GENMASK(2, 1)),
+			       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_80MHZ_MASK) |
+		u8_encode_bits(sts - 1,
+			       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_160MHZ_MASK);
+	if (support_320mhz)
+		eht_cap_elem->phy_cap_info[1] |=
+			u8_encode_bits(sts - 1,
+				       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_320MHZ_MASK);
+
+	eht_cap_elem->phy_cap_info[2] = 0;
+
+	eht_cap_elem->phy_cap_info[3] =
+		IEEE80211_EHT_PHY_CAP3_NG_16_SU_FEEDBACK |
+		IEEE80211_EHT_PHY_CAP3_NG_16_MU_FEEDBACK |
+		IEEE80211_EHT_PHY_CAP3_CODEBOOK_4_2_SU_FDBK |
+		IEEE80211_EHT_PHY_CAP3_CODEBOOK_7_5_MU_FDBK |
+		IEEE80211_EHT_PHY_CAP3_TRIG_CQI_FDBK;
+
+	eht_cap_elem->phy_cap_info[4] =
+		IEEE80211_EHT_PHY_CAP4_POWER_BOOST_FACT_SUPP |
+		u8_encode_bits(1, IEEE80211_EHT_PHY_CAP4_MAX_NC_MASK);
+
+	eht_cap_elem->phy_cap_info[5] =
+		IEEE80211_EHT_PHY_CAP5_NON_TRIG_CQI_FEEDBACK |
+		u8_encode_bits(IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_20US,
+			       IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_MASK);
+
+	eht_cap_elem->phy_cap_info[6] = 0;
+	eht_cap_elem->phy_cap_info[7] = 0;
+	eht_cap_elem->phy_cap_info[8] = 0;
+
+	val = u8_encode_bits(hal->rx_nss, IEEE80211_EHT_MCS_NSS_RX) |
+	      u8_encode_bits(hal->tx_nss, IEEE80211_EHT_MCS_NSS_TX);
+	eht_nss->bw._80.rx_tx_mcs9_max_nss = val;
+	eht_nss->bw._80.rx_tx_mcs11_max_nss = val;
+	eht_nss->bw._80.rx_tx_mcs13_max_nss = val;
+	eht_nss->bw._160.rx_tx_mcs9_max_nss = val;
+	eht_nss->bw._160.rx_tx_mcs11_max_nss = val;
+	eht_nss->bw._160.rx_tx_mcs13_max_nss = val;
+	if (support_320mhz) {
+		eht_nss->bw._320.rx_tx_mcs9_max_nss = val;
+		eht_nss->bw._320.rx_tx_mcs11_max_nss = val;
+		eht_nss->bw._320.rx_tx_mcs13_max_nss = val;
 	}
 }
+
+#define RTW89_SBAND_IFTYPES_NR 2
 
 static void rtw89_init_he_eht_cap(struct rtw89_dev *rtwdev,
 				  enum nl80211_band band,
@@ -4698,19 +4679,19 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 	if (!ops)
 		goto err;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
 	no_chanctx = chip->support_chanctx_num == 0 ||
 		     !RTW89_CHK_FW_FEATURE(SCAN_OFFLOAD, &early_fw) ||
 		     !RTW89_CHK_FW_FEATURE(BEACON_FILTER, &early_fw);
 
 	if (no_chanctx) {
-		ops->add_chanctx = NULL;
-		ops->remove_chanctx = NULL;
-		ops->change_chanctx = NULL;
-		ops->assign_vif_chanctx = NULL;
-		ops->unassign_vif_chanctx = NULL;
-		ops->remain_on_channel = NULL;
+		ops->add_chanctx = ieee80211_emulate_add_chanctx;
+		ops->remove_chanctx = ieee80211_emulate_remove_chanctx;
+		ops->change_chanctx = ieee80211_emulate_change_chanctx;
+		ops->switch_vif_chanctx = ieee80211_emulate_switch_vif_chanctx;
 		ops->cancel_remain_on_channel = NULL;
 	}
+#endif
 
 	driver_data_size = sizeof(struct rtw89_dev) + bus_data_size;
 	hw = ieee80211_alloc_hw(driver_data_size, ops);

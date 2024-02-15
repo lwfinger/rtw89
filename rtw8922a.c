@@ -2524,6 +2524,7 @@ static void rtw8922a_set_txpwr(struct rtw89_dev *rtwdev,
 	rtw8922a_set_tx_shape(rtwdev, chan, phy_idx);
 	rtw89_phy_set_txpwr_limit(rtwdev, chan, phy_idx);
 	rtw89_phy_set_txpwr_limit_ru(rtwdev, chan, phy_idx);
+	rtw8922a_set_channel_rf(rtwdev, chan, phy_idx);
 }
 
 static void rtw8922a_set_txpwr_ctrl(struct rtw89_dev *rtwdev,

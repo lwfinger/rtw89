@@ -2845,7 +2845,11 @@ struct rtw89_h2c_chinfo {
 	u8 elem_size;
 	u8 arg;
 	u8 rsvd0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct rtw89_h2c_chinfo_elem elem[] __counted_by(ch_num);
+#else
+	struct rtw89_h2c_chinfo_elem elem[];
+#endif
 } __packed;
 
 #define RTW89_H2C_CHINFO_ARG_MAC_IDX_MASK BIT(0)
@@ -3532,7 +3536,11 @@ struct rtw89_fw_mrc_req_tsf_arg {
 
 struct rtw89_h2c_mrc_req_tsf {
 	u8 req_tsf_num;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	u8 infos[] __counted_by(req_tsf_num);
+#else
+	u8 infos[];
+#endif
 } __packed;
 
 #define RTW89_H2C_MRC_REQ_TSF_INFO_BAND GENMASK(3, 0)

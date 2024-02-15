@@ -4873,7 +4873,7 @@ struct rtw89_mcc_policy {
 	u8 sw_retry_count;
 };
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && !defined(BITS_TO_BYTES)
 #define BITS_TO_BYTES(nr)       __KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(char))
 #endif
 struct rtw89_mcc_role {

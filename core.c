@@ -1792,6 +1792,8 @@ static bool rtw89_core_rx_ppdu_match(struct rtw89_dev *rtwdev,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	eht = data_rate_mode == DATA_RATE_MODE_EHT;
+#else
+	eht = 0;
 #endif
 	bw = rtw89_hw_to_rate_info_bw(desc_info->bw);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
@@ -2158,9 +2160,13 @@ static void rtw89_core_rx_to_mac80211(struct rtw89_dev *rtwdev,
 {
 	struct napi_struct *napi = &rtwdev->napi;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 	/* In low power mode, napi isn't scheduled. Receive it to netif. */
 	if (unlikely(!napi_is_scheduled(napi)))
 		napi = NULL;
+#else
+	napi = NULL;
+#endif
 
 	rtw89_core_hw_to_sband_rate(rx_status);
 	rtw89_core_rx_stats(rtwdev, phy_ppdu, desc_info, skb_ppdu);
@@ -2476,12 +2482,19 @@ static void rtw89_core_update_rx_status(struct rtw89_dev *rtwdev,
 		rtw89_warn(rtwdev, "invalid RX rate mode %d\n", data_rate_mode);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	/* he_gi is used to match ppdu, so we always fill it. */
 	gi = rtw89_rxdesc_to_nl_he_eht_gi(rtwdev, desc_info->gi_ltf, true, eht);
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	if (eht)
 		rx_status->eht.gi = gi;
 	else
 		rx_status->he_gi = gi;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	if (!eht)
+		rx_status->he_gi = gi;
+#endif
 	rx_status->flag |= RX_FLAG_MACTIME_START;
 	rx_status->mactime = desc_info->free_run_cnt;
 
@@ -2576,8 +2589,13 @@ EXPORT_SYMBOL(rtw89_core_napi_stop);
 void rtw89_core_napi_init(struct rtw89_dev *rtwdev)
 {
 	init_dummy_netdev(&rtwdev->netdev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
 		       rtwdev->hci.ops->napi_poll);
+#else
+	netif_napi_add(&rtwdev->netdev, &rtwdev->napi,
+		       rtwdev->hci.ops->napi_poll, 0);
+#endif
 }
 EXPORT_SYMBOL(rtw89_core_napi_init);
 
@@ -2939,7 +2957,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 	struct sk_buff *skb;
 	int ret, qsel;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 	if (vif->type != NL80211_IFTYPE_STATION || !vif->cfg.assoc)
+#else
+	if (vif->type != NL80211_IFTYPE_STATION)
+#endif
 		return 0;
 
 	rcu_read_lock();
@@ -2949,7 +2971,11 @@ static int rtw89_core_send_nullfunc(struct rtw89_dev *rtwdev,
 		goto out;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, -1, qos);
+#else
+	skb = ieee80211_nullfunc_get(rtwdev->hw, vif, qos);
+#endif
 	if (!skb) {
 		ret = -ENOMEM;
 		goto out;
@@ -3234,7 +3260,9 @@ static void rtw89_track_work(struct work_struct *work)
 	rtw89_phy_antdiv_track(rtwdev);
 	rtw89_phy_ul_tb_ctrl_track(rtwdev);
 	rtw89_phy_edcca_track(rtwdev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	rtw89_tas_track(rtwdev);
+#endif
 	rtw89_chanctx_track(rtwdev);
 
 	if (rtwdev->lps_enabled && !rtwdev->btc.lps)
@@ -3581,11 +3609,13 @@ int rtw89_core_sta_assoc(struct rtw89_dev *rtwdev,
 	rtw89_mac_bf_monitor_calc(rtwdev, sta, false);
 
 	if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 		struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
 
 		if (bss_conf->he_support &&
 		    !(bss_conf->he_oper.params & IEEE80211_HE_OPERATION_ER_SU_DISABLE))
 			rtwsta->er_cap = true;
+#endif
 
 		rtw89_btc_ntfy_role_info(rtwdev, rtwvif, rtwsta,
 					 BTC_ROLE_MSTS_STA_CONN_END);
@@ -3666,12 +3696,14 @@ static void _rtw89_core_set_tid_config(struct rtw89_dev *rtwdev,
 			}
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 		if (mask & BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL) && tids == 0xff) {
 			if (tid_conf->amsdu == NL80211_TID_CONFIG_ENABLE)
 				sta->max_amsdu_subframes = 0;
 			else
 				sta->max_amsdu_subframes = 1;
 		}
+#endif
 	}
 }
 
@@ -3801,11 +3833,17 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 		mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
 	mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_ALL_ACK |
 			  IEEE80211_HE_MAC_CAP2_BSR;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 	mac_cap_info[3] = IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_EXT_2;
+#endif
 	if (iftype == NL80211_IFTYPE_AP)
 		mac_cap_info[3] |= IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 	mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_OPS |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 			  IEEE80211_HE_MAC_CAP4_AMSDU_IN_AMPDU;
+#else
+			  0;
+#endif
 	if (iftype == NL80211_IFTYPE_STATION)
 		mac_cap_info[5] = IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
 	if (band == NL80211_BAND_2GHZ) {
@@ -3828,8 +3866,10 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 	if (iftype == NL80211_IFTYPE_STATION)
 		phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_16_QAM |
 				   IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_2;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 	if (iftype == NL80211_IFTYPE_AP)
 		phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
+#endif
 	phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
 			  IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
 	if (chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_160))
@@ -3839,8 +3879,13 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			  IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
 	phy_cap_info[6] = IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
 			  IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 			  IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB |
 			  IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
+#else
+			   0;
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 	phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
 			  IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
 			  IEEE80211_HE_PHY_CAP7_MAX_NC_1;
@@ -3854,8 +3899,13 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 			  IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU |
 			  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
 			  IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 			  u8_encode_bits(IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_16US,
 					 IEEE80211_HE_PHY_CAP9_NOMINAL_PKT_PADDING_MASK);
+#else
+			  0;
+#endif
+#endif
 	if (iftype == NL80211_IFTYPE_STATION)
 		phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU;
 	he_cap->he_mcs_nss_supp.rx_mcs_80 = cpu_to_le16(mcs_map);
@@ -3865,6 +3915,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 		he_cap->he_mcs_nss_supp.tx_mcs_160 = cpu_to_le16(mcs_map);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	if (band == NL80211_BAND_6GHZ) {
 		__le16 capa;
 
@@ -3876,6 +3927,7 @@ static void rtw89_init_he_cap(struct rtw89_dev *rtwdev,
 					IEEE80211_HE_6GHZ_CAP_MAX_MPDU_LEN);
 		iftype_data->he_6ghz_capa.capa = capa;
 	}
+#endif
 }
 
 static void rtw89_init_eht_cap(struct rtw89_dev *rtwdev,
@@ -3884,6 +3936,7 @@ static void rtw89_init_eht_cap(struct rtw89_dev *rtwdev,
 			       struct ieee80211_sband_iftype_data *iftype_data)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	struct ieee80211_eht_cap_elem_fixed *eht_cap_elem;
 	struct ieee80211_eht_mcs_nss_supp *eht_nss;
 	struct ieee80211_sta_eht_cap *eht_cap;
@@ -3891,23 +3944,33 @@ static void rtw89_init_eht_cap(struct rtw89_dev *rtwdev,
 	bool support_320mhz = false;
 	int sts = 3;
 	u8 val;
+#endif
 
 	if (chip->chip_gen == RTW89_CHIP_AX)
 		return;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	if (band == NL80211_BAND_6GHZ &&
 	    chip->support_bandwidths & BIT(NL80211_CHAN_WIDTH_320))
 		support_320mhz = true;
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	eht_cap = &iftype_data->eht_cap;
 	eht_cap_elem = &eht_cap->eht_cap_elem;
 	eht_nss = &eht_cap->eht_mcs_nss_supp;
 
 	eht_cap->has_eht = true;
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 	eht_cap_elem->mac_cap_info[0] =
 		u8_encode_bits(IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_7991,
 			       IEEE80211_EHT_MAC_CAP0_MAX_MPDU_LEN_MASK);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	eht_cap_elem->mac_cap_info[0] = 0;
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	eht_cap_elem->mac_cap_info[1] = 0;
 
 	eht_cap_elem->phy_cap_info[0] =
@@ -3965,6 +4028,7 @@ static void rtw89_init_eht_cap(struct rtw89_dev *rtwdev,
 		eht_nss->bw._320.rx_tx_mcs11_max_nss = val;
 		eht_nss->bw._320.rx_tx_mcs13_max_nss = val;
 	}
+#endif
 }
 
 #define RTW89_SBAND_IFTYPES_NR 2
@@ -4003,7 +4067,9 @@ static void rtw89_init_he_eht_cap(struct rtw89_dev *rtwdev,
 		idx++;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 	_ieee80211_set_sband_iftype_data(sband, iftype_data, idx);
+#endif
 }
 
 static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
@@ -4033,6 +4099,7 @@ static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
 		hw->wiphy->bands[NL80211_BAND_5GHZ] = sband_5ghz;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	if (support_bands & BIT(NL80211_BAND_6GHZ)) {
 		sband_6ghz = kmemdup(&rtw89_sband_6ghz, size, GFP_KERNEL);
 		if (!sband_6ghz)
@@ -4040,6 +4107,7 @@ static int rtw89_core_set_supported_band(struct rtw89_dev *rtwdev)
 		rtw89_init_he_eht_cap(rtwdev, NL80211_BAND_6GHZ, sband_6ghz);
 		hw->wiphy->bands[NL80211_BAND_6GHZ] = sband_6ghz;
 	}
+#endif
 
 	return 0;
 
@@ -4189,7 +4257,9 @@ int rtw89_core_start(struct rtw89_dev *rtwdev)
 	rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
 	rtw89_mac_update_rts_threshold(rtwdev, RTW89_MAC_0);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	rtw89_tas_reset(rtwdev);
+#endif
 
 	ret = rtw89_hci_start(rtwdev);
 	if (ret) {
@@ -4320,7 +4390,9 @@ int rtw89_core_init(struct rtw89_dev *rtwdev)
 
 	rtw89_ser_init(rtwdev);
 	rtw89_entity_init(rtwdev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	rtw89_tas_init(rtwdev);
+#endif
 
 	return 0;
 }
@@ -4576,7 +4648,12 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 
 	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS |
 			    WIPHY_FLAG_TDLS_EXTERNAL_SETUP |
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 			    WIPHY_FLAG_AP_UAPSD | WIPHY_FLAG_SPLIT_SCAN_6GHZ;
+#else
+			    WIPHY_FLAG_AP_UAPSD;
+#endif
+
 	hw->wiphy->features |= NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
 
 	hw->wiphy->max_scan_ssids = RTW89_SCANOFLD_MAX_SSID;
@@ -4588,8 +4665,10 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMPDU_CTRL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	hw->wiphy->tid_config_support.vif |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
 	hw->wiphy->tid_config_support.peer |= BIT(NL80211_TID_CONFIG_ATTR_AMSDU_CTRL);
+#endif
 	hw->wiphy->max_remain_on_channel_duration = 1000;
 
 	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_CAN_REPLACE_PTK0);
@@ -4606,7 +4685,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 		goto err_free_supported_band;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	hw->wiphy->sar_capa = &rtw89_sar_capa;
+#endif
 
 	ret = ieee80211_register_hw(hw);
 	if (ret) {

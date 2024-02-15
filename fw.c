@@ -2648,7 +2648,11 @@ int rtw89_fw_h2c_assoc_cmac_tbl(struct rtw89_dev *rtwdev,
 	int ret;
 
 	memset(pads, 0, sizeof(pads));
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	if (sta && sta->deflink.he_cap.has_he)
+#else
+	if (sta && sta->he_cap.has_he)
+#endif
 		__get_sta_he_pkt_padding(rtwdev, sta, pads);
 
 	if (vif->p2p)
@@ -2716,10 +2720,15 @@ fail:
 }
 EXPORT_SYMBOL(rtw89_fw_h2c_assoc_cmac_tbl);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 				      struct ieee80211_sta *sta, u8 *pads)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	u8 nss = min(sta->deflink.rx_nss, rtwdev->hal.tx_nss) - 1;
+#else
+	u8 nss = min(sta->rx_nss, rtwdev->hal.tx_nss) - 1;
+#endif
 	u16 ppe_thres_hdr;
 	u8 ppe16, ppe8;
 	u8 n, idx, sh;
@@ -2728,13 +2737,23 @@ static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 	u16 ppe;
 	int i;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	ppe_th = !!u8_get_bits(sta->deflink.eht_cap.eht_cap_elem.phy_cap_info[5],
 			       IEEE80211_EHT_PHY_CAP5_PPE_THRESHOLD_PRESENT);
+#else
+	ppe_th = !!u8_get_bits(sta->eht_cap.eht_cap_elem.phy_cap_info[5],
+			       IEEE80211_EHT_PHY_CAP5_PPE_THRESHOLD_PRESENT);
+#endif
 	if (!ppe_th) {
 		u8 pad;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 		pad = u8_get_bits(sta->deflink.eht_cap.eht_cap_elem.phy_cap_info[5],
 				  IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_MASK);
+#else
+		pad = u8_get_bits(sta->eht_cap.eht_cap_elem.phy_cap_info[5],
+				  IEEE80211_EHT_PHY_CAP5_COMMON_NOMINAL_PKT_PAD_MASK);
+#endif
 
 		for (i = 0; i < RTW89_PPE_BW_NUM; i++)
 			pads[i] = pad;
@@ -2742,7 +2761,11 @@ static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 		return;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	ppe_thres_hdr = get_unaligned_le16(sta->deflink.eht_cap.eht_ppe_thres);
+#else
+	ppe_thres_hdr = get_unaligned_le16(sta->eht_cap.eht_ppe_thres);
+#endif
 	ru_bitmap = u16_get_bits(ppe_thres_hdr,
 				 IEEE80211_EHT_PPE_THRES_RU_INDEX_BITMASK_MASK);
 	n = hweight8(ru_bitmap);
@@ -2759,7 +2782,11 @@ static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 		sh = n & 7;
 		n += IEEE80211_EHT_PPE_THRES_INFO_PPET_SIZE * 2;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 		ppe = get_unaligned_le16(sta->deflink.eht_cap.eht_ppe_thres + idx);
+#else
+		ppe = get_unaligned_le16(sta->eht_cap.eht_ppe_thres + idx);
+#endif
 		ppe16 = (ppe >> sh) & IEEE80211_PPE_THRES_NSS_MASK;
 		sh += IEEE80211_EHT_PPE_THRES_INFO_PPET_SIZE;
 		ppe8 = (ppe >> sh) & IEEE80211_PPE_THRES_NSS_MASK;
@@ -2772,6 +2799,7 @@ static void __get_sta_eht_pkt_padding(struct rtw89_dev *rtwdev,
 			pads[i] = 0;
 	}
 }
+#endif
 
 int rtw89_fw_h2c_assoc_cmac_tbl_g7(struct rtw89_dev *rtwdev,
 				   struct ieee80211_vif *vif,
@@ -2790,10 +2818,22 @@ int rtw89_fw_h2c_assoc_cmac_tbl_g7(struct rtw89_dev *rtwdev,
 
 	memset(pads, 0, sizeof(pads));
 	if (sta) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 		if (sta->deflink.eht_cap.has_eht)
 			__get_sta_eht_pkt_padding(rtwdev, sta, pads);
 		else if (sta->deflink.he_cap.has_he)
 			__get_sta_he_pkt_padding(rtwdev, sta, pads);
+#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+		if (sta->eht_cap.has_eht)
+			__get_sta_eht_pkt_padding(rtwdev, sta, pads);
+		else if (sta->he_cap.has_he)
+			__get_sta_he_pkt_padding(rtwdev, sta, pads);
+#else
+		if (sta->he_cap.has_he)
+			__get_sta_he_pkt_padding(rtwdev, sta, pads);
+#endif
+#endif
 	}
 
 	if (vif->p2p)
@@ -2836,11 +2876,13 @@ int rtw89_fw_h2c_assoc_cmac_tbl_g7(struct rtw89_dev *rtwdev,
 		h2c->m4 |= cpu_to_le32(CCTLINFO_G7_W4_DATA_DCM);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	if (vif->bss_conf.eht_support) {
 		h2c->w4 |= le32_encode_bits(~vif->bss_conf.eht_puncturing,
 					    CCTLINFO_G7_W4_ACT_SUBCH_CBW);
 		h2c->m4 |= cpu_to_le32(CCTLINFO_G7_W4_ACT_SUBCH_CBW);
 	}
+#endif
 
 	h2c->w5 = le32_encode_bits(pads[RTW89_CHANNEL_WIDTH_20],
 				   CCTLINFO_G7_W5_NOMINAL_PKT_PADDING0) |
@@ -2863,8 +2905,13 @@ int rtw89_fw_h2c_assoc_cmac_tbl_g7(struct rtw89_dev *rtwdev,
 	h2c->m6 = cpu_to_le32(CCTLINFO_G7_W6_ULDL);
 
 	if (sta) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 		h2c->w8 = le32_encode_bits(sta->deflink.he_cap.has_he,
 					   CCTLINFO_G7_W8_BSR_QUEUE_SIZE_FORMAT);
+#else
+		h2c->w8 = le32_encode_bits(sta->he_cap.has_he,
+					   CCTLINFO_G7_W8_BSR_QUEUE_SIZE_FORMAT);
+#endif
 		h2c->m8 = cpu_to_le32(CCTLINFO_G7_W8_BSR_QUEUE_SIZE_FORMAT);
 	}
 
@@ -3142,7 +3189,7 @@ int rtw89_fw_h2c_update_beacon_be(struct rtw89_dev *rtwdev,
 	else
 		beacon_rate = RTW89_HW_RATE_OFDM6;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
 	skb_beacon = ieee80211_beacon_get_tim(rtwdev->hw, vif, &tim_offset,
 					      NULL, 0);
 #else
@@ -3265,20 +3312,41 @@ rtw89_fw_get_sta_type(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
 	if (!sta)
 		goto by_vif;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	if (sta->deflink.eht_cap.has_eht)
 		return RTW89_FW_BE_STA;
 	else if (sta->deflink.he_cap.has_he)
 		return RTW89_FW_AX_STA;
 	else
 		return RTW89_FW_N_AC_STA;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	if (sta->eht_cap.has_eht)
+		return RTW89_FW_BE_STA;
+	else if (sta->he_cap.has_he)
+		return RTW89_FW_AX_STA;
+	else
+		return RTW89_FW_N_AC_STA;
+#else
+	if (sta->he_cap.has_he)
+		return RTW89_FW_AX_STA;
+	else
+		return RTW89_FW_N_AC_STA;
+#endif
 
 by_vif:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	if (vif->bss_conf.eht_support)
 		return RTW89_FW_BE_STA;
 	else if (vif->bss_conf.he_support)
 		return RTW89_FW_AX_STA;
 	else
 		return RTW89_FW_N_AC_STA;
+#else
+	if (vif->bss_conf.he_support)
+		return RTW89_FW_AX_STA;
+	else
+		return RTW89_FW_N_AC_STA;
+#endif
 }
 
 int rtw89_fw_h2c_join_info(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif,
@@ -5874,7 +5942,9 @@ int rtw89_hw_scan_add_chan_list_be(struct rtw89_dev *rtwdev,
 		ch_info->central_ch = channel->hw_value;
 		ch_info->pri_ch = channel->hw_value;
 		ch_info->rand_seq_num = random_seq;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 		ch_info->is_psc = cfg80211_channel_is_psc(channel);
+#endif
 
 		if (channel->flags & (IEEE80211_CHAN_RADAR | IEEE80211_CHAN_NO_IR))
 			type = RTW89_CHAN_DFS;

@@ -2282,6 +2282,37 @@ static void rtw8922a_ctrl_cck_en(struct rtw89_dev *rtwdev, bool cck_en,
 	}
 }
 
+static void rtw8922a_pre_set_channel_bb(struct rtw89_dev *rtwdev,
+					enum rtw89_phy_idx phy_idx)
+{
+	if (!rtwdev->dbcc_en)
+		return;
+
+	if (phy_idx == RTW89_PHY_0) {
+		rtw89_phy_write32_mask(rtwdev, R_DBCC, B_DBCC_EN, 0x0);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0x6180);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xBBAB);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xABA9);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xEBA9);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xEAA9);
+	} else {
+		rtw89_phy_write32_mask(rtwdev, R_DBCC, B_DBCC_EN, 0x0);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xBBAB);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xAFFF);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xEFFF);
+		rtw89_phy_write32_mask(rtwdev, R_EMLSR, B_EMLSR_PARM, 0xEEFF);
+	}
+}
+
+static void rtw8922a_post_set_channel_bb(struct rtw89_dev *rtwdev,
+					 enum rtw89_mlo_dbcc_mode mode)
+{
+	if (!rtwdev->dbcc_en)
+		return;
+
+	rtw8922a_ctrl_mlo(rtwdev, mode);
+}
+
 static void rtw8922a_set_channel(struct rtw89_dev *rtwdev,
 				 const struct rtw89_chan *chan,
 				 enum rtw89_mac_idx mac_idx,
@@ -2381,6 +2412,25 @@ void rtw8922a_hal_reset(struct rtw89_dev *rtwdev,
 		rtw8922a_tssi_cont_en_phyidx(rtwdev, true, phy_idx);
 		rtw8922a_bb_reset_en(rtwdev, band, true, phy_idx);
 		rtw89_chip_resume_sch_tx(rtwdev, mac_idx, *tx_en);
+	}
+}
+
+static void rtw8922a_set_channel_help(struct rtw89_dev *rtwdev, bool enter,
+				      struct rtw89_channel_help_params *p,
+				      const struct rtw89_chan *chan,
+				      enum rtw89_mac_idx mac_idx,
+				      enum rtw89_phy_idx phy_idx)
+{
+	if (enter) {
+		rtw8922a_pre_set_channel_bb(rtwdev, phy_idx);
+		rtw8922a_pre_set_channel_rf(rtwdev, phy_idx);
+	}
+
+	rtw8922a_hal_reset(rtwdev, phy_idx, mac_idx, chan->band_type, &p->tx_en, enter);
+
+	if (!enter) {
+		rtw8922a_post_set_channel_bb(rtwdev, rtwdev->mlo_dbcc_mode);
+		rtw8922a_post_set_channel_rf(rtwdev, phy_idx);
 	}
 }
 

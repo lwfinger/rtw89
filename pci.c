@@ -3665,6 +3665,14 @@ static void rtw89_pci_clkreq_set(struct rtw89_dev *rtwdev, bool enable)
 
 static void rtw89_pci_clkreq_set_ax(struct rtw89_dev *rtwdev, bool enable)
 {
+	const struct rtw89_pci_info *info = rtwdev->pci_info;
+	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
+
+	gen_def->clkreq_set(rtwdev, enable);
+}
+
+static void rtw89_pci_clkreq_set_ax(struct rtw89_dev *rtwdev, bool enable)
+{
 	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
 	int ret;
 
@@ -3698,6 +3706,17 @@ static void rtw89_pci_clkreq_set_ax(struct rtw89_dev *rtwdev, bool enable)
 }
 
 static void rtw89_pci_aspm_set(struct rtw89_dev *rtwdev, bool enable)
+{
+	const struct rtw89_pci_info *info = rtwdev->pci_info;
+	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
+
+	if (rtw89_pci_disable_aspm_l1)
+		return;
+
+	gen_def->aspm_set(rtwdev, enable);
+}
+
+static void rtw89_pci_aspm_set_ax(struct rtw89_dev *rtwdev, bool enable)
 {
 	const struct rtw89_pci_info *info = rtwdev->pci_info;
 	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
@@ -3809,6 +3828,17 @@ static void rtw89_pci_link_cfg(struct rtw89_dev *rtwdev)
 }
 
 static void rtw89_pci_l1ss_set(struct rtw89_dev *rtwdev, bool enable)
+{
+	const struct rtw89_pci_info *info = rtwdev->pci_info;
+	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
+
+	if (rtw89_pci_disable_l1ss)
+		return;
+
+	gen_def->l1ss_set(rtwdev, enable);
+}
+
+static void rtw89_pci_l1ss_set_ax(struct rtw89_dev *rtwdev, bool enable)
 {
 	const struct rtw89_pci_info *info = rtwdev->pci_info;
 	const struct rtw89_pci_gen_def *gen_def = info->gen_def;

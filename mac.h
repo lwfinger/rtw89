@@ -981,6 +981,9 @@ struct rtw89_mac_gen_def {
 	int (*cfg_plt)(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
 	u16 (*get_plt_cnt)(struct rtw89_dev *rtwdev, u8 band);
 
+	int (*cfg_plt)(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
+	u16 (*get_plt_cnt)(struct rtw89_dev *rtwdev, u8 band);
+
 	bool (*get_txpwr_cr)(struct rtw89_dev *rtwdev,
 			     enum rtw89_phy_idx phy_idx,
 			     u32 reg_base, u32 *cr);

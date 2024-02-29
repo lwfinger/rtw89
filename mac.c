@@ -6516,6 +6516,9 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_ax = {
 	.cfg_plt = rtw89_mac_cfg_plt_ax,
 	.get_plt_cnt = rtw89_mac_get_plt_cnt_ax,
 
+	.cfg_plt = rtw89_mac_cfg_plt_ax,
+	.get_plt_cnt = rtw89_mac_get_plt_cnt_ax,
+
 	.get_txpwr_cr = rtw89_mac_get_txpwr_cr_ax,
 
 	.write_xtal_si = rtw89_mac_write_xtal_si_ax,

@@ -1829,6 +1829,7 @@ struct rtw89_btc_wl_info {
 	bool is_5g_hi_channel;
 	bool pta_reg_mac_chg;
 	bool bg_mode;
+	bool bg_mode;
 	bool scbd_change;
 	u32 scbd;
 };

@@ -387,6 +387,12 @@ enum btc_cx_poicy_type {
 	/* TDMA off + pri: WL_Rx = BT, BT_HI > WL_Tx > BT_Lo */
 	BTC_CXP_OFF_EQ5 = (BTC_CXP_OFF << 8) | 7,
 
+	/* TDMA off + pri: WL_Rx = BT, BT_HI > WL_Tx > BT_Lo */
+	BTC_CXP_OFF_EQ4 = (BTC_CXP_OFF << 8) | 6,
+
+	/* TDMA off + pri: WL_Rx = BT, BT_HI > WL_Tx > BT_Lo */
+	BTC_CXP_OFF_EQ5 = (BTC_CXP_OFF << 8) | 7,
+
 	/* TDMA off + pri: BT_Hi > WL > BT_Lo */
 	BTC_CXP_OFF_BWB0 = (BTC_CXP_OFF << 8) | 8,
 
@@ -3047,9 +3053,16 @@ void rtw89_btc_set_policy(struct rtw89_dev *rtwdev, u16 policy_type)
 		tbl_b1 = cxtbl[3];
 		tbl_b4 = cxtbl[3];
 	} else {
-		tbl_w1 = cxtbl[16];
 		tbl_b1 = cxtbl[17];
 		tbl_b4 = cxtbl[17];
+
+		if (wl->bg_mode)
+			tbl_w1 = cxtbl[8];
+		else if ((wl->status.map.traffic_dir & BIT(RTW89_TFC_UL)) &&
+			 hid->exist)
+			tbl_w1 = cxtbl[19];
+		else
+			tbl_w1 = cxtbl[16];
 	}
 
 	type = (u8)((policy_type & BTC_CXP_MASK) >> 8);
@@ -4129,6 +4142,11 @@ static void _action_bt_hfp(struct rtw89_dev *rtwdev)
 		}
 	} else {
 		if (wl->bg_mode)
+			_set_policy(rtwdev, BTC_CXP_OFF_BWB1, BTC_ACT_BT_HFP);
+		else if (wl->status.map.traffic_dir & BIT(RTW89_TFC_UL))
+			_set_policy(rtwdev, BTC_CXP_OFF_EQ5, BTC_ACT_BT_HFP);
+		else
+			if (wl->bg_mode)
 			_set_policy(rtwdev, BTC_CXP_OFF_BWB1, BTC_ACT_BT_HFP);
 		else if (wl->status.map.traffic_dir & BIT(RTW89_TFC_UL))
 			_set_policy(rtwdev, BTC_CXP_OFF_EQ5, BTC_ACT_BT_HFP);

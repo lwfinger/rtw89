@@ -2226,6 +2226,7 @@ static void _update_dm_step(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_dm *dm = &btc->dm;
+	int ret;
 
 	/* use ring-structure to store dm step */
 	dm->dm_step.step[dm->dm_step.step_pos] = reason_or_action;

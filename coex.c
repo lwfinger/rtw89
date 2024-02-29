@@ -2345,6 +2345,9 @@ static void _set_bt_tx_power(struct rtw89_dev *rtwdev, u8 level)
 	int ret;
 	u8 buf;
 
+	if (btc->cx.cnt_bt[BTC_BCNT_INFOUPDATE] == 0)
+		return;
+
 	if (bt->rf_para.tx_pwr_freerun == level)
 		return;
 
@@ -2366,6 +2369,9 @@ static void _set_bt_rx_gain(struct rtw89_dev *rtwdev, u8 level)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_bt_info *bt = &btc->cx.bt;
+
+	if (btc->cx.cnt_bt[BTC_BCNT_INFOUPDATE] == 0)
+		return;
 
 	if ((bt->rf_para.rx_gain_freerun == level ||
 	     level > BTC_BT_RX_NORMAL_LVL) &&

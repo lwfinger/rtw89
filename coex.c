@@ -7447,6 +7447,20 @@ static void _show_cx_info(struct rtw89_dev *rtwdev, struct seq_file *m)
 		ant_single_pos = md->md.ant.single_pos;
 	}
 
+	if (ver->fcxinit == 7) {
+		cv = md->md_v7.kt_ver;
+		rfe = md->md_v7.rfe_type;
+		iso = md->md_v7.ant.isolation;
+		ant_num = md->md_v7.ant.num;
+		ant_single_pos = md->md_v7.ant.single_pos;
+	} else {
+		cv = md->md.cv;
+		rfe = md->md.rfe_type;
+		iso = md->md.ant.isolation;
+		ant_num = md->md.ant.num;
+		ant_single_pos = md->md.ant.single_pos;
+	}
+
 	seq_printf(m, " %-15s : cv:%x, rfe_type:0x%x, ant_iso:%d, ant_pg:%d, %s",
 		   "[hw_info]", cv, rfe, iso, ant_num,
 		   ant_num > 1 ? "" :

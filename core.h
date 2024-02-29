@@ -1312,6 +1312,18 @@ struct rtw89_btc_ant_info_v7 {
 	u8 rsvd;
 } __packed;
 
+struct rtw89_btc_ant_info_v7 {
+	u8 type;  /* shared, dedicated(non-shared) */
+	u8 num;   /* antenna count  */
+	u8 isolation;
+	u8 single_pos;/* wifi 1ss-1ant at 0:S0 or 1:S1 */
+
+	u8 diversity; /* only for wifi use 1-antenna */
+	u8 btg_pos; /* btg-circuit at 0:S0/1:S1/others:all */
+	u8 stream_cnt;  /* spatial_stream count */
+	u8 rsvd;
+} __packed;
+
 enum rtw89_tfc_dir {
 	RTW89_TFC_UL,
 	RTW89_TFC_DL,
@@ -1853,6 +1865,25 @@ union rtw89_btc_module_info {
 	struct rtw89_btc_module_v7 md_v7;
 };
 
+struct rtw89_btc_module_v7 {
+	u8 rfe_type;
+	u8 kt_ver;
+	u8 bt_solo;
+	u8 bt_pos; /* wl-end view: get from efuse, must compare bt.btg_type*/
+
+	u8 switch_type; /* WL/BT switch type: 0: internal, 1: external */
+	u8 wa_type; /* WA type: 0:none, 1: 51B 5G_Hi-Ch_Rx */
+	u8 kt_ver_adie;
+	u8 rsvd;
+
+	struct rtw89_btc_ant_info_v7 ant;
+} __packed;
+
+union rtw89_btc_module_info {
+	struct rtw89_btc_module md;
+	struct rtw89_btc_module_v7 md_v7;
+};
+
 #define RTW89_BTC_DM_MAXSTEP 30
 #define RTW89_BTC_DM_CNT_MAX (RTW89_BTC_DM_MAXSTEP * 8)
 
@@ -1873,6 +1904,25 @@ struct rtw89_btc_init_info {
 	u8 bt_only: 1;
 
 	u16 rsvd;
+};
+
+struct rtw89_btc_init_info_v7 {
+	u8 wl_guard_ch;
+	u8 wl_only;
+	u8 wl_init_ok;
+	u8 rsvd3;
+
+	u8 cx_other;
+	u8 bt_only;
+	u8 pta_mode;
+	u8 pta_direction;
+
+	struct rtw89_btc_module_v7 module;
+} __packed;
+
+union rtw89_btc_init_info_u {
+	struct rtw89_btc_init_info init;
+	struct rtw89_btc_init_info_v7 init_v7;
 };
 
 struct rtw89_btc_init_info_v7 {

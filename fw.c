@@ -4197,7 +4197,7 @@ fail:
 	return ret;
 }
 
-int rtw89_fw_h2c_cxdrv_init_v7(struct rtw89_dev *rtwdev)
+int rtw89_fw_h2c_cxdrv_init_v7(struct rtw89_dev *rtwdev, u8 type)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_dm *dm = &btc->dm;
@@ -4215,7 +4215,7 @@ int rtw89_fw_h2c_cxdrv_init_v7(struct rtw89_dev *rtwdev)
 	skb_put(skb, len);
 	h2c = (struct rtw89_h2c_cxinit_v7 *)skb->data;
 
-	h2c->hdr.type = CXDRVINFO_INIT;
+	h2c->hdr.type = type;
 	h2c->hdr.ver = btc->ver->fcxinit;
 	h2c->hdr.len = len - H2C_LEN_CXDRVHDR_V7;
 	h2c->init = *init_info;
@@ -4623,7 +4623,7 @@ fail:
 	return ret;
 }
 
-int rtw89_fw_h2c_cxdrv_ctrl_v7(struct rtw89_dev *rtwdev)
+int rtw89_fw_h2c_cxdrv_ctrl_v7(struct rtw89_dev *rtwdev, u8 type)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
 	struct rtw89_btc_ctrl_v7 *ctrl = &btc->ctrl.ctrl_v7;
@@ -4640,7 +4640,7 @@ int rtw89_fw_h2c_cxdrv_ctrl_v7(struct rtw89_dev *rtwdev)
 	skb_put(skb, len);
 	h2c = (struct rtw89_h2c_cxctrl_v7 *)skb->data;
 
-	h2c->hdr.type = CXDRVINFO_INIT;
+	h2c->hdr.type = type;
 	h2c->hdr.ver = btc->ver->fcxctrl;
 	h2c->hdr.len = sizeof(*h2c) - H2C_LEN_CXDRVHDR_V7;
 	h2c->ctrl = *ctrl;

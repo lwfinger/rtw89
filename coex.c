@@ -2319,7 +2319,7 @@ static void _fw_set_drv_info(struct rtw89_dev *rtwdev, u8 type)
 			rtw89_fw_h2c_cxdrv_ctrl_v7(rtwdev, type);
 		else
 			if (ver->fcxctrl == 7)
-			rtw89_fw_h2c_cxdrv_ctrl_v7(rtwdev);
+			rtw89_fw_h2c_cxdrv_ctrl_v7(rtwdev, type);
 		else
 			rtw89_fw_h2c_cxdrv_ctrl(rtwdev, type);
 		break;

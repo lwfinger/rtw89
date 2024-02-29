@@ -2785,6 +2785,18 @@ union rtw89_btc_ctrl_list {
 	struct rtw89_btc_ctrl_v7 ctrl_v7;
 };
 
+struct rtw89_btc_ctrl_v7 {
+	u8 manual;
+	u8 igno_bt;
+	u8 always_freerun;
+	u8 rsvd;
+} __packed;
+
+union rtw89_btc_ctrl_list {
+	struct rtw89_btc_ctrl ctrl;
+	struct rtw89_btc_ctrl_v7 ctrl_v7;
+};
+
 struct rtw89_btc_dbg {
 	/* cmd "rb" */
 	bool rb_done;

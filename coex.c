@@ -934,6 +934,7 @@ static void _get_reg_status(struct rtw89_dev *rtwdev, u8 type, u8 *val)
 static void _chk_btc_err(struct rtw89_dev *rtwdev, u8 type, u32 cnt)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
+	const struct rtw89_btc_ver *ver = btc->ver;
 	struct rtw89_btc_cx *cx = &btc->cx;
 	struct rtw89_btc_dm *dm = &btc->dm;
 	struct rtw89_btc_bt_info *bt = &cx->bt;
@@ -2316,6 +2317,9 @@ static void _fw_set_drv_info(struct rtw89_dev *rtwdev, u8 type)
 
 		if (ver->fcxctrl == 7)
 			rtw89_fw_h2c_cxdrv_ctrl_v7(rtwdev, type);
+		else
+			if (ver->fcxctrl == 7)
+			rtw89_fw_h2c_cxdrv_ctrl_v7(rtwdev);
 		else
 			rtw89_fw_h2c_cxdrv_ctrl(rtwdev, type);
 		break;
@@ -6184,6 +6188,14 @@ void _run_coex(struct rtw89_dev *rtwdev, enum btc_reason_and_action reason)
 		always_freerun = btc->ctrl.ctrl.always_freerun;
 	}
 
+	if (ver->fcxctrl == 7) {
+		igno_bt = btc->ctrl.ctrl_v7.igno_bt;
+		always_freerun = btc->ctrl.ctrl_v7.always_freerun;
+	} else {
+		igno_bt = btc->ctrl.ctrl.igno_bt;
+		always_freerun = btc->ctrl.ctrl.always_freerun;
+	}
+
 	rtw89_debug(rtwdev, RTW89_DBG_BTC, "[BTC], %s(): reason=%d, mode=%d\n",
 		    __func__, reason, mode);
 	rtw89_debug(rtwdev, RTW89_DBG_BTC, "[BTC], %s(): wl_only=%d, bt_only=%d\n",
@@ -6343,6 +6355,10 @@ void _run_coex(struct rtw89_dev *rtwdev, enum btc_reason_and_action reason)
 
 exit:
 	rtw89_debug(rtwdev, RTW89_DBG_BTC, "[BTC], %s(): exit\n", __func__);
+	if (ver->fcxctrl == 7)
+		btc->ctrl.ctrl_v7.igno_bt = igno_bt;
+	else
+		btc->ctrl.ctrl.igno_bt = igno_bt;
 	if (ver->fcxctrl == 7)
 		btc->ctrl.ctrl_v7.igno_bt = igno_bt;
 	else
@@ -8076,6 +8092,11 @@ static void _show_dm_info(struct rtw89_dev *rtwdev, struct seq_file *m)
 		   dm->cnt_dm[BTC_DCNT_RUN]);
 
 	_show_dm_step(rtwdev, m);
+
+	if (ver->fcxctrl == 7)
+		igno_bt = btc->ctrl.ctrl_v7.igno_bt;
+	else
+		igno_bt = btc->ctrl.ctrl.igno_bt;
 
 	if (ver->fcxctrl == 7)
 		igno_bt = btc->ctrl.ctrl_v7.igno_bt;

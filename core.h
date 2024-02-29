@@ -1167,6 +1167,11 @@ struct rtw89_mac_ax_wl_act {
 	u8 wlan_act;
 };
 
+struct rtw89_mac_ax_wl_act {
+	u8 wlan_act_en;
+	u8 wlan_act;
+};
+
 #define RTW89_MAC_AX_COEX_GNT_NR 2
 struct rtw89_mac_ax_coex_gnt {
 	struct rtw89_mac_ax_gnt band[RTW89_MAC_AX_COEX_GNT_NR];

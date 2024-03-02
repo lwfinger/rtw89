@@ -659,6 +659,10 @@ const struct rtw89_pci_gen_def rtw89_pci_gen_be = {
 	.ctrl_txdma_fw_ch = rtw89_pci_ctrl_txdma_fw_ch_be,
 	.poll_txdma_ch_idle = rtw89_pci_poll_txdma_ch_idle_be,
 
+	.ctrl_txdma_ch = rtw89_pci_ctrl_txdma_ch_be,
+	.ctrl_txdma_fw_ch = rtw89_pci_ctrl_txdma_fw_ch_be,
+	.poll_txdma_ch_idle = rtw89_pci_poll_txdma_ch_idle_be,
+
 	.aspm_set = rtw89_pci_aspm_set_be,
 	.clkreq_set = rtw89_pci_clkreq_set_be,
 	.l1ss_set = rtw89_pci_l1ss_set_be,

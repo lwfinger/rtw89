@@ -1273,6 +1273,10 @@ struct rtw89_pci_gen_def {
 	void (*ctrl_txdma_fw_ch)(struct rtw89_dev *rtwdev, bool enable);
 	int (*poll_txdma_ch_idle)(struct rtw89_dev *rtwdev);
 
+	void (*ctrl_txdma_ch)(struct rtw89_dev *rtwdev, bool enable);
+	void (*ctrl_txdma_fw_ch)(struct rtw89_dev *rtwdev, bool enable);
+	int (*poll_txdma_ch_idle)(struct rtw89_dev *rtwdev);
+
 	void (*aspm_set)(struct rtw89_dev *rtwdev, bool enable);
 	void (*clkreq_set)(struct rtw89_dev *rtwdev, bool enable);
 	void (*l1ss_set)(struct rtw89_dev *rtwdev, bool enable);

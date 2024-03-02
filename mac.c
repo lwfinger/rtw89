@@ -2028,6 +2028,9 @@ void rtw89_mac_hw_mgnt_sec(struct rtw89_dev *rtwdev, bool enable)
 	if (rtwdev->chip->chip_gen != RTW89_CHIP_AX)
 		return;
 
+	if (rtwdev->chip->chip_gen != RTW89_CHIP_AX)
+		return;
+
 	if (enable)
 		rtw89_write32_set(rtwdev, R_AX_SEC_ENG_CTRL, msk32);
 	else

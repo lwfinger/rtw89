@@ -175,6 +175,12 @@ enum rtw89_mac_wow_fw_status {
 	WOWLAN_RESUME_READY = 0x02,
 };
 
+enum rtw89_mac_wow_fw_status {
+	WOWLAN_NOT_READY = 0x00,
+	WOWLAN_SLEEP_READY = 0x01,
+	WOWLAN_RESUME_READY = 0x02,
+};
+
 #define RTW89_PORT_OFFSET_TU_TO_32US(shift_tu) ((shift_tu) * 1024 / 32)
 
 enum rtw89_mac_dbg_port_sel {

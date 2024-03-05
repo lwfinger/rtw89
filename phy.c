@@ -149,7 +149,9 @@ static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
 	case IEEE80211_STA_RX_BW_160:
 		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._160;		/* MCS 9, 11, 13 */
-		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
+			return get_eht_mcs_ra_mask(mcs_nss_20mhz->rx_tx_max_nss, 7, 4);
+		}
+		fallthrough;
 	case IEEE80211_STA_RX_BW_20:
 		if (!(he_phy_cap[0] &
 		      IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_MASK_ALL)) {

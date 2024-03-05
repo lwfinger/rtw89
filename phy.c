@@ -129,21 +129,10 @@ static u64 get_eht_mcs_ra_mask(u8 *max_nss, u8 start_mcs, u8 n_nss)
 
 static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct ieee80211_sta_eht_cap *eht_cap = &sta->deflink.eht_cap;
-#endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct ieee80211_eht_mcs_nss_supp_20mhz_only *mcs_nss_20mhz;
 	struct ieee80211_eht_mcs_nss_supp_bw *mcs_nss;
-#else
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-	struct ieee80211_sta_he_cap cap = sta->deflink.he_cap;
-#else
-	struct ieee80211_sta_he_cap cap = sta->he_cap;
-#endif
-	u16 mcs_map;
-#endif
-
+	u8 *he_phy_cap = sta->deflink.he_cap.he_cap_elem.phy_cap_info;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0))
 	switch (sta->deflink.bandwidth) {
@@ -158,15 +147,19 @@ static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 	case IEEE80211_STA_RX_BW_160:
 		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._160;		/* MCS 9, 11, 13 */
 		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
+	case IEEE80211_STA_RX_BW_20:
+		if (!(he_phy_cap[0] &
+		      IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_MASK_ALL)) {
+			mcs_nss_20mhz = &eht_cap->eht_mcs_nss_supp.only_20mhz;
+			/* MCS 7, 9, 11, 13 */
+			return get_eht_mcs_ra_mask(mcs_nss_20mhz->rx_tx_max_nss, 7, 4);
+		}
+		fallthrough;
 	case IEEE80211_STA_RX_BW_80:
 	default:
 		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._80;
 		/* MCS 9, 11, 13 */
 		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
-	case IEEE80211_STA_RX_BW_20:
-		mcs_nss_20mhz = &eht_cap->eht_mcs_nss_supp.only_20mhz;
-		/* MCS 7, 9, 11, 13 */
-		return get_eht_mcs_ra_mask(mcs_nss_20mhz->rx_tx_max_nss, 7, 4);
 	}
 #else
 	case IEEE80211_STA_RX_BW_160:

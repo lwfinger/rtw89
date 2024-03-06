@@ -30,17 +30,20 @@ KEY_FILE ?= MOK.der
 
 obj-m += rtw89core.o
 rtw89core-y +=  core.o \
-		chan.o \
 		mac80211.o \
 		mac.o \
+		mac_be.o \
 		phy.o \
+		phy_be.o \
 		fw.o \
 		cam.o \
 		efuse.o \
+		efuse_be.o \
 		regd.o \
 		sar.o \
 		coex.o \
 		ps.o \
+		chan.o \
 		debug.o \
 		ser.o \
 		wow.o \
@@ -82,8 +85,16 @@ rtw_8852c-y := rtw8852c.o \
 obj-m += rtw_8852ce.o
 rtw_8852ce-y := rtw8852ce.o
 
+obj-m += rtw_8922a.o 
+rtw_8922a-y := rtw8922a.o \
+	       rtw8922a_rfk.o
+
+obj-m += rtw_8922ae.o
+rtw_8922ae-y := rtw8922ae.o
+
 obj-m += rtw89pci.o
-rtw89pci-y := pci.o
+rtw89pci-y := pci.o \
+	      pci_be.o
 
 ccflags-y += -D__CHECK_ENDIAN__
 

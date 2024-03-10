@@ -2,30 +2,37 @@ rtw89
 ===========
 ### A repo for the newest Realtek rtw89 codes.
 
-This repo is current with wireless-next up to Nov. 2, 2023.
+This repo now contains the code for the Realtek RTW8922AE,  which
+is a Wifi 7 device. It has been tested using a Wifi 6 AP as I do not have access
+to a Wifi 7 model. The driver works very well.
+
+This repo is current with wireless-next up to March 6, 2024.
 
 This branch was created from the version merged into the wireless-drivers-next
 repo, which is in the 5.16 kernel. IF YOU USE DRIVERS FROM THIS REPO FOR KERNELS
 5.16+, YOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
 IN ALL MANNER OF STRANGE ERRORS.
 
-This code will build on any kernel 5.6 and newer as long as the distro has not modified
+This code will build on any kernel 5.8 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
 NO, I WILL NOT MODIFY THE SOURCE FOR YOU. YOU ARE ON YOUR OWN!!!!!
 
-Note that if you use this driver on kernels older than 5.15, the enhanced fetures
+Note that if you use this driver on kernels older than 5.15, the enhanced features
 of  wifi 5 and wifi 6 are greatly crippled as the kernel does hot have the capability
 to support the new packet widths and speeds. If you use such a kernel, you might
 as well have an 802.11n (wifi 4) device.
 
 This repository includes drivers for the following card:
 
-Realtek 8852AE, 8852BE, and 8852CE
+Realtek 8852AE, 8852BE, 8852CE, and RTW8922AE.
 
 If you are looking for a driver for chips such as
-RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, RTL8723BE, or RTL8821AE,
+RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, or RTL8723BE,
 these should be provided by your kernel. If not, then you should go to the Backports Project
 (https://backports.wiki.kernel.org/index.php/Main_Page) to obtain the necessary code.
+
+If you have an RTW8822B{E,U,S}, RTW8822C{E,U,S}, RTW8723D{E,U,S}, or RTW8821C{E,U,S}, then
+you should use the drivers at https://github.com/lwfinger/rtw88.git.
 
 ### Installation instruction
 ##### Requirements
@@ -149,7 +156,7 @@ sudo make sign-install
 
 Remember, this MUST be done whenever you get a new kernel - no exceptions.
 
-These drivers will not build for kernels older than 5.6. If you must use an older kernel,
+These drivers will not build for kernels older than 5.8. If you must use an older kernel,
 submit a GitHub issue with a listing of the build errors, but be aware that doing so will
 cripple your device. Without the errors, the issue will be ignored. I am not a mind reader.
 

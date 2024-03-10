@@ -2103,7 +2103,11 @@ static int rtw89_mac_set_csi_para_reg_be(struct rtw89_dev *rtwdev,
 	if (ret)
 		return ret;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	phy_cap = sta->deflink.he_cap.he_cap_elem.phy_cap_info;
+#else
+	phy_cap = sta->he_cap.he_cap_elem.phy_cap_info;
+#endif
 
 	if ((phy_cap[3] & IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
 	    (phy_cap[4] & IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER)) {
@@ -2114,12 +2118,21 @@ static int rtw89_mac_set_csi_para_reg_be(struct rtw89_dev *rtwdev,
 		sound_dim = min(sound_dim, t);
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
 		ldpc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
 		stbc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
 		t = u32_get_bits(sta->deflink.vht_cap.cap,
 				 IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK);
+#else
+	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
+	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
+		ldpc_en &= !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
+		stbc_en &= !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
+		t = u32_get_bits(sta->vht_cap.cap,
+				 IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK);
+#endif
 		sound_dim = min(sound_dim, t);
 	}
 
@@ -2163,17 +2176,29 @@ static int rtw89_mac_csi_rrsc_be(struct rtw89_dev *rtwdev,
 	if (ret)
 		return ret;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if (sta->deflink.he_cap.has_he) {
+#else
+	if (sta->he_cap.has_he) {
+#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_HE_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_HE_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_HE_MSC5));
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if (sta->deflink.vht_cap.vht_supported) {
+#else
+	if (sta->vht_cap.vht_supported) {
+#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_VHT_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_VHT_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_VHT_MSC5));
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if (sta->deflink.ht_cap.ht_supported) {
+#else
+	if (sta->ht_cap.ht_supported) {
+#endif
 		rrsc |= (BIT(RTW89_MAC_BF_RRSC_HT_MSC0) |
 			 BIT(RTW89_MAC_BF_RRSC_HT_MSC3) |
 			 BIT(RTW89_MAC_BF_RRSC_HT_MSC5));

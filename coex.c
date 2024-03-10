@@ -256,7 +256,7 @@ struct rtw89_btc_btf_set_slot_table {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	struct rtw89_btc_fbtc_slot tbls[] __counted_by(tbl_num);
 #else
-	u8 buf[];
+	u8 tbls[];
 #endif
 } __packed;
 

@@ -127,6 +127,7 @@ static u64 get_eht_mcs_ra_mask(u8 *max_nss, u8 start_mcs, u8 n_nss)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 {
 	struct ieee80211_sta_eht_cap *eht_cap = &sta->deflink.eht_cap;
@@ -134,12 +135,7 @@ static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 	struct ieee80211_eht_mcs_nss_supp_bw *mcs_nss;
 	u8 *he_phy_cap = sta->deflink.he_cap.he_cap_elem.phy_cap_info;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0))
 	switch (sta->deflink.bandwidth) {
-#else
-	switch (sta->bandwidth) {
-#endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 	case IEEE80211_STA_RX_BW_320:
 		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._320;
 		/* MCS 9, 11, 13 */
@@ -161,22 +157,8 @@ static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 		/* MCS 9, 11, 13 */
 		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
 	}
-#else
-	case IEEE80211_STA_RX_BW_160:
-		if (cap.he_cap_elem.phy_cap_info[0] &
-		    IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G)
-			mcs_map = le16_to_cpu(cap.he_mcs_nss_supp.rx_mcs_80p80);
-		else
-			mcs_map = le16_to_cpu(cap.he_mcs_nss_supp.rx_mcs_160);
-		break;
-	default:
-		mcs_map = le16_to_cpu(cap.he_mcs_nss_supp.rx_mcs_80);
-	}
-
-	/* MCS11, MCS9, MCS7 */
-	return get_mcs_ra_mask(mcs_map, 11, 2);
-#endif
 }
+#endif
 
 #define RA_FLOOR_TABLE_SIZE	7
 #define RA_FLOOR_UP_GAP		3
@@ -379,7 +361,9 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 #endif
 
 		mode |= RTW89_RA_MODE_EHT;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
 		ra_mask |= get_eht_ra_mask(sta);
+#endif
 		high_rate_masks = rtw89_ra_mask_eht_rates;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	} else if (sta->deflink.he_cap.has_he) {		

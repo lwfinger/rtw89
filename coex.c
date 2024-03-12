@@ -225,6 +225,13 @@ struct rtw89_btc_btf_tlv_v7 {
 	u8 val[];
 } __packed;
 
+struct rtw89_btc_btf_tlv_v7 {
+	u8 type;
+	u8 ver;
+	u8 len;
+	u8 val[];
+} __packed;
+
 enum btc_btf_set_report_en {
 	RPT_EN_TDMA,
 	RPT_EN_CYCLE,
@@ -1825,6 +1832,13 @@ static void _append_tdma(struct rtw89_dev *rtwdev)
 		tlv->len = sizeof(*v);
 		*v = dm->tdma;
 		btc->policy_len += BTC_TLV_HDR_LEN + sizeof(*v);
+	} else if (ver->fcxtdma == 7) {
+		tlv_v7 = (struct rtw89_btc_btf_tlv_v7 *)&btc->policy[len];
+		tlv_v7->len = sizeof(dm->tdma);
+		tlv_v7->ver = ver->fcxtdma;
+		tlv_v7->type = CXPOLICY_TDMA;
+		memcpy(tlv_v7->val, &dm->tdma, tlv_v7->len);
+		btc->policy_len += BTC_TLV_HDR_LEN_V7 + tlv_v7->len;
 	} else if (ver->fcxtdma == 7) {
 		tlv_v7 = (struct rtw89_btc_btf_tlv_v7 *)&btc->policy[len];
 		tlv_v7->len = sizeof(dm->tdma);

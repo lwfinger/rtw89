@@ -2444,6 +2444,40 @@ union rtw89_btc_fbtc_slots_info {
 	struct rtw89_btc_fbtc_slots_v7 v7;
 } __packed;
 
+struct rtw89_btc_fbtc_slot_v7 {
+	__le16 dur; /* slot duration */
+	__le16 cxtype;
+	__le32 cxtbl;
+} __packed;
+
+struct rtw89_btc_fbtc_slot_u16 {
+	__le16 dur; /* slot duration */
+	__le16 cxtype;
+	__le16 cxtbl_l16; /* coex table [15:0] */
+	__le16 cxtbl_h16; /* coex table [31:16] */
+} __packed;
+
+struct rtw89_btc_fbtc_1slot_v7 {
+	u8 fver;
+	u8 sid; /* slot id */
+	__le16 rsvd;
+	struct rtw89_btc_fbtc_slot_v7 slot;
+} __packed;
+
+struct rtw89_btc_fbtc_slots_v7 {
+	u8 fver;
+	u8 slot_cnt;
+	u8 rsvd0;
+	u8 rsvd1;
+	struct rtw89_btc_fbtc_slot_u16 slot[CXST_MAX];
+	__le32 update_map;
+} __packed;
+
+union rtw89_btc_fbtc_slots_info {
+	struct rtw89_btc_fbtc_slots v1;
+	struct rtw89_btc_fbtc_slots_v7 v7;
+} __packed;
+
 struct rtw89_btc_fbtc_step {
 	u8 type;
 	u8 val;

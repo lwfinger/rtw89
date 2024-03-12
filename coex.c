@@ -274,6 +274,13 @@ struct rtw89_btc_btf_set_slot_table_v7 {
 	struct rtw89_btc_fbtc_slot_v7 v7[CXST_MAX];
 } __packed;
 
+struct rtw89_btc_btf_set_slot_table_v7 {
+	u8 type;
+	u8 ver;
+	u8 len;
+	struct rtw89_btc_fbtc_slot_v7 v7[CXST_MAX];
+} __packed;
+
 struct rtw89_btc_btf_set_mon_reg {
 	u8 fver;
 	u8 reg_num;
@@ -1561,6 +1568,7 @@ static u32 _chk_btc_report(struct rtw89_dev *rtwdev,
 					    pfwinfo->rpt_fbtc_slots.finfo.v7.slot,
 					    sizeof(dm->slot_now.v7)));
 		} else if (ver->fcxslots == 1) {
+			if (ver->fcxslots == 7) {
 			rtw89_debug(rtwdev, RTW89_DBG_BTC,
 				    "[BTC], %s(): check %d %zu\n",
 				    __func__, BTC_DCNT_SLOT_NONSYNC,
@@ -1961,6 +1969,71 @@ static void _append_slot_v7(struct rtw89_dev *rtwdev)
 			    __func__, cnt, btc->policy_len);
 }
 
+static void _append_slot_v1(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_btc *btc = &rtwdev->btc;
+
+	if (btc->ver->fcxslots == 7)
+		_append_slot_v7(rtwdev);
+	else
+		_append_slot_v1(rtwdev);
+}
+
+static void _append_slot_v7(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_btc_btf_tlv_v7 *tlv = NULL;
+	struct rtw89_btc *btc = &rtwdev->btc;
+	struct rtw89_btc_dm *dm = &btc->dm;
+	u8 i, cnt = 0;
+	u16 len;
+
+	for (i = 0; i < CXST_MAX; i++) {
+		if (!btc->update_policy_force &&
+		    !memcmp(&dm->slot.v7[i], &dm->slot_now.v7[i],
+			    sizeof(dm->slot.v7[i])))
+			continue;
+
+		len = btc->policy_len;
+
+		if (!tlv) {
+			if ((len + BTC_TLV_HDR_LEN_V7) > RTW89_BTC_POLICY_MAXLEN) {
+				rtw89_debug(rtwdev, RTW89_DBG_BTC,
+					    "[BTC], %s(): buff overflow!\n", __func__);
+				break;
+			}
+
+			tlv = (struct rtw89_btc_btf_tlv_v7 *)&btc->policy[len];
+			tlv->type = CXPOLICY_SLOT;
+			tlv->ver = btc->ver->fcxslots;
+			tlv->len = sizeof(dm->slot.v7[0]) + BTC_TLV_SLOT_ID_LEN_V7;
+			len += BTC_TLV_HDR_LEN_V7;
+		}
+
+		if ((len + (u16)tlv->len) > RTW89_BTC_POLICY_MAXLEN) {
+			rtw89_debug(rtwdev, RTW89_DBG_BTC,
+				    "[BTC], %s(): buff overflow!\n", __func__);
+			break;
+		}
+
+		btc->policy[len] = i; /* slot-id */
+		memcpy(&btc->policy[len + 1], &dm->slot.v7[i],
+		       sizeof(dm->slot.v7[0]));
+		len += tlv->len;
+
+		rtw89_debug(rtwdev, RTW89_DBG_BTC,
+			    "[BTC], %s: policy_len=%d, slot-%d: dur=%d, type=%d, table=0x%08x\n",
+			    __func__, btc->policy_len, i, dm->slot.v7[i].dur,
+			    dm->slot.v7[i].cxtype, dm->slot.v7[i].cxtbl);
+		cnt++;
+		btc->policy_len = len; /* update total length */
+	}
+
+	if (cnt > 0)
+		rtw89_debug(rtwdev, RTW89_DBG_BTC,
+			    "[BTC], %s: slot update (cnt=%d, len=%d)!!\n",
+			    __func__, cnt, btc->policy_len);
+}
+
 static void _append_slot(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_btc *btc = &rtwdev->btc;
@@ -2114,6 +2187,45 @@ static u32 rtw89_btc_fw_rpt_ver(struct rtw89_dev *rtwdev, u32 rpt_map)
 	}
 
 	return bit_map;
+}
+
+static void rtw89_btc_fw_set_slots(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_btc *btc = &rtwdev->btc;
+	const struct rtw89_btc_ver *ver = btc->ver;
+	struct rtw89_btc_btf_tlv_v7 *tlv_v7 = NULL;
+	struct rtw89_btc_btf_set_slot_table *tbl;
+	struct rtw89_btc_dm *dm = &btc->dm;
+	u16 n, len;
+
+	if (ver->fcxslots == 7) {
+		len = sizeof(*tlv_v7) + sizeof(dm->slot.v7);
+		tlv_v7 = kmalloc(len, GFP_KERNEL);
+		if (!tlv_v7)
+			return;
+
+		tlv_v7->type = SET_SLOT_TABLE;
+		tlv_v7->ver = ver->fcxslots;
+		tlv_v7->len = sizeof(dm->slot.v7);
+		memcpy(tlv_v7->val, dm->slot.v7, sizeof(dm->slot.v7));
+
+		_send_fw_cmd(rtwdev, BTFC_SET, SET_SLOT_TABLE, (u8 *)tlv_v7, len);
+
+		kfree(tlv_v7);
+	} else {
+		n = struct_size(tbl, tbls, CXST_MAX);
+		tbl = kmalloc(n, GFP_KERNEL);
+		if (!tbl)
+			return;
+
+		tbl->fver = BTF_SET_SLOT_TABLE_VER;
+		tbl->tbl_num = CXST_MAX;
+		memcpy(tbl->tbls, dm->slot.v1, flex_array_size(tbl, tbls, CXST_MAX));
+
+		_send_fw_cmd(rtwdev, BTFC_SET, SET_SLOT_TABLE, tbl, n);
+
+		kfree(tbl);
+	}
 }
 
 static void rtw89_btc_fw_set_slots(struct rtw89_dev *rtwdev)
@@ -3162,14 +3274,16 @@ void rtw89_btc_set_policy(struct rtw89_dev *rtwdev, u16 policy_type)
 	switch (type) {
 	case BTC_CXP_USERDEF0:
 		*t = t_def[CXTD_OFF];
-		s[CXST_OFF] = s_def[CXST_OFF];
+		_slot_set_le(btc, CXST_OFF, s_def[CXST_OFF].dur,
+			     s_def[CXST_OFF].cxtbl, s_def[CXST_OFF].cxtype);
 		_slot_set_tbl(btc, CXST_OFF, cxtbl[2]);
 		btc->update_policy_force = true;
 		break;
 	case BTC_CXP_OFF: /* TDMA off */
 		_write_scbd(rtwdev, BTC_WSCB_TDMA, false);
 		*t = t_def[CXTD_OFF];
-		s[CXST_OFF] = s_def[CXST_OFF];
+		_slot_set_le(btc, CXST_OFF, s_def[CXST_OFF].dur,
+			     s_def[CXST_OFF].cxtbl, s_def[CXST_OFF].cxtype);
 
 		switch (policy_type) {
 		case BTC_CXP_OFF_BT:
@@ -3204,7 +3318,8 @@ void rtw89_btc_set_policy(struct rtw89_dev *rtwdev, u16 policy_type)
 	case BTC_CXP_OFFB: /* TDMA off + beacon protect */
 		_write_scbd(rtwdev, BTC_WSCB_TDMA, false);
 		*t = t_def[CXTD_OFF_B2];
-		s[CXST_OFF] = s_def[CXST_OFF];
+		_slot_set_le(btc, CXST_OFF, s_def[CXST_OFF].dur,
+			     s_def[CXST_OFF].cxtbl, s_def[CXST_OFF].cxtype);
 		switch (policy_type) {
 		case BTC_CXP_OFFB_BWB0:
 			_slot_set_tbl(btc, CXST_OFF, cxtbl[8]);
@@ -3217,16 +3332,23 @@ void rtw89_btc_set_policy(struct rtw89_dev *rtwdev, u16 policy_type)
 		*t = t_def[CXTD_OFF_EXT];
 		switch (policy_type) {
 		case BTC_CXP_OFFE_DEF:
-			s[CXST_E2G] = s_def[CXST_E2G];
-			s[CXST_E5G] = s_def[CXST_E5G];
-			s[CXST_EBT] = s_def[CXST_EBT];
-			s[CXST_ENULL] = s_def[CXST_ENULL];
+			_slot_set_le(btc, CXST_E2G, s_def[CXST_E2G].dur,
+				     s_def[CXST_E2G].cxtbl, s_def[CXST_E2G].cxtype);
+			_slot_set_le(btc, CXST_E5G, s_def[CXST_E5G].dur,
+				     s_def[CXST_E5G].cxtbl, s_def[CXST_E5G].cxtype);
+			_slot_set_le(btc, CXST_EBT, s_def[CXST_EBT].dur,
+				     s_def[CXST_EBT].cxtbl, s_def[CXST_EBT].cxtype);
+			_slot_set_le(btc, CXST_ENULL, s_def[CXST_ENULL].dur,
+				     s_def[CXST_ENULL].cxtbl, s_def[CXST_ENULL].cxtype);
 			break;
 		case BTC_CXP_OFFE_DEF2:
 			_slot_set(btc, CXST_E2G, 20, cxtbl[1], SLOT_ISO);
-			s[CXST_E5G] = s_def[CXST_E5G];
-			s[CXST_EBT] = s_def[CXST_EBT];
-			s[CXST_ENULL] = s_def[CXST_ENULL];
+			_slot_set_le(btc, CXST_E5G, s_def[CXST_E5G].dur,
+				     s_def[CXST_E5G].cxtbl, s_def[CXST_E5G].cxtype);
+			_slot_set_le(btc, CXST_EBT, s_def[CXST_EBT].dur,
+				     s_def[CXST_EBT].cxtbl, s_def[CXST_EBT].cxtype);
+			_slot_set_le(btc, CXST_ENULL, s_def[CXST_ENULL].dur,
+				     s_def[CXST_ENULL].cxtbl, s_def[CXST_ENULL].cxtype);
 			break;
 		}
 		break;

@@ -1253,6 +1253,13 @@ enum rtw89_btc_wl_state_cnt {
 	BTC_WCNT_RX_ERR_LAST,
 	BTC_WCNT_RX_ERR_LAST2S,
 	BTC_WCNT_RX_LAST,
+	BTC_WCNT_DBCC_ALL_2G,
+	BTC_WCNT_DBCC_CHG,
+	BTC_WCNT_RX_OK_LAST,
+	BTC_WCNT_RX_OK_LAST2S,
+	BTC_WCNT_RX_ERR_LAST,
+	BTC_WCNT_RX_ERR_LAST2S,
+	BTC_WCNT_RX_LAST,
 	BTC_WCNT_NUM
 };
 
@@ -1382,6 +1389,14 @@ struct rtw89_traffic_stats {
 
 	u16 tx_rate;
 	u16 rx_rate;
+};
+
+struct rtw89_btc_chdef {
+	u8 center_ch;
+	u8 band;
+	u8 chan;
+	enum rtw89_sc_offset offset;
+	enum rtw89_bandwidth bw;
 };
 
 struct rtw89_btc_chdef {
@@ -1634,6 +1649,42 @@ struct rtw89_btc_wl_role_info_v2 { /* struct size must be n*4 bytes */
 	u32 link_mode_chg: 1;
 	u32 rsvd: 27;
 };
+
+struct rtw89_btc_wl_rlink { /* H2C info, struct size must be n*4 bytes */
+	u8 connected;
+	u8 pid;
+	u8 phy;
+	u8 noa;
+
+	u8 rf_band; /* enum band_type RF band: 2.4G/5G/6G */
+	u8 active; /* 0:rlink is under doze */
+	u8 bw; /* enum channel_width */
+	u8 role; /*enum role_type */
+
+	u8 ch;
+	u8 noa_dur; /* ms */
+	u8 client_cnt; /* for Role = P2P-Go/AP */
+	u8 mode; /* wifi protocol */
+} __packed;
+
+#define RTW89_BE_BTC_WL_MAX_ROLE_NUMBER 6
+struct rtw89_btc_wl_role_info_v8 { /* H2C info, struct size must be n*4 bytes */
+	u8 connect_cnt;
+	u8 link_mode;
+	u8 link_mode_chg;
+	u8 p2p_2g;
+
+	u8 pta_req_band;
+	u8 dbcc_en; /* 1+1 and 2.4G-included */
+	u8 dbcc_chg;
+	u8 dbcc_2g_phy; /* which phy operate in 2G, HW_PHY_0 or HW_PHY_1 */
+
+	struct rtw89_btc_wl_rlink rlink[RTW89_BE_BTC_WL_MAX_ROLE_NUMBER][RTW89_MAC_NUM];
+
+	u32 role_map;
+	u32 mrole_type; /* btc_wl_mrole_type */
+	u32 mrole_noa_duration; /* ms */
+} __packed;
 
 struct rtw89_btc_wl_rlink { /* H2C info, struct size must be n*4 bytes */
 	u8 connected;

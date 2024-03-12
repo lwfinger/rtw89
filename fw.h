@@ -2472,6 +2472,32 @@ struct rtw89_h2c_cxrole_v8 {
 	struct rtw89_btc_wl_role_info_v8_u32 _u32;
 } __packed;
 
+struct rtw89_btc_wl_role_info_v8_u8 {
+	u8 connect_cnt;
+	u8 link_mode;
+	u8 link_mode_chg;
+	u8 p2p_2g;
+
+	u8 pta_req_band;
+	u8 dbcc_en;
+	u8 dbcc_chg;
+	u8 dbcc_2g_phy;
+
+	struct rtw89_btc_wl_rlink rlink[RTW89_BE_BTC_WL_MAX_ROLE_NUMBER][RTW89_MAC_NUM];
+} __packed;
+
+struct rtw89_btc_wl_role_info_v8_u32 {
+	__le32 role_map;
+	__le32 mrole_type;
+	__le32 mrole_noa_duration;
+} __packed;
+
+struct rtw89_h2c_cxrole_v8 {
+	struct rtw89_h2c_cxhdr hdr;
+	struct rtw89_btc_wl_role_info_v8_u8 _u8;
+	struct rtw89_btc_wl_role_info_v8_u32 _u32;
+} __packed;
+
 struct rtw89_h2c_cxinit {
 	struct rtw89_h2c_cxhdr hdr;
 	u8 ant_type;

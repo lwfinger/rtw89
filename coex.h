@@ -372,4 +372,9 @@ void _slot_set_tbl(struct rtw89_btc *btc, u8 sid, u32 tbl)
 		btc->dm.slot.v7[sid].cxtbl = cpu_to_le32(tbl);
 }
 
+static inline u32 rtw89_get_antpath_type(u8 phy_map, u8 type)
+{
+	return ((phy_map << 8) + type);
+}
+
 #endif

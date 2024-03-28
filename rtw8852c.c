@@ -2935,6 +2935,7 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.tssi_dbw_table		= &rtw89_8852c_tssi_dbw_table,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	.support_chanctx_num	= 2,
+	.support_rnr		= false,
 	.support_bands		= BIT(NL80211_BAND_2GHZ) |
 				  BIT(NL80211_BAND_5GHZ) |
 				  BIT(NL80211_BAND_6GHZ),

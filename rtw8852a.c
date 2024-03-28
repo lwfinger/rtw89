@@ -2167,6 +2167,7 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 #else
 	.support_chanctx_num	= 0,
 #endif
+	.support_rnr		= false,
 	.support_bands		= BIT(NL80211_BAND_2GHZ) |
 				  BIT(NL80211_BAND_5GHZ),
 	.support_bandwidths	= BIT(NL80211_CHAN_WIDTH_20) |

@@ -4644,6 +4644,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 			    WIPHY_FLAG_TDLS_EXTERNAL_SETUP |
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 			    WIPHY_FLAG_AP_UAPSD | WIPHY_FLAG_SPLIT_SCAN_6GHZ;
+
+	if (!chip->support_rnr)
+		hw->wiphy->flags |= WIPHY_FLAG_SPLIT_SCAN_6GHZ;
 #else
 			    WIPHY_FLAG_AP_UAPSD;
 #endif

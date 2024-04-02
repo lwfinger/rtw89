@@ -67,54 +67,6 @@ static void rtw89_pci_clkreq_set_be(struct rtw89_dev *rtwdev, bool enable)
 				  B_BE_CLK_PM_EN);
 }
 
-static void rtw89_pci_aspm_set_be(struct rtw89_dev *rtwdev, bool enable)
-{
-	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
-	struct pci_dev *pdev = rtwpci->pdev;
-	u8 value = 0;
-	int ret;
-
-	ret = pci_read_config_byte(pdev, RTW89_PCIE_ASPM_CTRL, &value);
-	if (ret)
-		rtw89_warn(rtwdev, "failed to read ASPM Delay\n");
-
-	u8p_replace_bits(&value, PCIE_L1DLY_16US, RTW89_L1DLY_MASK);
-
-	ret = pci_write_config_byte(pdev, RTW89_PCIE_ASPM_CTRL, value);
-	if (ret)
-		rtw89_warn(rtwdev, "failed to write ASPM Delay\n");
-
-	if (enable)
-		rtw89_write32_set(rtwdev, R_AX_PCIE_MIX_CFG_V1,
-				  B_BE_ASPM_CTRL_L1);
-	else
-		rtw89_write32_clr(rtwdev, R_AX_PCIE_MIX_CFG_V1,
-				  B_BE_ASPM_CTRL_L1);
-}
-
-static void rtw89_pci_l1ss_set_be(struct rtw89_dev *rtwdev, bool enable)
-{
-	if (enable)
-		rtw89_write32_set(rtwdev, R_BE_PCIE_MIX_CFG,
-				  B_BE_L1SUB_ENABLE);
-	else
-		rtw89_write32_clr(rtwdev, R_BE_PCIE_MIX_CFG,
-				  B_BE_L1SUB_ENABLE);
-}
-
-static void rtw89_pci_clkreq_set_be(struct rtw89_dev *rtwdev, bool enable)
-{
-	rtw89_write32_mask(rtwdev, R_BE_PCIE_LAT_CTRL, B_BE_CLK_REQ_LAT_MASK,
-			   PCIE_CLKDLY_HW_V1_0);
-
-	if (enable)
-		rtw89_write32_set(rtwdev, R_BE_L1_CLK_CTRL,
-				  B_BE_CLK_PM_EN);
-	else
-		rtw89_write32_clr(rtwdev, R_AX_L1_CLK_CTRL,
-				  B_BE_CLK_PM_EN);
-}
-
 static void _patch_pcie_power_wake_be(struct rtw89_dev *rtwdev, bool power_up)
 {
 	if (power_up)
@@ -638,46 +590,6 @@ static int __maybe_unused rtw89_pci_resume_be(struct device *dev)
 SIMPLE_DEV_PM_OPS(rtw89_pm_ops_be, rtw89_pci_suspend_be, rtw89_pci_resume_be);
 EXPORT_SYMBOL(rtw89_pm_ops_be);
 
-static int __maybe_unused rtw89_pci_suspend_be(struct device *dev)
-{
-	struct ieee80211_hw *hw = dev_get_drvdata(dev);
-	struct rtw89_dev *rtwdev = hw->priv;
-
-	rtw89_write32_set(rtwdev, R_BE_RSV_CTRL, B_BE_WLOCK_1C_BIT6);
-	rtw89_write32_set(rtwdev, R_BE_RSV_CTRL, B_BE_R_DIS_PRST);
-	rtw89_write32_clr(rtwdev, R_BE_RSV_CTRL, B_BE_WLOCK_1C_BIT6);
-	rtw89_write32_set(rtwdev, R_BE_PCIE_FRZ_CLK, B_BE_PCIE_FRZ_REG_RST);
-	rtw89_write32_clr(rtwdev, R_BE_REG_PL1_MASK, B_BE_SER_PM_MASTER_IMR);
-	return 0;
-}
-
-static int __maybe_unused rtw89_pci_resume_be(struct device *dev)
-{
-	struct ieee80211_hw *hw = dev_get_drvdata(dev);
-	struct rtw89_dev *rtwdev = hw->priv;
-	u32 polling;
-	int ret;
-
-	rtw89_write32_set(rtwdev, R_BE_RSV_CTRL, B_BE_WLOCK_1C_BIT6);
-	rtw89_write32_clr(rtwdev, R_BE_RSV_CTRL, B_BE_R_DIS_PRST);
-	rtw89_write32_clr(rtwdev, R_BE_RSV_CTRL, B_BE_WLOCK_1C_BIT6);
-	rtw89_write32_clr(rtwdev, R_BE_PCIE_FRZ_CLK, B_BE_PCIE_FRZ_REG_RST);
-	rtw89_write32_clr(rtwdev, R_BE_SER_PL1_CTRL, B_BE_PL1_SER_PL1_EN);
-
-	ret = read_poll_timeout_atomic(rtw89_read32, polling, !polling, 1, 1000,
-				       false, rtwdev, R_BE_REG_PL1_ISR);
-	if (ret)
-		rtw89_warn(rtwdev, "[ERR] PCIE SER clear polling fail\n");
-
-	rtw89_write32_set(rtwdev, R_BE_SER_PL1_CTRL, B_BE_PL1_SER_PL1_EN);
-	rtw89_write32_set(rtwdev, R_BE_REG_PL1_MASK, B_BE_SER_PM_MASTER_IMR);
-
-	return 0;
-}
-
-SIMPLE_DEV_PM_OPS(rtw89_pm_ops_be, rtw89_pci_suspend_be, rtw89_pci_resume_be);
-EXPORT_SYMBOL(rtw89_pm_ops_be);
-
 const struct rtw89_pci_gen_def rtw89_pci_gen_be = {
 	.isr_rdu = B_BE_RDU_CH1_INT | B_BE_RDU_CH0_INT,
 	.isr_halt_c2h = B_BE_HALT_C2H_INT,
@@ -694,10 +606,6 @@ const struct rtw89_pci_gen_def rtw89_pci_gen_be = {
 
 	.lv1rst_stop_dma = rtw89_pci_lv1rst_stop_dma_be,
 	.lv1rst_start_dma = rtw89_pci_lv1rst_start_dma_be,
-
-	.ctrl_txdma_ch = rtw89_pci_ctrl_txdma_ch_be,
-	.ctrl_txdma_fw_ch = rtw89_pci_ctrl_txdma_fw_ch_be,
-	.poll_txdma_ch_idle = rtw89_pci_poll_txdma_ch_idle_be,
 
 	.ctrl_txdma_ch = rtw89_pci_ctrl_txdma_ch_be,
 	.ctrl_txdma_fw_ch = rtw89_pci_ctrl_txdma_fw_ch_be,

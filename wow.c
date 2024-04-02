@@ -571,6 +571,8 @@ static int rtw89_wow_enable_trx_post(struct rtw89_dev *rtwdev)
 
 	rtw89_wow_set_rx_filter(rtwdev, false);
 	rtw89_hci_reset(rtwdev);
+
+	return 0;
 }
 
 static int rtw89_wow_disable_trx_pre(struct rtw89_dev *rtwdev)

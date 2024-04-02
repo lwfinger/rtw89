@@ -959,13 +959,6 @@ static int rx_fltr_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 
 static int cca_ctrl_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 {
-	u32 set = B_BE_FEN_BB1PLAT_RSTB | B_BE_FEN_BB1_IP_RSTN;
-
-	if (bb1_en)
-		rtw89_write32_set(rtwdev, R_BE_FEN_RST_ENABLE, set);
-	else
-		rtw89_write32_clr(rtwdev, R_BE_FEN_RST_ENABLE, set);
-
 	return 0;
 }
 
@@ -982,9 +975,6 @@ static int nav_ctrl_init_be(struct rtw89_dev *rtwdev, u8 mac_idx)
 	val32 = u32_replace_bits(val32, NAV_25MS, B_BE_WMAC_NAV_UPPER_MASK);
 
 	rtw89_write32(rtwdev, reg, val32);
-
-	reg = rtw89_mac_reg_by_idx(rtwdev, R_BE_BSSID_SRC_CTRL, mac_idx);
-	rtw89_write8_set(rtwdev, reg, B_BE_PLCP_SRC_EN);
 
 	return 0;
 }
@@ -1531,71 +1521,6 @@ static int dle_quota_change_be(struct rtw89_dev *rtwdev, bool band1_en)
 	return 0;
 }
 
-static int dle_upd_qta_aval_page_be(struct rtw89_dev *rtwdev,
-				    enum rtw89_mac_dle_ctrl_type type,
-				    enum rtw89_mac_dle_ple_quota_id quota_id)
-{
-	u32 val;
-
-	if (type == DLE_CTRL_TYPE_WDE) {
-		rtw89_write32_mask(rtwdev, R_BE_WDE_BUFMGN_CTL,
-				   B_BE_WDE_AVAL_UPD_QTAID_MASK, quota_id);
-		rtw89_write32_set(rtwdev, R_BE_WDE_BUFMGN_CTL, B_BE_WDE_AVAL_UPD_REQ);
-
-		return read_poll_timeout(rtw89_read32, val,
-					 !(val & B_BE_WDE_AVAL_UPD_REQ),
-					 1, 2000, false, rtwdev, R_BE_WDE_BUFMGN_CTL);
-	} else if (type == DLE_CTRL_TYPE_PLE) {
-		rtw89_write32_mask(rtwdev, R_BE_PLE_BUFMGN_CTL,
-				   B_BE_PLE_AVAL_UPD_QTAID_MASK, quota_id);
-		rtw89_write32_set(rtwdev, R_BE_PLE_BUFMGN_CTL, B_BE_PLE_AVAL_UPD_REQ);
-
-		return read_poll_timeout(rtw89_read32, val,
-					 !(val & B_BE_PLE_AVAL_UPD_REQ),
-					 1, 2000, false, rtwdev, R_BE_PLE_BUFMGN_CTL);
-	}
-
-	rtw89_warn(rtwdev, "%s wrong type %d\n", __func__, type);
-	return -EINVAL;
-}
-
-static int dle_quota_change_be(struct rtw89_dev *rtwdev, bool band1_en)
-{
-	int ret;
-
-	if (band1_en) {
-		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
-					       PLE_QTAID_B0_TXPL);
-		if (ret) {
-			rtw89_err(rtwdev, "update PLE B0 TX avail page fail %d\n", ret);
-			return ret;
-		}
-
-		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
-					       PLE_QTAID_CMAC0_RX);
-		if (ret) {
-			rtw89_err(rtwdev, "update PLE CMAC0 RX avail page fail %d\n", ret);
-			return ret;
-		}
-	} else {
-		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
-					       PLE_QTAID_B1_TXPL);
-		if (ret) {
-			rtw89_err(rtwdev, "update PLE B1 TX avail page fail %d\n", ret);
-			return ret;
-		}
-
-		ret = dle_upd_qta_aval_page_be(rtwdev, DLE_CTRL_TYPE_PLE,
-					       PLE_QTAID_CMAC1_RX);
-		if (ret) {
-			rtw89_err(rtwdev, "update PLE CMAC1 RX avail page fail %d\n", ret);
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
 static int preload_init_be(struct rtw89_dev *rtwdev, u8 mac_idx,
 			   enum rtw89_qta_mode mode)
 {
@@ -1870,120 +1795,6 @@ static int trx_init_be(struct rtw89_dev *rtwdev)
 	}
 
 	return 0;
-}
-
-int rtw89_mac_cfg_gnt_v2(struct rtw89_dev *rtwdev,
-			 const struct rtw89_mac_ax_coex_gnt *gnt_cfg)
-{
-	u32 val = 0;
-
-	if (gnt_cfg->band[0].gnt_bt)
-		val |= B_BE_GNT_BT_BB0_VAL | B_BE_GNT_BT_RX_BB0_VAL |
-		       B_BE_GNT_BT_TX_BB0_VAL;
-
-	if (gnt_cfg->band[0].gnt_bt_sw_en)
-		val |= B_BE_GNT_BT_BB0_SWCTRL | B_BE_GNT_BT_RX_BB0_SWCTRL |
-		       B_BE_GNT_BT_TX_BB0_SWCTRL;
-
-	if (gnt_cfg->band[0].gnt_wl)
-		val |= B_BE_GNT_WL_BB0_VAL | B_BE_GNT_WL_RX_VAL |
-		       B_BE_GNT_WL_TX_VAL | B_BE_GNT_WL_BB_PWR_VAL;
-
-	if (gnt_cfg->band[0].gnt_wl_sw_en)
-		val |= B_BE_GNT_WL_BB0_SWCTRL | B_BE_GNT_WL_RX_SWCTRL |
-		       B_BE_GNT_WL_TX_SWCTRL | B_BE_GNT_WL_BB_PWR_SWCTRL;
-
-	if (gnt_cfg->band[1].gnt_bt)
-		val |= B_BE_GNT_BT_BB1_VAL | B_BE_GNT_BT_RX_BB1_VAL |
-		       B_BE_GNT_BT_TX_BB1_VAL;
-
-	if (gnt_cfg->band[1].gnt_bt_sw_en)
-		val |= B_BE_GNT_BT_BB1_SWCTRL | B_BE_GNT_BT_RX_BB1_SWCTRL |
-		       B_BE_GNT_BT_TX_BB1_SWCTRL;
-
-	if (gnt_cfg->band[1].gnt_wl)
-		val |= B_BE_GNT_WL_BB1_VAL | B_BE_GNT_WL_RX_VAL |
-		       B_BE_GNT_WL_TX_VAL | B_BE_GNT_WL_BB_PWR_VAL;
-
-	if (gnt_cfg->band[1].gnt_wl_sw_en)
-		val |= B_BE_GNT_WL_BB1_SWCTRL | B_BE_GNT_WL_RX_SWCTRL |
-		       B_BE_GNT_WL_TX_SWCTRL | B_BE_GNT_WL_BB_PWR_SWCTRL;
-
-	if (gnt_cfg->bt[0].wlan_act_en)
-		val |= B_BE_WL_ACT_SWCTRL;
-	if (gnt_cfg->bt[0].wlan_act)
-		val |= B_BE_WL_ACT_VAL;
-	if (gnt_cfg->bt[1].wlan_act_en)
-		val |= B_BE_WL_ACT2_SWCTRL;
-	if (gnt_cfg->bt[1].wlan_act)
-		val |= B_BE_WL_ACT2_VAL;
-
-	rtw89_write32(rtwdev, R_BE_GNT_SW_CTRL, val);
-
-	return 0;
-}
-EXPORT_SYMBOL(rtw89_mac_cfg_gnt_v2);
-
-int rtw89_mac_cfg_ctrl_path_v2(struct rtw89_dev *rtwdev, bool wl)
-{
-	struct rtw89_btc *btc = &rtwdev->btc;
-	struct rtw89_btc_dm *dm = &btc->dm;
-	struct rtw89_mac_ax_gnt *g = dm->gnt.band;
-	struct rtw89_mac_ax_wl_act *gbt = dm->gnt.bt;
-	int i;
-
-	if (wl)
-		return 0;
-
-	for (i = 0; i < RTW89_PHY_MAX; i++) {
-		g[i].gnt_bt_sw_en = 1;
-		g[i].gnt_bt = 1;
-		g[i].gnt_wl_sw_en = 1;
-		g[i].gnt_wl = 0;
-		gbt[i].wlan_act = 1;
-		gbt[i].wlan_act_en = 0;
-	}
-
-	return rtw89_mac_cfg_gnt_v2(rtwdev, &dm->gnt);
-}
-EXPORT_SYMBOL(rtw89_mac_cfg_ctrl_path_v2);
-
-static
-int rtw89_mac_cfg_plt_be(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt)
-{
-	u32 reg;
-	u16 val;
-	int ret;
-
-	ret = rtw89_mac_check_mac_en(rtwdev, plt->band, RTW89_CMAC_SEL);
-	if (ret)
-		return ret;
-
-	reg = rtw89_mac_reg_by_idx(rtwdev, R_BE_BT_PLT, plt->band);
-	val = (plt->tx & RTW89_MAC_AX_PLT_LTE_RX ? B_BE_TX_PLT_GNT_LTE_RX : 0) |
-	      (plt->tx & RTW89_MAC_AX_PLT_GNT_BT_TX ? B_BE_TX_PLT_GNT_BT_TX : 0) |
-	      (plt->tx & RTW89_MAC_AX_PLT_GNT_BT_RX ? B_BE_TX_PLT_GNT_BT_RX : 0) |
-	      (plt->tx & RTW89_MAC_AX_PLT_GNT_WL ? B_BE_TX_PLT_GNT_WL : 0) |
-	      (plt->rx & RTW89_MAC_AX_PLT_LTE_RX ? B_BE_RX_PLT_GNT_LTE_RX : 0) |
-	      (plt->rx & RTW89_MAC_AX_PLT_GNT_BT_TX ? B_BE_RX_PLT_GNT_BT_TX : 0) |
-	      (plt->rx & RTW89_MAC_AX_PLT_GNT_BT_RX ? B_BE_RX_PLT_GNT_BT_RX : 0) |
-	      (plt->rx & RTW89_MAC_AX_PLT_GNT_WL ? B_BE_RX_PLT_GNT_WL : 0) |
-	      B_BE_PLT_EN;
-	rtw89_write16(rtwdev, reg, val);
-
-	return 0;
-}
-
-static u16 rtw89_mac_get_plt_cnt_be(struct rtw89_dev *rtwdev, u8 band)
-{
-	u32 reg;
-	u16 cnt;
-
-	reg = rtw89_mac_reg_by_idx(rtwdev, R_BE_BT_PLT, band);
-	cnt = rtw89_read32_mask(rtwdev, reg, B_BE_BT_PLT_PKT_CNT_MASK);
-	rtw89_write16_set(rtwdev, reg, B_BE_BT_PLT_RST);
-
-	return cnt;
 }
 
 int rtw89_mac_cfg_gnt_v2(struct rtw89_dev *rtwdev,
@@ -2567,52 +2378,6 @@ static int rtw89_wow_config_mac_be(struct rtw89_dev *rtwdev, bool enable_wow)
 	return 0;
 }
 
-static int rtw89_mac_cpu_io_rx(struct rtw89_dev *rtwdev, bool wow_enable)
-{
-	struct rtw89_mac_h2c_info h2c_info = {};
-	struct rtw89_mac_c2h_info c2h_info = {};
-	u32 ret;
-
-	h2c_info.id = RTW89_FWCMD_H2CREG_FUNC_WOW_CPUIO_RX_CTRL;
-	h2c_info.content_len = sizeof(h2c_info.u.hdr);
-	h2c_info.u.hdr.w0 = u32_encode_bits(wow_enable, RTW89_H2CREG_WOW_CPUIO_RX_CTRL_EN);
-
-	ret = rtw89_fw_msg_reg(rtwdev, &h2c_info, &c2h_info);
-	if (ret)
-		return ret;
-
-	if (c2h_info.id != RTW89_FWCMD_C2HREG_FUNC_WOW_CPUIO_RX_ACK)
-		ret = -EINVAL;
-
-	return ret;
-}
-
-static int rtw89_wow_config_mac_be(struct rtw89_dev *rtwdev, bool enable_wow)
-{
-	if (enable_wow) {
-		rtw89_write32_set(rtwdev, R_BE_RX_STOP, B_BE_HOST_RX_STOP);
-		rtw89_write32_clr(rtwdev, R_BE_RX_FLTR_OPT, B_BE_SNIFFER_MODE);
-		rtw89_mac_cpu_io_rx(rtwdev, enable_wow);
-		rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, false);
-		rtw89_write32(rtwdev, R_BE_FWD_ERR, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_ACTN0, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_ACTN1, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_ACTN2, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_TF0, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_TF1, 0);
-		rtw89_write32(rtwdev, R_BE_FWD_ERR, 0);
-		rtw89_write32(rtwdev, R_BE_HW_PPDU_STATUS, 0);
-		rtw89_write8(rtwdev, R_BE_DBG_WOW_READY, WOWLAN_NOT_READY);
-	} else {
-		rtw89_mac_cpu_io_rx(rtwdev, enable_wow);
-		rtw89_write32_clr(rtwdev, R_BE_RX_STOP, B_BE_HOST_RX_STOP);
-		rtw89_write32_set(rtwdev, R_BE_RX_FLTR_OPT, R_BE_RX_FLTR_OPT);
-		rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
-	}
-
-	return 0;
-}
-
 static void rtw89_mac_dump_cmac_err_status_be(struct rtw89_dev *rtwdev,
 					      u8 band)
 {
@@ -2822,6 +2587,10 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_be = {
 		.mask = B_BE_BFMEE_HT_NDPA_EN | B_BE_BFMEE_VHT_NDPA_EN |
 			B_BE_BFMEE_HE_NDPA_EN | B_BE_BFMEE_EHT_NDPA_EN,
 	},
+	.narrow_bw_ru_dis = {
+		.addr = R_BE_RXTRIG_TEST_USER_2,
+		.mask = B_BE_RXTRIG_RU26_DIS,
+	},
 	.wow_ctrl = {.addr = R_BE_WOW_CTRL, .mask = B_BE_WOW_WOWEN,},
 
 	.check_mac_en = rtw89_mac_check_mac_en_be,
@@ -2855,9 +2624,6 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_be = {
 	.parse_efuse_map = rtw89_parse_efuse_map_be,
 	.parse_phycap_map = rtw89_parse_phycap_map_be,
 	.cnv_efuse_state = rtw89_cnv_efuse_state_be,
-
-	.cfg_plt = rtw89_mac_cfg_plt_be,
-	.get_plt_cnt = rtw89_mac_get_plt_cnt_be,
 
 	.cfg_plt = rtw89_mac_cfg_plt_be,
 	.get_plt_cnt = rtw89_mac_get_plt_cnt_be,

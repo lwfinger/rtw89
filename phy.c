@@ -20,13 +20,6 @@ static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
 	return phy->phy0_phy1_offset(rtwdev, addr);
 }
 
-static u32 rtw89_phy0_phy1_offset(struct rtw89_dev *rtwdev, u32 addr)
-{
-	const struct rtw89_phy_gen_def *phy = rtwdev->chip->phy_def;
-
-	return phy->phy0_phy1_offset(rtwdev, addr);
-}
-
 static u16 get_max_amsdu_len(struct rtw89_dev *rtwdev,
 			     const struct rtw89_ra_report *report)
 {
@@ -148,10 +141,9 @@ static u64 get_eht_ra_mask(struct ieee80211_sta *sta)
 		/* MCS 9, 11, 13 */
 		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
 	case IEEE80211_STA_RX_BW_160:
-		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._160;		/* MCS 9, 11, 13 */
-			return get_eht_mcs_ra_mask(mcs_nss_20mhz->rx_tx_max_nss, 7, 4);
-		}
-		fallthrough;
+		mcs_nss = &eht_cap->eht_mcs_nss_supp.bw._160;
+		/* MCS 9, 11, 13 */
+		return get_eht_mcs_ra_mask(mcs_nss->rx_tx_max_nss, 9, 3);
 	case IEEE80211_STA_RX_BW_20:
 		if (!(he_phy_cap[0] &
 		      IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_MASK_ALL)) {
@@ -375,7 +367,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 #endif
 		high_rate_masks = rtw89_ra_mask_eht_rates;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-	} else if (sta->deflink.he_cap.has_he) {		
+	} else if (sta->deflink.he_cap.has_he) {
 #else
 	} else if (sta->he_cap.has_he) {
 #endif
@@ -401,11 +393,14 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		rtw89_phy_ra_gi_ltf(rtwdev, rtwsta, chan, &fix_giltf_en, &fix_giltf);
 #endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-        } else if (sta->deflink.vht_cap.vht_supported) {
-                u16 mcs_map = le16_to_cpu(sta->deflink.vht_cap.vht_mcs.rx_mcs_map);
-#else		
+	} else if (sta->deflink.vht_cap.vht_supported) {
+		u16 mcs_map = le16_to_cpu(sta->deflink.vht_cap.vht_mcs.rx_mcs_map);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 	} else if (sta->vht_cap.vht_supported) {
 		u16 mcs_map = le16_to_cpu(sta->vht_cap.vht_mcs.rx_mcs_map);
+#endif
+#else
+		u16 mcs_map = 0;
 #endif
 
 		mode |= RTW89_RA_MODE_VHT;
@@ -433,10 +428,10 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		mode |= RTW89_RA_MODE_HT;
 		csi_mode = RTW89_RA_RPT_MODE_HT;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-                ra_mask |= ((u64)sta->deflink.ht_cap.mcs.rx_mask[3] << 48) |
-                           ((u64)sta->deflink.ht_cap.mcs.rx_mask[2] << 36) |
-                           (sta->deflink.ht_cap.mcs.rx_mask[1] << 24) |
-                           (sta->deflink.ht_cap.mcs.rx_mask[0] << 12);
+		ra_mask |= ((u64)sta->deflink.ht_cap.mcs.rx_mask[3] << 48) |
+			   ((u64)sta->deflink.ht_cap.mcs.rx_mask[2] << 36) |
+			   (sta->deflink.ht_cap.mcs.rx_mask[1] << 24) |
+			   (sta->deflink.ht_cap.mcs.rx_mask[0] << 12);
 #else		
 		ra_mask |= ((u64)sta->ht_cap.mcs.rx_mask[3] << 48) |
 			   ((u64)sta->ht_cap.mcs.rx_mask[2] << 36) |
@@ -461,8 +456,8 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	switch (chan->band_type) {
 	case RTW89_BAND_2G:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-                ra_mask |= sta->deflink.supp_rates[NL80211_BAND_2GHZ];
-                if (sta->deflink.supp_rates[NL80211_BAND_2GHZ] & 0xf)
+		ra_mask |= sta->deflink.supp_rates[NL80211_BAND_2GHZ];
+		if (sta->deflink.supp_rates[NL80211_BAND_2GHZ] & 0xf)
 #else			
 		ra_mask |= sta->supp_rates[NL80211_BAND_2GHZ];
 		if (sta->supp_rates[NL80211_BAND_2GHZ] & 0xf)
@@ -528,7 +523,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		bw_mode = RTW89_CHANNEL_WIDTH_160;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 		sgi = sta->deflink.vht_cap.vht_supported &&
-                      (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_160);
+		      (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_160);
 #else		
 		sgi = sta->vht_cap.vht_supported &&
 		      (sta->vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_160);
@@ -537,8 +532,8 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	case IEEE80211_STA_RX_BW_80:
 		bw_mode = RTW89_CHANNEL_WIDTH_80;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-                sgi = sta->deflink.vht_cap.vht_supported &&
-                      (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_80);
+		sgi = sta->deflink.vht_cap.vht_supported &&
+		      (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_80);
 #else		
 		sgi = sta->vht_cap.vht_supported &&
 		      (sta->vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_80);
@@ -548,7 +543,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		bw_mode = RTW89_CHANNEL_WIDTH_40;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 		sgi = sta->deflink.ht_cap.ht_supported &&
-                      (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_40);
+		      (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_40);
 #else
 		sgi = sta->ht_cap.ht_supported &&
 		      (sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_40);
@@ -558,7 +553,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 		bw_mode = RTW89_CHANNEL_WIDTH_20;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 		sgi = sta->deflink.ht_cap.ht_supported &&
-                      (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_20);
+		      (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_20);
 #else
 		sgi = sta->ht_cap.ht_supported &&
 		      (sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_20);
@@ -567,7 +562,7 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 	}
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
-        if (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
+	if (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
             IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM)
 #else
 	if (sta->he_cap.he_cap_elem.phy_cap_info[3] &
@@ -882,53 +877,6 @@ u8 rtw89_phy_get_txsc(struct rtw89_dev *rtwdev,
 	return txsc_idx;
 }
 EXPORT_SYMBOL(rtw89_phy_get_txsc);
-
-u8 rtw89_phy_get_txsb(struct rtw89_dev *rtwdev, const struct rtw89_chan *chan,
-		      enum rtw89_bandwidth dbw)
-{
-	enum rtw89_bandwidth cbw = chan->band_width;
-	u8 pri_ch = chan->primary_channel;
-	u8 central_ch = chan->channel;
-	u8 txsb_idx = 0;
-
-	if (cbw == dbw || cbw == RTW89_CHANNEL_WIDTH_20)
-		return txsb_idx;
-
-	switch (cbw) {
-	case RTW89_CHANNEL_WIDTH_40:
-		txsb_idx = pri_ch > central_ch ? 1 : 0;
-		break;
-	case RTW89_CHANNEL_WIDTH_80:
-		if (dbw == RTW89_CHANNEL_WIDTH_20)
-			txsb_idx = (pri_ch - central_ch + 6) / 4;
-		else
-			txsb_idx = pri_ch > central_ch ? 1 : 0;
-		break;
-	case RTW89_CHANNEL_WIDTH_160:
-		if (dbw == RTW89_CHANNEL_WIDTH_20)
-			txsb_idx = (pri_ch - central_ch + 14) / 4;
-		else if (dbw == RTW89_CHANNEL_WIDTH_40)
-			txsb_idx = (pri_ch - central_ch + 12) / 8;
-		else
-			txsb_idx = pri_ch > central_ch ? 1 : 0;
-		break;
-	case RTW89_CHANNEL_WIDTH_320:
-		if (dbw == RTW89_CHANNEL_WIDTH_20)
-			txsb_idx = (pri_ch - central_ch + 30) / 4;
-		else if (dbw == RTW89_CHANNEL_WIDTH_40)
-			txsb_idx = (pri_ch - central_ch + 28) / 8;
-		else if (dbw == RTW89_CHANNEL_WIDTH_80)
-			txsb_idx = (pri_ch - central_ch + 24) / 16;
-		else
-			txsb_idx = pri_ch > central_ch ? 1 : 0;
-		break;
-	default:
-		break;
-	}
-
-	return txsb_idx;
-}
-EXPORT_SYMBOL(rtw89_phy_get_txsb);
 
 u8 rtw89_phy_get_txsb(struct rtw89_dev *rtwdev, const struct rtw89_chan *chan,
 		      enum rtw89_bandwidth dbw)
@@ -6627,78 +6575,6 @@ void rtw89_phy_edcca_track(struct rtw89_dev *rtwdev)
 	rtw89_phy_edcca_thre_calc(rtwdev);
 	rtw89_phy_edcca_log(rtwdev);
 }
-
-enum rtw89_rf_path_bit rtw89_phy_get_kpath(struct rtw89_dev *rtwdev,
-					   enum rtw89_phy_idx phy_idx)
-{
-	rtw89_debug(rtwdev, RTW89_DBG_RFK,
-		    "[RFK] kpath dbcc_en: 0x%x, mode=0x%x, PHY%d\n",
-		    rtwdev->dbcc_en, rtwdev->mlo_dbcc_mode, phy_idx);
-
-	switch (rtwdev->mlo_dbcc_mode) {
-	case MLO_1_PLUS_1_1RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_A;
-		else
-			return RF_B;
-	case MLO_1_PLUS_1_2RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_A;
-		else
-			return RF_D;
-	case MLO_0_PLUS_2_1RF:
-	case MLO_2_PLUS_0_1RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_AB;
-		else
-			return RF_AB;
-	case MLO_0_PLUS_2_2RF:
-	case MLO_2_PLUS_0_2RF:
-	case MLO_2_PLUS_2_2RF:
-	default:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_AB;
-		else
-			return RF_CD;
-	}
-}
-EXPORT_SYMBOL(rtw89_phy_get_kpath);
-
-enum rtw89_rf_path rtw89_phy_get_syn_sel(struct rtw89_dev *rtwdev,
-					 enum rtw89_phy_idx phy_idx)
-{
-	rtw89_debug(rtwdev, RTW89_DBG_RFK,
-		    "[RFK] kpath dbcc_en: 0x%x, mode=0x%x, PHY%d\n",
-		    rtwdev->dbcc_en, rtwdev->mlo_dbcc_mode, phy_idx);
-
-	switch (rtwdev->mlo_dbcc_mode) {
-	case MLO_1_PLUS_1_1RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_PATH_A;
-		else
-			return RF_PATH_B;
-	case MLO_1_PLUS_1_2RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_PATH_A;
-		else
-			return RF_PATH_D;
-	case MLO_0_PLUS_2_1RF:
-	case MLO_2_PLUS_0_1RF:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_PATH_A;
-		else
-			return RF_PATH_B;
-	case MLO_0_PLUS_2_2RF:
-	case MLO_2_PLUS_0_2RF:
-	case MLO_2_PLUS_2_2RF:
-	default:
-		if (phy_idx == RTW89_PHY_0)
-			return RF_PATH_A;
-		else
-			return RF_PATH_C;
-	}
-}
-EXPORT_SYMBOL(rtw89_phy_get_syn_sel);
 
 enum rtw89_rf_path_bit rtw89_phy_get_kpath(struct rtw89_dev *rtwdev,
 					   enum rtw89_phy_idx phy_idx)

@@ -297,21 +297,6 @@
 #define B_BE_CLK_REQ_N BIT(1)
 #define B_BE_CLK_PM_EN BIT(0)
 
-#define R_BE_PCIE_MIX_CFG 0x300C
-#define B_BE_L1SS_TIMEOUT_CTRL BIT(18)
-#define B_BE_ASPM_CTRL_L1 BIT(17)
-#define B_BE_ASPM_CTRL_L0 BIT(16)
-#define B_BE_XFER_PENDING_FW BIT(11)
-#define B_BE_XFER_PENDING BIT(10)
-#define B_BE_REQ_EXIT_L1 BIT(9)
-#define B_BE_REQ_ENTR_L1 BIT(8)
-#define B_BE_L1SUB_ENABLE BIT(0)
-
-#define R_BE_L1_CLK_CTRL 0x3010
-#define B_BE_RAS_SD_HOLD_LTSSM BIT(12)
-#define B_BE_CLK_REQ_N BIT(1)
-#define B_BE_CLK_PM_EN BIT(0)
-
 #define R_BE_PCIE_LAT_CTRL 0x3044
 #define B_BE_ELBI_PHY_REMAP_MASK GENMASK(29, 24)
 #define B_BE_SYS_SUS_L12_EN BIT(17)
@@ -959,8 +944,6 @@
 
 #define R_BE_REG_PL1_ISR 0x34B4
 
-#define R_BE_REG_PL1_ISR 0x34B4
-
 #define R_BE_RX_APPEND_MODE 0x8920
 #define B_BE_APPEND_OFFSET_MASK GENMASK(23, 16)
 #define B_BE_APPEND_LEN_MASK GENMASK(15, 0)
@@ -1100,15 +1083,6 @@ enum rtw89_pcie_clkdly_hw {
 	PCIE_CLKDLY_HW_100US = 0x3,
 	PCIE_CLKDLY_HW_150US = 0x4,
 	PCIE_CLKDLY_HW_200US = 0x5,
-};
-
-enum rtw89_pcie_clkdly_hw_v1 {
-	PCIE_CLKDLY_HW_V1_0 = 0,
-	PCIE_CLKDLY_HW_V1_16US = 0x1,
-	PCIE_CLKDLY_HW_V1_32US = 0x2,
-	PCIE_CLKDLY_HW_V1_64US = 0x3,
-	PCIE_CLKDLY_HW_V1_80US = 0x4,
-	PCIE_CLKDLY_HW_V1_96US = 0x5,
 };
 
 enum rtw89_pcie_clkdly_hw_v1 {
@@ -1270,10 +1244,6 @@ struct rtw89_pci_gen_def {
 
 	int (*lv1rst_stop_dma)(struct rtw89_dev *rtwdev);
 	int (*lv1rst_start_dma)(struct rtw89_dev *rtwdev);
-
-	void (*ctrl_txdma_ch)(struct rtw89_dev *rtwdev, bool enable);
-	void (*ctrl_txdma_fw_ch)(struct rtw89_dev *rtwdev, bool enable);
-	int (*poll_txdma_ch_idle)(struct rtw89_dev *rtwdev);
 
 	void (*ctrl_txdma_ch)(struct rtw89_dev *rtwdev, bool enable);
 	void (*ctrl_txdma_fw_ch)(struct rtw89_dev *rtwdev, bool enable);

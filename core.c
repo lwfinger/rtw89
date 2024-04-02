@@ -367,7 +367,7 @@ void rtw89_core_set_chip_txpwr(struct rtw89_dev *rtwdev)
 		break;
 	default:
 		WARN(1, "Invalid ent mode: %d\n", mode);
-		return -EINVAL;
+		return;
 	}
 
 	roc_idx = atomic_read(&hal->roc_entity_idx);
@@ -1797,24 +1797,20 @@ static bool rtw89_core_rx_ppdu_match(struct rtw89_dev *rtwdev,
 #endif
 	bw = rtw89_hw_to_rate_info_bw(desc_info->bw);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	gi_ltf = rtw89_rxdesc_to_nl_he_eht_gi(rtwdev, desc_info->gi_ltf, false, eht);
 #else
 	gi_ltf = 0;
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	ret = rtwdev->ppdu_sts.curr_rx_ppdu_cnt[band] == desc_info->ppdu_cnt &&
 	      status->rate_idx == rate_idx &&
 	      rtw89_check_rx_statu_gi_match(status, gi_ltf, eht) &&
 	      status->bw == bw;
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
-	gi_ltf = rtw89_rxdesc_to_nl_he_gi(rtwdev, desc_info, false);
-#endif
 	ret = rtwdev->ppdu_sts.curr_rx_ppdu_cnt[band] == desc_info->ppdu_cnt &&
 	      status->rate_idx == rate_idx &&
 	      status->he_gi == gi_ltf &&
 	      status->bw == bw;
-
 #endif
 
 	return ret;
@@ -1947,17 +1943,6 @@ static void rtw89_core_cancel_6ghz_probe_tx(struct rtw89_dev *rtwdev,
 
 	if (queue_work)
 		ieee80211_queue_work(rtwdev->hw, &rtwdev->cancel_6ghz_probe_work);
-}
-
-static void rtw89_vif_sync_bcn_tsf(struct rtw89_vif *rtwvif,
-				   struct ieee80211_hdr *hdr, size_t len)
-{
-	struct ieee80211_mgmt *mgmt = (typeof(mgmt))hdr;
-
-	if (len < offsetof(typeof(*mgmt), u.beacon.variable))
-		return;
-
-	WRITE_ONCE(rtwvif->sync_bcn_tsf, le64_to_cpu(mgmt->u.beacon.timestamp));
 }
 
 static void rtw89_vif_sync_bcn_tsf(struct rtw89_vif *rtwvif,
@@ -4781,6 +4766,9 @@ struct rtw89_dev *rtw89_alloc_ieee80211_hw(struct device *device,
 		ops->remove_chanctx = ieee80211_emulate_remove_chanctx;
 		ops->change_chanctx = ieee80211_emulate_change_chanctx;
 		ops->switch_vif_chanctx = ieee80211_emulate_switch_vif_chanctx;
+		ops->assign_vif_chanctx = NULL;
+		ops->unassign_vif_chanctx = NULL;
+		ops->remain_on_channel = NULL;
 		ops->cancel_remain_on_channel = NULL;
 	}
 #endif

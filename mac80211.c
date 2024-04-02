@@ -1156,9 +1156,9 @@ const struct ieee80211_ops rtw89_ops = {
 	.bss_info_changed	= rtw89_ops_bss_info_changed,
 	.start_ap		= rtw89_ops_start_ap,
 	.stop_ap		= rtw89_ops_stop_ap,
-	.conf_tx                = rtw89_ops_conf_tx,
 #endif	
 	.set_tim		= rtw89_ops_set_tim,
+	.conf_tx		= rtw89_ops_conf_tx,
 	.sta_state		= rtw89_ops_sta_state,
 	.set_key		= rtw89_ops_set_key,
 	.ampdu_action		= rtw89_ops_ampdu_action,

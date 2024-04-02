@@ -2028,9 +2028,6 @@ void rtw89_mac_hw_mgnt_sec(struct rtw89_dev *rtwdev, bool enable)
 	if (rtwdev->chip->chip_gen != RTW89_CHIP_AX)
 		return;
 
-	if (rtwdev->chip->chip_gen != RTW89_CHIP_AX)
-		return;
-
 	if (enable)
 		rtw89_write32_set(rtwdev, R_AX_SEC_ENG_CTRL, msk32);
 	else
@@ -2542,9 +2539,6 @@ static int spatial_reuse_init_ax(struct rtw89_dev *rtwdev, u8 mac_idx)
 		return ret;
 	reg = rtw89_mac_reg_by_idx(rtwdev, R_AX_RX_SR_CTRL, mac_idx);
 	rtw89_write8_clr(rtwdev, reg, B_AX_SR_EN);
-
-	reg = rtw89_mac_reg_by_idx(rtwdev, R_AX_BSSID_SRC_CTRL, mac_idx);
-	rtw89_write8_set(rtwdev, reg, B_AX_PLCP_SRC_EN);
 
 	reg = rtw89_mac_reg_by_idx(rtwdev, R_AX_BSSID_SRC_CTRL, mac_idx);
 	rtw89_write8_set(rtwdev, reg, B_AX_PLCP_SRC_EN);
@@ -3222,16 +3216,6 @@ int rtw89_mac_dle_quota_change(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mod
 	}
 
 	dle_quota_cfg(rtwdev, cfg, INVALID_QT_WCPU);
-
-	return mac->dle_quota_change(rtwdev, band1_en);
-}
-
-static int dle_quota_change_ax(struct rtw89_dev *rtwdev, bool band1_en)
-{
-	const struct rtw89_mac_gen_def *mac = rtwdev->chip->mac_def;
-	struct rtw89_cpuio_ctrl ctrl_para = {0};
-	u16 pkt_id;
-	int ret;
 
 	return mac->dle_quota_change(rtwdev, band1_en);
 }
@@ -4655,10 +4639,18 @@ void rtw89_mac_set_he_obss_narrow_bw_ru(struct rtw89_dev *rtwdev,
 	if (!vif->bss_conf.he_support || vif->type != NL80211_IFTYPE_STATION)
 		return;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+	if (!(vif->bss_conf.chanreq.oper.chan->flags & IEEE80211_CHAN_RADAR))
+#else
 	if (!(vif->bss_conf.chandef.chan->flags & IEEE80211_CHAN_RADAR))
+#endif
 		return;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+	cfg80211_bss_iter(hw->wiphy, &vif->bss_conf.chanreq.oper,
+#else
 	cfg80211_bss_iter(hw->wiphy, &vif->bss_conf.chandef,
+#endif
 			  rtw89_mac_check_he_obss_narrow_bw_ru_iter,
 			  &tolerated);
 
@@ -5200,84 +5192,6 @@ rtw89_mac_c2h_mrc_status_rpt(struct rtw89_dev *rtwdev, struct sk_buff *c2h, u32 
 	rtw89_complete_cond(wait, cond, &data);
 }
 
-static void
-rtw89_mac_c2h_mrc_tsf_rpt(struct rtw89_dev *rtwdev, struct sk_buff *c2h, u32 len)
-{
-	struct rtw89_wait_info *wait = &rtwdev->mcc.wait;
-	const struct rtw89_c2h_mrc_tsf_rpt *c2h_rpt;
-	struct rtw89_completion_data data = {};
-	struct rtw89_mac_mrc_tsf_rpt *rpt;
-	unsigned int i;
-
-	c2h_rpt = (const struct rtw89_c2h_mrc_tsf_rpt *)c2h->data;
-	rpt = (struct rtw89_mac_mrc_tsf_rpt *)data.buf;
-	rpt->num = min_t(u8, RTW89_MAC_MRC_MAX_REQ_TSF_NUM,
-			 le32_get_bits(c2h_rpt->w2,
-				       RTW89_C2H_MRC_TSF_RPT_W2_REQ_TSF_NUM));
-
-	for (i = 0; i < rpt->num; i++) {
-		u32 tsf_high = le32_to_cpu(c2h_rpt->infos[i].tsf_high);
-		u32 tsf_low = le32_to_cpu(c2h_rpt->infos[i].tsf_low);
-
-		rpt->tsfs[i] = (u64)tsf_high << 32 | tsf_low;
-
-		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
-			    "MRC C2H TSF RPT: index %u> %llu\n",
-			    i, rpt->tsfs[i]);
-	}
-
-	rtw89_complete_cond(wait, RTW89_MRC_WAIT_COND_REQ_TSF, &data);
-}
-
-static void
-rtw89_mac_c2h_mrc_status_rpt(struct rtw89_dev *rtwdev, struct sk_buff *c2h, u32 len)
-{
-	struct rtw89_wait_info *wait = &rtwdev->mcc.wait;
-	const struct rtw89_c2h_mrc_status_rpt *c2h_rpt;
-	struct rtw89_completion_data data = {};
-	enum rtw89_mac_mrc_status status;
-	unsigned int cond;
-	bool next = false;
-	u32 tsf_high;
-	u32 tsf_low;
-	u8 sch_idx;
-	u8 func;
-
-	c2h_rpt = (const struct rtw89_c2h_mrc_status_rpt *)c2h->data;
-	sch_idx = le32_get_bits(c2h_rpt->w2, RTW89_C2H_MRC_STATUS_RPT_W2_SCH_IDX);
-	status = le32_get_bits(c2h_rpt->w2, RTW89_C2H_MRC_STATUS_RPT_W2_STATUS);
-	tsf_high = le32_to_cpu(c2h_rpt->tsf_high);
-	tsf_low = le32_to_cpu(c2h_rpt->tsf_low);
-
-	switch (status) {
-	case RTW89_MAC_MRC_START_SCH_OK:
-		func = H2C_FUNC_START_MRC;
-		break;
-	case RTW89_MAC_MRC_STOP_SCH_OK:
-		/* H2C_FUNC_DEL_MRC without STOP_ONLY, so wait for DEL_SCH_OK */
-		func = H2C_FUNC_DEL_MRC;
-		next = true;
-		break;
-	case RTW89_MAC_MRC_DEL_SCH_OK:
-		func = H2C_FUNC_DEL_MRC;
-		break;
-	default:
-		rtw89_debug(rtwdev, RTW89_DBG_CHAN,
-			    "invalid MRC C2H STS RPT: status %d\n", status);
-		return;
-	}
-
-	rtw89_debug(rtwdev, RTW89_DBG_CHAN,
-		    "MRC C2H STS RPT: sch_idx %d, status %d, tsf %llu\n",
-		    sch_idx, status, (u64)tsf_high << 32 | tsf_low);
-
-	if (next)
-		return;
-
-	cond = RTW89_MRC_WAIT_COND(sch_idx, func);
-	rtw89_complete_cond(wait, cond, &data);
-}
-
 static
 void (* const rtw89_mac_c2h_ofld_handler[])(struct rtw89_dev *rtwdev,
 					    struct sk_buff *c2h, u32 len) = {
@@ -5307,13 +5221,6 @@ void (* const rtw89_mac_c2h_mcc_handler[])(struct rtw89_dev *rtwdev,
 	[RTW89_MAC_C2H_FUNC_MCC_REQ_ACK] = rtw89_mac_c2h_mcc_req_ack,
 	[RTW89_MAC_C2H_FUNC_MCC_TSF_RPT] = rtw89_mac_c2h_mcc_tsf_rpt,
 	[RTW89_MAC_C2H_FUNC_MCC_STATUS_RPT] = rtw89_mac_c2h_mcc_status_rpt,
-};
-
-static
-void (* const rtw89_mac_c2h_mrc_handler[])(struct rtw89_dev *rtwdev,
-					   struct sk_buff *c2h, u32 len) = {
-	[RTW89_MAC_C2H_FUNC_MRC_TSF_RPT] = rtw89_mac_c2h_mrc_tsf_rpt,
-	[RTW89_MAC_C2H_FUNC_MRC_STATUS_RPT] = rtw89_mac_c2h_mrc_status_rpt,
 };
 
 static
@@ -5375,8 +5282,6 @@ bool rtw89_mac_c2h_chk_atomic(struct rtw89_dev *rtwdev, struct sk_buff *c2h,
 		return true;
 	case RTW89_MAC_C2H_CLASS_MRC:
 		return true;
-	case RTW89_MAC_C2H_CLASS_MRC:
-		return true;
 	}
 }
 
@@ -5398,10 +5303,6 @@ void rtw89_mac_c2h_handle(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 	case RTW89_MAC_C2H_CLASS_MCC:
 		if (func < NUM_OF_RTW89_MAC_C2H_FUNC_MCC)
 			handler = rtw89_mac_c2h_mcc_handler[func];
-		break;
-	case RTW89_MAC_C2H_CLASS_MRC:
-		if (func < NUM_OF_RTW89_MAC_C2H_FUNC_MRC)
-			handler = rtw89_mac_c2h_mrc_handler[func];
 		break;
 	case RTW89_MAC_C2H_CLASS_MRC:
 		if (func < NUM_OF_RTW89_MAC_C2H_FUNC_MRC)
@@ -5950,11 +5851,11 @@ static int rtw89_mac_set_csi_para_reg_ax(struct rtw89_dev *rtwdev,
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
-            (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
-                ldpc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
-                stbc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
+	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
+		ldpc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXLDPC);
+		stbc_en &= !!(sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_RXSTBC_MASK);
                 t = FIELD_GET(IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK,
-                              sta->deflink.vht_cap.cap);
+			      sta->deflink.vht_cap.cap);
 #else
 	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)) {
@@ -6440,41 +6341,6 @@ static int rtw89_wow_config_mac_ax(struct rtw89_dev *rtwdev, bool enable_wow)
 	return 0;
 }
 
-static int rtw89_wow_config_mac_ax(struct rtw89_dev *rtwdev, bool enable_wow)
-{
-	const struct rtw89_mac_gen_def *mac = rtwdev->chip->mac_def;
-	int ret;
-
-	if (enable_wow) {
-		ret = rtw89_mac_resize_ple_rx_quota(rtwdev, true);
-		if (ret) {
-			rtw89_err(rtwdev, "[ERR]patch rx qta %d\n", ret);
-			return ret;
-		}
-
-		rtw89_write32_set(rtwdev, R_AX_RX_FUNCTION_STOP, B_AX_HDR_RX_STOP);
-		rtw89_write32_clr(rtwdev, mac->rx_fltr, B_AX_SNIFFER_MODE);
-		rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, false);
-		rtw89_write32(rtwdev, R_AX_ACTION_FWD0, 0);
-		rtw89_write32(rtwdev, R_AX_ACTION_FWD1, 0);
-		rtw89_write32(rtwdev, R_AX_TF_FWD, 0);
-		rtw89_write32(rtwdev, R_AX_HW_RPT_FWD, 0);
-	} else {
-		ret = rtw89_mac_resize_ple_rx_quota(rtwdev, false);
-		if (ret) {
-			rtw89_err(rtwdev, "[ERR]patch rx qta %d\n", ret);
-			return ret;
-		}
-
-		rtw89_write32_clr(rtwdev, R_AX_RX_FUNCTION_STOP, B_AX_HDR_RX_STOP);
-		rtw89_mac_cfg_ppdu_status(rtwdev, RTW89_MAC_0, true);
-		rtw89_write32(rtwdev, R_AX_ACTION_FWD0, TRXCFG_MPDU_PROC_ACT_FRWD);
-		rtw89_write32(rtwdev, R_AX_TF_FWD, TRXCFG_MPDU_PROC_TF_FRWD);
-	}
-
-	return 0;
-}
-
 static u8 rtw89_fw_get_rdy_ax(struct rtw89_dev *rtwdev, enum rtw89_fwdl_check_type type)
 {
 	u8 val = rtw89_read8(rtwdev, R_AX_WCPU_FW_CTRL);
@@ -6550,9 +6416,6 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_ax = {
 	.parse_efuse_map = rtw89_parse_efuse_map_ax,
 	.parse_phycap_map = rtw89_parse_phycap_map_ax,
 	.cnv_efuse_state = rtw89_cnv_efuse_state_ax,
-
-	.cfg_plt = rtw89_mac_cfg_plt_ax,
-	.get_plt_cnt = rtw89_mac_get_plt_cnt_ax,
 
 	.cfg_plt = rtw89_mac_cfg_plt_ax,
 	.get_plt_cnt = rtw89_mac_get_plt_cnt_ax,

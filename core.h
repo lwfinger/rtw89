@@ -1167,11 +1167,6 @@ struct rtw89_mac_ax_wl_act {
 	u8 wlan_act;
 };
 
-struct rtw89_mac_ax_wl_act {
-	u8 wlan_act_en;
-	u8 wlan_act;
-};
-
 #define RTW89_MAC_AX_COEX_GNT_NR 2
 struct rtw89_mac_ax_coex_gnt {
 	struct rtw89_mac_ax_gnt band[RTW89_MAC_AX_COEX_GNT_NR];
@@ -1253,13 +1248,6 @@ enum rtw89_btc_wl_state_cnt {
 	BTC_WCNT_RX_ERR_LAST,
 	BTC_WCNT_RX_ERR_LAST2S,
 	BTC_WCNT_RX_LAST,
-	BTC_WCNT_DBCC_ALL_2G,
-	BTC_WCNT_DBCC_CHG,
-	BTC_WCNT_RX_OK_LAST,
-	BTC_WCNT_RX_OK_LAST2S,
-	BTC_WCNT_RX_ERR_LAST,
-	BTC_WCNT_RX_ERR_LAST2S,
-	BTC_WCNT_RX_LAST,
 	BTC_WCNT_NUM
 };
 
@@ -1306,18 +1294,6 @@ struct rtw89_btc_ant_info {
 	u8 btg_pos: 2;
 	u8 stream_cnt: 4;
 };
-
-struct rtw89_btc_ant_info_v7 {
-	u8 type;  /* shared, dedicated(non-shared) */
-	u8 num;   /* antenna count  */
-	u8 isolation;
-	u8 single_pos;/* wifi 1ss-1ant at 0:S0 or 1:S1 */
-
-	u8 diversity; /* only for wifi use 1-antenna */
-	u8 btg_pos; /* btg-circuit at 0:S0/1:S1/others:all */
-	u8 stream_cnt;  /* spatial_stream count */
-	u8 rsvd;
-} __packed;
 
 struct rtw89_btc_ant_info_v7 {
 	u8 type;  /* shared, dedicated(non-shared) */
@@ -1389,14 +1365,6 @@ struct rtw89_traffic_stats {
 
 	u16 tx_rate;
 	u16 rx_rate;
-};
-
-struct rtw89_btc_chdef {
-	u8 center_ch;
-	u8 band;
-	u8 chan;
-	enum rtw89_sc_offset offset;
-	enum rtw89_bandwidth bw;
 };
 
 struct rtw89_btc_chdef {
@@ -1686,42 +1654,6 @@ struct rtw89_btc_wl_role_info_v8 { /* H2C info, struct size must be n*4 bytes */
 	u32 mrole_noa_duration; /* ms */
 } __packed;
 
-struct rtw89_btc_wl_rlink { /* H2C info, struct size must be n*4 bytes */
-	u8 connected;
-	u8 pid;
-	u8 phy;
-	u8 noa;
-
-	u8 rf_band; /* enum band_type RF band: 2.4G/5G/6G */
-	u8 active; /* 0:rlink is under doze */
-	u8 bw; /* enum channel_width */
-	u8 role; /*enum role_type */
-
-	u8 ch;
-	u8 noa_dur; /* ms */
-	u8 client_cnt; /* for Role = P2P-Go/AP */
-	u8 mode; /* wifi protocol */
-} __packed;
-
-#define RTW89_BE_BTC_WL_MAX_ROLE_NUMBER 6
-struct rtw89_btc_wl_role_info_v8 { /* H2C info, struct size must be n*4 bytes */
-	u8 connect_cnt;
-	u8 link_mode;
-	u8 link_mode_chg;
-	u8 p2p_2g;
-
-	u8 pta_req_band;
-	u8 dbcc_en; /* 1+1 and 2.4G-included */
-	u8 dbcc_chg;
-	u8 dbcc_2g_phy; /* which phy operate in 2G, HW_PHY_0 or HW_PHY_1 */
-
-	struct rtw89_btc_wl_rlink rlink[RTW89_BE_BTC_WL_MAX_ROLE_NUMBER][RTW89_MAC_NUM];
-
-	u32 role_map;
-	u32 mrole_type; /* btc_wl_mrole_type */
-	u32 mrole_noa_duration; /* ms */
-} __packed;
-
 struct rtw89_btc_wl_ver_info {
 	u32 fw_coex; /* match with which coex_ver */
 	u32 fw;
@@ -1880,7 +1812,6 @@ struct rtw89_btc_wl_info {
 	bool is_5g_hi_channel;
 	bool pta_reg_mac_chg;
 	bool bg_mode;
-	bool bg_mode;
 	bool scbd_change;
 	u32 scbd;
 };
@@ -1896,25 +1827,6 @@ struct rtw89_btc_module {
 	u8 wa_type: 3;
 
 	u8 kt_ver_adie;
-};
-
-struct rtw89_btc_module_v7 {
-	u8 rfe_type;
-	u8 kt_ver;
-	u8 bt_solo;
-	u8 bt_pos; /* wl-end view: get from efuse, must compare bt.btg_type*/
-
-	u8 switch_type; /* WL/BT switch type: 0: internal, 1: external */
-	u8 wa_type; /* WA type: 0:none, 1: 51B 5G_Hi-Ch_Rx */
-	u8 kt_ver_adie;
-	u8 rsvd;
-
-	struct rtw89_btc_ant_info_v7 ant;
-} __packed;
-
-union rtw89_btc_module_info {
-	struct rtw89_btc_module md;
-	struct rtw89_btc_module_v7 md_v7;
 };
 
 struct rtw89_btc_module_v7 {
@@ -1956,25 +1868,6 @@ struct rtw89_btc_init_info {
 	u8 bt_only: 1;
 
 	u16 rsvd;
-};
-
-struct rtw89_btc_init_info_v7 {
-	u8 wl_guard_ch;
-	u8 wl_only;
-	u8 wl_init_ok;
-	u8 rsvd3;
-
-	u8 cx_other;
-	u8 bt_only;
-	u8 pta_mode;
-	u8 pta_direction;
-
-	struct rtw89_btc_module_v7 module;
-} __packed;
-
-union rtw89_btc_init_info_u {
-	struct rtw89_btc_init_info init;
-	struct rtw89_btc_init_info_v7 init_v7;
 };
 
 struct rtw89_btc_init_info_v7 {
@@ -2444,40 +2337,6 @@ union rtw89_btc_fbtc_slots_info {
 	struct rtw89_btc_fbtc_slots_v7 v7;
 } __packed;
 
-struct rtw89_btc_fbtc_slot_v7 {
-	__le16 dur; /* slot duration */
-	__le16 cxtype;
-	__le32 cxtbl;
-} __packed;
-
-struct rtw89_btc_fbtc_slot_u16 {
-	__le16 dur; /* slot duration */
-	__le16 cxtype;
-	__le16 cxtbl_l16; /* coex table [15:0] */
-	__le16 cxtbl_h16; /* coex table [31:16] */
-} __packed;
-
-struct rtw89_btc_fbtc_1slot_v7 {
-	u8 fver;
-	u8 sid; /* slot id */
-	__le16 rsvd;
-	struct rtw89_btc_fbtc_slot_v7 slot;
-} __packed;
-
-struct rtw89_btc_fbtc_slots_v7 {
-	u8 fver;
-	u8 slot_cnt;
-	u8 rsvd0;
-	u8 rsvd1;
-	struct rtw89_btc_fbtc_slot_u16 slot[CXST_MAX];
-	__le32 update_map;
-} __packed;
-
-union rtw89_btc_fbtc_slots_info {
-	struct rtw89_btc_fbtc_slots v1;
-	struct rtw89_btc_fbtc_slots_v7 v7;
-} __packed;
-
 struct rtw89_btc_fbtc_step {
 	u8 type;
 	u8 val;
@@ -2857,18 +2716,6 @@ struct rtw89_btc_ctrl {
 	u32 always_freerun: 1;
 	u32 trace_step: 16;
 	u32 rsvd: 12;
-};
-
-struct rtw89_btc_ctrl_v7 {
-	u8 manual;
-	u8 igno_bt;
-	u8 always_freerun;
-	u8 rsvd;
-} __packed;
-
-union rtw89_btc_ctrl_list {
-	struct rtw89_btc_ctrl ctrl;
-	struct rtw89_btc_ctrl_v7 ctrl_v7;
 };
 
 struct rtw89_btc_ctrl_v7 {
@@ -4401,19 +4248,6 @@ struct rtw89_fw_secure {
 	u8 mss_key_num;
 };
 
-enum rtw89_fw_mss_dev_type {
-	RTW89_FW_MSS_DEV_TYPE_FWSEC_DEF = 0xF,
-	RTW89_FW_MSS_DEV_TYPE_FWSEC_INV = 0xFF,
-};
-
-struct rtw89_fw_secure {
-	bool secure_boot;
-	u32 sb_sel_mgn;
-	u8 mss_dev_type;
-	u8 mss_cust_idx;
-	u8 mss_key_num;
-};
-
 struct rtw89_fw_info {
 	struct rtw89_fw_req_info req;
 	int fw_format;
@@ -5237,9 +5071,6 @@ struct rtw89_mcc_role {
 	/* only valid when running with FW MRC mechanism */
 	u8 slot_idx;
 
-	/* only valid when running with FW MRC mechanism */
-	u8 slot_idx;
-
 	/* byte-array in LE order for FW */
 	u8 macid_bitmap[BITS_TO_BYTES(RTW89_MAX_MAC_ID_NUM)];
 
@@ -5258,11 +5089,7 @@ struct rtw89_mcc_courtesy {
 	bool enable;
 	u8 slot_num;
 	u8 macid_src;
-	u8 band_src;
-	u8 port_src;
 	u8 macid_tgt;
-	u8 band_tgt;
-	u8 port_tgt;
 };
 
 enum rtw89_mcc_plan {
@@ -6293,18 +6120,20 @@ static inline bool rtw89_sta_has_beamformer_cap(struct ieee80211_sta *sta)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	if ((sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
-            (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
-            (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
-                        IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
-            (sta->deflink.he_cap.he_cap_elem.phy_cap_info[4] &
-                        IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
+	    (sta->deflink.vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
+	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[3] &
+			IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
+	    (sta->deflink.he_cap.he_cap_elem.phy_cap_info[4] &
+			IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
                 return true;
 #else
 	if ((sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE) ||
 	    (sta->vht_cap.cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE) ||
-	    (sta->he_cap.he_cap_elem.phy_cap_info[3] & IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
-	    (sta->he_cap.he_cap_elem.phy_cap_info[4] & IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
-		return true;
+	    (sta->he_cap.he_cap_elem.phy_cap_info[3] &
+			IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
+	    (sta->he_cap.he_cap_elem.phy_cap_info[4] &
+			IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
+                return true;
 #endif
 	return false;
 }

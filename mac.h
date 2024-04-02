@@ -175,12 +175,6 @@ enum rtw89_mac_wow_fw_status {
 	WOWLAN_RESUME_READY = 0x02,
 };
 
-enum rtw89_mac_wow_fw_status {
-	WOWLAN_NOT_READY = 0x00,
-	WOWLAN_SLEEP_READY = 0x01,
-	WOWLAN_RESUME_READY = 0x02,
-};
-
 #define RTW89_PORT_OFFSET_TU_TO_32US(shift_tu) ((shift_tu) * 1024 / 32)
 
 enum rtw89_mac_dbg_port_sel {
@@ -425,13 +419,6 @@ enum rtw89_mac_c2h_mrc_func {
 	NUM_OF_RTW89_MAC_C2H_FUNC_MRC,
 };
 
-enum rtw89_mac_c2h_mrc_func {
-	RTW89_MAC_C2H_FUNC_MRC_TSF_RPT = 0,
-	RTW89_MAC_C2H_FUNC_MRC_STATUS_RPT = 1,
-
-	NUM_OF_RTW89_MAC_C2H_FUNC_MRC,
-};
-
 enum rtw89_mac_c2h_class {
 	RTW89_MAC_C2H_CLASS_INFO = 0x0,
 	RTW89_MAC_C2H_CLASS_OFLD = 0x1,
@@ -466,12 +453,6 @@ enum rtw89_mac_mcc_status {
 	RTW89_MAC_MCC_SWITCH_CH_FAIL = 25,
 	RTW89_MAC_MCC_TXNULL0_FAIL = 26,
 	RTW89_MAC_MCC_TXNULL1_FAIL = 27,
-};
-
-enum rtw89_mac_mrc_status {
-	RTW89_MAC_MRC_START_SCH_OK = 0,
-	RTW89_MAC_MRC_STOP_SCH_OK = 1,
-	RTW89_MAC_MRC_DEL_SCH_OK = 2,
 };
 
 enum rtw89_mac_mrc_status {
@@ -987,9 +968,6 @@ struct rtw89_mac_gen_def {
 	int (*cfg_plt)(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
 	u16 (*get_plt_cnt)(struct rtw89_dev *rtwdev, u8 band);
 
-	int (*cfg_plt)(struct rtw89_dev *rtwdev, struct rtw89_mac_ax_plt *plt);
-	u16 (*get_plt_cnt)(struct rtw89_dev *rtwdev, u8 band);
-
 	bool (*get_txpwr_cr)(struct rtw89_dev *rtwdev,
 			     enum rtw89_phy_idx phy_idx,
 			     u32 reg_base, u32 *cr);
@@ -1218,8 +1196,6 @@ int rtw89_mac_coex_init_v1(struct rtw89_dev *rtwdev,
 int rtw89_mac_cfg_gnt(struct rtw89_dev *rtwdev,
 		      const struct rtw89_mac_ax_coex_gnt *gnt_cfg);
 int rtw89_mac_cfg_gnt_v1(struct rtw89_dev *rtwdev,
-			 const struct rtw89_mac_ax_coex_gnt *gnt_cfg);
-int rtw89_mac_cfg_gnt_v2(struct rtw89_dev *rtwdev,
 			 const struct rtw89_mac_ax_coex_gnt *gnt_cfg);
 int rtw89_mac_cfg_gnt_v2(struct rtw89_dev *rtwdev,
 			 const struct rtw89_mac_ax_coex_gnt *gnt_cfg);

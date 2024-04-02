@@ -43,11 +43,6 @@ struct rtw89_entity_weight {
 	unsigned int active_roles;
 };
 
-struct rtw89_entity_weight {
-	unsigned int active_chanctxs;
-	unsigned int active_roles;
-};
-
 static inline bool rtw89_get_entity_state(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hal *hal = &rtwdev->hal;

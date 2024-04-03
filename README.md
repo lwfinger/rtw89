@@ -6,14 +6,14 @@ This repo now contains the code for the Realtek RTW8922AE,  which
 is a Wifi 7 device. It has been tested using a Wifi 6 AP as I do not have access
 to a Wifi 7 model. The driver works very well.
 
-This repo is current with wireless-next up to March 6, 2024.
+This repo is current with rtw-next up to April 3, 2024.
 
-This branch was created from the version merged into the wireless-drivers-next
+This branch was created from the version merged into the wireless-next
 repo, which is in the 5.16 kernel. IF YOU USE DRIVERS FROM THIS REPO FOR KERNELS
 5.16+, YOU MUST BLACKLIST THE KERNEL VERSIONS!!!! FAILING TO DO THIS WILL RESULT
 IN ALL MANNER OF STRANGE ERRORS.
 
-This code will build on any kernel 5.8 and newer as long as the distro has not modified
+This code will build on any kernel 6.10 and newer as long as the distro has not modified
 any of the kernel APIs. IF YOU RUN UBUNTU, YOU CAN BE ASSURED THAT THE APIs HAVE CHANGED.
 NO, I WILL NOT MODIFY THE SOURCE FOR YOU. YOU ARE ON YOUR OWN!!!!!
 
@@ -22,9 +22,9 @@ of  wifi 5 and wifi 6 are greatly crippled as the kernel does hot have the capab
 to support the new packet widths and speeds. If you use such a kernel, you might
 as well have an 802.11n (wifi 4) device.
 
-This repository includes drivers for the following card:
+This repository includes drivers for the following cards:
 
-Realtek 8852AE, 8852BE, 8852CE, and RTW8922AE.
+Realtek 8851BE, 8852AE, 8852BE, 8852CE, and 8922AE.
 
 If you are looking for a driver for chips such as
 RTL8188EE, RTL8192CE, RTL8192CU, RTL8192DE, RTL8192EE, RTL8192SE, RTL8723AE, or RTL8723BE,

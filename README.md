@@ -177,7 +177,7 @@ as long as the dkms signing key (usually located at /var/lib/dkms/mok.key) is en
 Prerequisites:
 
 ``` bash
-sudo apt install dh-sequence-dkms debhelper build-essential devscripts
+sudo apt install dh-sequence-dkms debhelper build-essential devscripts git-build-recipe
 ```
 
 This workflow uses devscripts, which has quite a few perl dependencies.  

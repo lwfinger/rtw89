@@ -7,8 +7,8 @@
 
 #include "core.h"
 
-#define RTW89_SAR_TXPWR_MAC_MAX S8_MAX
-#define RTW89_SAR_TXPWR_MAC_MIN S8_MIN
+#define RTW89_SAR_TXPWR_MAC_MAX 63
+#define RTW89_SAR_TXPWR_MAC_MIN -64
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 struct rtw89_sar_handler {

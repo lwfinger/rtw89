@@ -2894,10 +2894,15 @@ int rtw89_fw_h2c_assoc_cmac_tbl_g7(struct rtw89_dev *rtwdev,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	if (vif->bss_conf.eht_support) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9,0)
 		u16 punct = vif->bss_conf.chanreq.oper.punctured;
 
 		h2c->w4 |= le32_encode_bits(~punct,
 					    CCTLINFO_G7_W4_ACT_SUBCH_CBW);
+#else
+		h2c->w4 |= le32_encode_bits(~vif->bss_conf.eht_puncturing,
+					    CCTLINFO_G7_W4_ACT_SUBCH_CBW);
+#endif
 		h2c->m4 |= cpu_to_le32(CCTLINFO_G7_W4_ACT_SUBCH_CBW);
 	}
 #endif

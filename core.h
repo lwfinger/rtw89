@@ -6147,7 +6147,7 @@ static inline bool rtw89_sta_has_beamformer_cap(struct ieee80211_sta *sta)
 			IEEE80211_HE_PHY_CAP3_SU_BEAMFORMER) ||
 	    (sta->he_cap.he_cap_elem.phy_cap_info[4] &
 			IEEE80211_HE_PHY_CAP4_MU_BEAMFORMER))
-                return true;
+		return true;
 #endif
 	return false;
 }

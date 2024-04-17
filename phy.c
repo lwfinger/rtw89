@@ -6146,6 +6146,7 @@ void rtw89_phy_set_bss_color(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)  && SUSE == 0
 	bss_color = vif->bss_conf.bss_color;
 #else
+
 	bss_color = vif->bss_conf.he_bss_color.color;
 #endif
 

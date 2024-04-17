@@ -4669,6 +4669,9 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 			    WIPHY_FLAG_AP_UAPSD;
 #endif
 
+	if (chip->chip_gen == RTW89_CHIP_BE)
+		hw->wiphy->flags |= WIPHY_FLAG_DISABLE_WEXT;
+
 	hw->wiphy->features |= NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
 
 	hw->wiphy->max_scan_ssids = RTW89_SCANOFLD_MAX_SSID;

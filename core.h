@@ -2284,9 +2284,18 @@ struct rtw89_btc_fbtc_mreg_val_v2 {
 	__le32 mreg_val[CXMREG_MAX_V2];
 } __packed;
 
+struct rtw89_btc_fbtc_mreg_val_v7 {
+	u8 fver;
+	u8 reg_num;
+	u8 rsvd0;
+	u8 rsvd1;
+	__le32 mreg_val[CXMREG_MAX_V2];
+} __packed;
+
 union rtw89_btc_fbtc_mreg_val {
 	struct rtw89_btc_fbtc_mreg_val_v1 v1;
 	struct rtw89_btc_fbtc_mreg_val_v2 v2;
+	struct rtw89_btc_fbtc_mreg_val_v7 v7;
 };
 
 #define RTW89_DEF_FBTC_MREG(__type, __bytes, __offset) \
@@ -6356,6 +6365,16 @@ void rtw89_complete_cond(struct rtw89_wait_info *wait, unsigned int cond,
 int rtw89_core_start(struct rtw89_dev *rtwdev);
 void rtw89_core_stop(struct rtw89_dev *rtwdev);
 
+#if defined(CONFIG_SUSE_VERSION)
+#if CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 5
+#define SUSE 1
+#else
+#define SUSE 0
+#endif
+#else
+#define SUSE 0
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 /**
  * read_poll_timeout_atomic - Periodically poll an address until a condition is
@@ -6399,16 +6418,6 @@ void rtw89_core_stop(struct rtw89_dev *rtwdev);
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
-
-#if defined(CONFIG_SUSE_VERSION)
-#if CONFIG_SUSE_PATCHLEVEL && CONFIG_SUSE_VERSION == 15 && CONFIG_SUSE_PATCHLEVEL == 3
-#define SUSE 1
-#else
-#define SUSE 0
-#endif
-#else
-#define SUSE 0
-#endif
 
 /* see Documentation/timers/timers-howto.rst for the thresholds */
 static inline void fsleep(unsigned long usecs)

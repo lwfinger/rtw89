@@ -79,20 +79,20 @@ cd rtw89
 make
 sudo make sign-install
 ```
-You will be promted a password, please keep it in mind and use it in next steps.
+You will be prompted with a password, please keep it in mind and use it in the next steps.
 Reboot to activate the new installed module.
-In the MOK managerment screen:
+In the MOK management screen:
 1. Select "Enroll key" and enroll the key created by above sign-install step
-2. When promted, enter the password you entered when create sign key. 
-3. If you enter wrong password, your computer won't not bebootable. In this case,
+2. When prompted, enter the password you entered when create sign key. 
+3. If you enter wrong password, your computer won't be bootable. In this case,
    use the BOOT menu from your BIOS, to boot into your OS then do below steps:
 ```bash
 sudo mokutil --reset
 ```
 Restart your computer
 Use BOOT menu from BIOS to boot into your OS
-In the MOK managerment screen, select reset MOK list
-Reboot then retry from the step make sign-install
+In the MOK management screen, select reset MOK list
+Reboot then retry from the step to make sign-install
 
 ##### How to unload/reload a Kernel module
  ```bash
@@ -113,7 +113,7 @@ sudo make uninstall
 ```
 
 ##### Problem with recovery after sleep or hibernation
-Some BIOSs have trouble changing power state from D3hot to D0. If you have this problem, then
+Some BIOSs have trouble changing the power state from D3hot to D0. If you have this problem, then
 
 sudo cp suspend_rtw89 /usr/lib/systemd/system-sleep/.
 
@@ -138,7 +138,7 @@ The available options for rtw89pci are disable_clkreq, disable_aspm_l1, and disa
 The available options for rtw89core are debug_mask, and disable_ps_mode
 
 Normally, none of these will be needed; however, if you are getting firmware errors, one or both
-of the disable_aspm_* options may help. Thay are needed when a buggy BIOS fails to implement the
+of the disable_aspm_* options may help. They are needed when a buggy BIOS fails to implement the
 PCI specs correctly.
 
 ***********************************************************************************************

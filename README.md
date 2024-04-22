@@ -135,7 +135,19 @@ There, enter the line below:
 options <driver_name> <<driver_option_name>>=<value>
 ```
 The available options for rtw89pci are disable_clkreq, disable_aspm_l1, and disable_aspm_l1ss.
-The available options for rtw89core are debug_mask, and disable_ps_mode
+The available options for rtw89core are debug_mask, and disable_ps_mode.
+
+If after rebooting the wifi still doesn't work, it might mean that it was not loaded.
+To fix that, you will have to manually rebuild `initramfs`. To do that, execute one of the two commands, 
+depending on how old/new your system is.
+
+```bash
+mkinitrd # If you're running an older system
+
+dracut -f --regenerate-all # If you're running a newer system
+```
+
+After rebuilding `initramfs`, reboot your computer and check if the wifi works properly now.
 
 Normally, none of these will be needed; however, if you are getting firmware errors, one or both
 of the disable_aspm_* options may help. They are needed when a buggy BIOS fails to implement the

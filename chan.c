@@ -2468,4 +2468,3 @@ out:
 
 	rtw89_set_channel(rtwdev);
 }
-

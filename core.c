@@ -4669,8 +4669,10 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 			    WIPHY_FLAG_AP_UAPSD;
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
 	if (chip->chip_gen == RTW89_CHIP_BE)
 		hw->wiphy->flags |= WIPHY_FLAG_DISABLE_WEXT;
+#endif
 
 	hw->wiphy->features |= NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
 

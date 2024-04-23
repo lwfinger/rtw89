@@ -2999,9 +2999,11 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 	struct rtw89_btc_wl_role_info *wl_rinfo = &wl->role_info;
 	struct rtw89_btc_wl_role_info_v1 *wl_rinfo_v1 = &wl->role_info_v1;
 	struct rtw89_btc_wl_role_info_v2 *wl_rinfo_v2 = &wl->role_info_v2;
+	struct rtw89_btc_wl_role_info_v8 *wl_rinfo_v8 = &wl->role_info_v8;
 	struct rtw89_btc_wl_active_role *r;
 	struct rtw89_btc_wl_active_role_v1 *r1;
 	struct rtw89_btc_wl_active_role_v2 *r2;
+	struct rtw89_btc_wl_rlink *rlink;
 	u8 en = 0, i, ch = 0, bw = 0;
 	u8 mode, connect_cnt;
 
@@ -3017,6 +3019,9 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 	} else if (ver->fwlrole == 2) {
 		mode = wl_rinfo_v2->link_mode;
 		connect_cnt = wl_rinfo_v2->connect_cnt;
+	} else if (ver->fwlrole == 8) {
+		mode = wl_rinfo_v8->link_mode;
+		connect_cnt = wl_rinfo_v8->connect_cnt;
 	} else {
 		return;
 	}
@@ -3032,6 +3037,7 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 			r = &wl_rinfo->active_role[i];
 			r1 = &wl_rinfo_v1->active_role_v1[i];
 			r2 = &wl_rinfo_v2->active_role_v2[i];
+			rlink = &wl_rinfo_v8->rlink[i][0];
 
 			if (ver->fwlrole == 0 &&
 			    (r->role == RTW89_WIFI_ROLE_P2P_GO ||
@@ -3051,6 +3057,12 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 				ch = r2->ch;
 				bw = r2->bw;
 				break;
+			} else if (ver->fwlrole == 8 &&
+				   (rlink->role == RTW89_WIFI_ROLE_P2P_GO ||
+				    rlink->role == RTW89_WIFI_ROLE_P2P_CLIENT)) {
+				ch = rlink->ch;
+				bw = rlink->bw;
+				break;
 			}
 		}
 	} else {
@@ -3060,6 +3072,7 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 			r = &wl_rinfo->active_role[i];
 			r1 = &wl_rinfo_v1->active_role_v1[i];
 			r2 = &wl_rinfo_v2->active_role_v2[i];
+			rlink = &wl_rinfo_v8->rlink[i][0];
 
 			if (ver->fwlrole == 0 &&
 			    r->connected && r->band == RTW89_BAND_2G) {
@@ -3075,6 +3088,11 @@ static void _set_bt_afh_info(struct rtw89_dev *rtwdev)
 				   r2->connected && r2->band == RTW89_BAND_2G) {
 				ch = r2->ch;
 				bw = r2->bw;
+				break;
+			} else if (ver->fwlrole == 8 &&
+				   rlink->connected && rlink->rf_band == RTW89_BAND_2G) {
+				ch = rlink->ch;
+				bw = rlink->bw;
 				break;
 			}
 		}

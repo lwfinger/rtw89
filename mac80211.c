@@ -481,6 +481,12 @@ static void rtw89_ops_bss_info_changed(struct ieee80211_hw *hw,
 	if (changed & BSS_CHANGED_PS)
 		rtw89_recalc_lps(rtwdev);
 
+	if (changed & BSS_CHANGED_ARP_FILTER)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		rtwvif->ip_addr = vif->cfg.arp_addr_list[0];
+#else
+		rtwvif->ip_addr = conf->arp_addr_list[0];
+#endif
 	mutex_unlock(&rtwdev->mutex);
 }
 

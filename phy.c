@@ -395,10 +395,9 @@ static void rtw89_phy_ra_sta_update(struct rtw89_dev *rtwdev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)))
 	} else if (sta->deflink.vht_cap.vht_supported) {
 		u16 mcs_map = le16_to_cpu(sta->deflink.vht_cap.vht_mcs.rx_mcs_map);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-	} else if (sta->vht_cap.vht_supported) {
-		u16 mcs_map = le16_to_cpu(sta->vht_cap.vht_mcs.rx_mcs_map);
-#endif
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+        } else if (sta->vht_cap.vht_supported) {
+                u16 mcs_map = le16_to_cpu(sta->vht_cap.vht_mcs.rx_mcs_map);
 #else
 		u16 mcs_map = 0;
 #endif

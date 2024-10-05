@@ -66,7 +66,11 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void rtw89_ops_stop(struct ieee80211_hw *hw, bool suspend)
+#else
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
+#endif
 {
 	struct rtw89_dev *rtwdev = hw->priv;
 
@@ -1184,7 +1188,7 @@ const struct ieee80211_ops rtw89_ops = {
 	.bss_info_changed	= rtw89_ops_bss_info_changed,
 	.start_ap		= rtw89_ops_start_ap,
 	.stop_ap		= rtw89_ops_stop_ap,
-#endif	
+#endif
 	.set_tim		= rtw89_ops_set_tim,
 	.conf_tx		= rtw89_ops_conf_tx,
 	.sta_state		= rtw89_ops_sta_state,
@@ -1207,7 +1211,7 @@ const struct ieee80211_ops rtw89_ops = {
 #if (RHEL_RELEASE_CODE == 0) || (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(10, 0))
 	.assign_vif_chanctx	= rtw89_ops_assign_vif_chanctx,
 	.unassign_vif_chanctx	= rtw89_ops_unassign_vif_chanctx,
-#endif	
+#endif
 	.remain_on_channel		= rtw89_ops_remain_on_channel,
 	.cancel_remain_on_channel	= rtw89_ops_cancel_remain_on_channel,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)

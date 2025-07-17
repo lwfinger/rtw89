@@ -15,6 +15,8 @@
 #include "ser.h"
 #include "util.h"
 #include "wow.h"
+#include <linux/version.h>
+
 
 static void rtw89_ops_tx(struct ieee80211_hw *hw,
 			 struct ieee80211_tx_control *control,
@@ -66,7 +68,12 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	return ret;
 }
 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,10,0)
+static void rtw89_ops_stop(struct ieee80211_hw *hw, bool suspend)
+#else
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
+#endif
 {
 	struct rtw89_dev *rtwdev = hw->priv;
 

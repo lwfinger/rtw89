@@ -66,7 +66,11 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+static void rtw89_ops_stop(struct ieee80211_hw *hw, bool suspend)
+#else
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
+#endif
 {
 	struct rtw89_dev *rtwdev = hw->priv;
 
@@ -945,6 +949,18 @@ static void rtw89_ops_sta_rc_update(struct ieee80211_hw *hw,
 	rtw89_phy_ra_updata_sta(rtwdev, sta, changed);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+static void rtw89_ops_link_sta_rc_update(struct ieee80211_hw *hw,
+										 struct ieee80211_vif *vif,
+										 struct ieee80211_link_sta *link_sta,
+										 u32 changed)
+{
+	struct ieee80211_sta *sta = link_sta ? link_sta->sta : NULL;
+
+	rtw89_ops_sta_rc_update(hw, vif, sta, changed);
+}
+#endif
+
 static int rtw89_ops_add_chanctx(struct ieee80211_hw *hw,
 				 struct ieee80211_chanctx_conf *ctx)
 {
@@ -1213,7 +1229,11 @@ const struct ieee80211_ops rtw89_ops = {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	.set_sar_specs		= rtw89_ops_set_sar_specs,
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+	.link_sta_rc_update	= rtw89_ops_link_sta_rc_update,
+#else
 	.sta_rc_update		= rtw89_ops_sta_rc_update,
+#endif
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0)
 	.set_tid_config		= rtw89_ops_set_tid_config,
 #endif

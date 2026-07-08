@@ -59,6 +59,22 @@ static void rtw89_fw_c2h_cmd_handle(struct rtw89_dev *rtwdev,
 static int rtw89_h2c_tx_and_wait(struct rtw89_dev *rtwdev, struct sk_buff *skb,
 				 struct rtw89_wait_info *wait, unsigned int cond);
 
+static unsigned int rtw89_hw_scan_timeout_ms = 30000;
+module_param_named(hw_scan_timeout_ms, rtw89_hw_scan_timeout_ms, uint, 0644);
+MODULE_PARM_DESC(hw_scan_timeout_ms, "Firmware scan offload timeout in milliseconds");
+
+#define RTW89_HW_SCAN_ABORT_TIMEOUT_MS 3000
+
+static void rtw89_hw_scan_restart_timeout(struct rtw89_dev *rtwdev,
+					  unsigned int timeout_ms)
+{
+	if (!timeout_ms)
+		return;
+
+	mod_delayed_work(system_wq, &rtwdev->hw_scan_timeout_work,
+			 msecs_to_jiffies(timeout_ms));
+}
+
 static struct sk_buff *rtw89_fw_h2c_alloc_skb(struct rtw89_dev *rtwdev, u32 len,
 					      bool header)
 {
@@ -6335,6 +6351,8 @@ void rtw89_hw_scan_complete(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
 		.aborted = aborted,
 	};
 
+	cancel_delayed_work(&rtwdev->hw_scan_timeout_work);
+
 	if (!vif)
 		return;
 
@@ -6359,16 +6377,50 @@ void rtw89_hw_scan_complete(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
 	rtw89_chanctx_proceed(rtwdev);
 }
 
+void rtw89_hw_scan_timeout_work(struct work_struct *work)
+{
+	struct rtw89_dev *rtwdev =
+		container_of(to_delayed_work(work), struct rtw89_dev,
+			     hw_scan_timeout_work);
+	struct ieee80211_vif *vif;
+	int ret;
+
+	mutex_lock(&rtwdev->mutex);
+
+	vif = rtwdev->scan_info.scanning_vif;
+	if (!vif)
+		goto out;
+
+	rtw89_warn(rtwdev, "HW scan timed out; forcing abort\n");
+	rtwdev->scan_info.abort = true;
+
+	ret = rtw89_hw_scan_offload(rtwdev, vif, false);
+	if (ret)
+		rtw89_warn(rtwdev, "failed to stop timed out HW scan: %d\n", ret);
+
+	rtw89_hw_scan_complete(rtwdev, vif, true);
+
+out:
+	mutex_unlock(&rtwdev->mutex);
+}
+
 void rtw89_hw_scan_abort(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif)
 {
 	struct rtw89_hw_scan_info *scan_info = &rtwdev->scan_info;
+	unsigned int timeout_ms;
 	int ret;
 
 	scan_info->abort = true;
 
 	ret = rtw89_hw_scan_offload(rtwdev, vif, false);
-	if (ret)
+	if (ret) {
 		rtw89_hw_scan_complete(rtwdev, vif, true);
+		return;
+	}
+
+	timeout_ms = min_t(unsigned int, rtw89_hw_scan_timeout_ms,
+			   RTW89_HW_SCAN_ABORT_TIMEOUT_MS);
+	rtw89_hw_scan_restart_timeout(rtwdev, timeout_ms);
 }
 
 static bool rtw89_is_any_vif_connected_or_connecting(struct rtw89_dev *rtwdev)
@@ -6417,6 +6469,8 @@ int rtw89_hw_scan_offload(struct rtw89_dev *rtwdev, struct ieee80211_vif *vif,
 	}
 
 	ret = mac->scan_offload(rtwdev, &opt, rtwvif);
+	if (!ret && enable && rtw89_hw_scan_timeout_ms)
+		rtw89_hw_scan_restart_timeout(rtwdev, rtw89_hw_scan_timeout_ms);
 out:
 	return ret;
 }

@@ -16,6 +16,16 @@
 #include "util.h"
 #include "wow.h"
 
+static bool rtw89_disable_hw_scan;
+module_param_named(disable_hw_scan, rtw89_disable_hw_scan, bool, 0644);
+MODULE_PARM_DESC(disable_hw_scan, "Set Y to disable firmware scan offload");
+
+static bool rtw89_disable_p2p_hw_scan;
+module_param_named(disable_p2p_hw_scan, rtw89_disable_p2p_hw_scan, bool, 0644);
+MODULE_PARM_DESC(disable_p2p_hw_scan, "Set Y to use software scan for P2P/WFD discovery");
+
+#define RTW89_WLAN_OUI_TYPE_WFA_WFD 0x0a
+
 static void rtw89_ops_tx(struct ieee80211_hw *hw,
 			 struct ieee80211_tx_control *control,
 			 struct sk_buff *skb)
@@ -66,7 +76,11 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void rtw89_ops_stop(struct ieee80211_hw *hw, bool suspend)
+#else
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
+#endif
 {
 	struct rtw89_dev *rtwdev = hw->priv;
 
@@ -900,10 +914,38 @@ static int rtw89_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 {
 	struct rtw89_dev *rtwdev = hw->priv;
 	struct rtw89_vif *rtwvif = vif_to_rtwvif_safe(vif);
+	struct cfg80211_scan_request *scan_req = &req->req;
+	bool p2p_scan = false;
 	int ret = 0;
+
+	if (rtw89_disable_hw_scan)
+		return 1;
 
 	if (!RTW89_CHK_FW_FEATURE(SCAN_OFFLOAD, &rtwdev->fw))
 		return 1;
+
+	if (!vif || !rtwvif)
+		return 1;
+
+	if (vif->type == NL80211_IFTYPE_P2P_DEVICE || vif->p2p)
+		p2p_scan = true;
+
+	if (!p2p_scan && scan_req->ie && scan_req->ie_len) {
+		p2p_scan = cfg80211_find_vendor_ie(WLAN_OUI_WFA,
+						   WLAN_OUI_TYPE_WFA_P2P,
+						   scan_req->ie,
+						   scan_req->ie_len) ||
+			   cfg80211_find_vendor_ie(WLAN_OUI_WFA,
+						   RTW89_WLAN_OUI_TYPE_WFA_WFD,
+						   scan_req->ie,
+						   scan_req->ie_len);
+	}
+
+	if (p2p_scan && rtw89_disable_p2p_hw_scan) {
+		rtw89_debug(rtwdev, RTW89_DBG_FW,
+			    "use software scan for P2P/WFD discovery\n");
+		return 1;
+	}
 
 	if (rtwdev->scanning || rtwvif->offchan)
 		return -EBUSY;

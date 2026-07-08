@@ -1,3 +1,12 @@
+rtw89 (1.0.2-3+local1) unstable; urgency=medium
+
+  * Improve P2P discovery for Wi-Fi Display/Miracast by advertising P2P
+    device support and keeping P2P management/scanning traffic on OFDM rates.
+  * Disable firmware scan offload to avoid stuck P2P discovery scans.
+  * Fix build against Linux 6.11+ mac80211 stop callback.
+
+ -- Codex <codex@local>  Fri, 03 Jul 2026 22:45:00 +0200
+
 rtw89 (1.0.2-3) unstable; urgency=medium
 
   * Updated debian packaging to 3.0 (quilt) format
@@ -32,4 +41,3 @@ rtw89 (1.0.0-1) unstable; urgency=medium
   * Add driver package to build DEB package support in Debian DKMS format.
 
  -- lichenggang <lichenggang@uniontech.com>  Thu, 17 Jun 2021 17:14:07 +0800
-

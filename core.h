@@ -5402,6 +5402,7 @@ struct rtw89_dev {
 	struct workqueue_struct *txq_wq;
 	struct work_struct txq_work;
 	struct delayed_work txq_reinvoke_work;
+	struct delayed_work hw_scan_timeout_work;
 	/* used to protect ba_list and forbid_ba_list */
 	spinlock_t ba_lock;
 	/* txqs to setup ba session */
@@ -5470,6 +5471,7 @@ struct rtw89_dev {
 	struct rtw89_ppdu_sts_info ppdu_sts;
 	u8 total_sta_assoc;
 	bool scanning;
+	bool p2p_no_cck_scan;
 
 	struct rtw89_regulatory_info regulatory;
 	struct rtw89_sar_info sar;
